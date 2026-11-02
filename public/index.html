@@ -742,7 +742,11 @@ const CC = { B: 'var(--buster)', A: 'var(--arts)', Q: 'var(--quick)' };
 // Several card stars in one icon, each outlined so overlaps stay readable.
 function CARDS(list) { const pos = list.length === 3 ? [[12, 7, 6.4], [6.6, 16.3, 6.4], [17.4, 16.3, 6.4]] : [[8.3, 8.4, 7.2], [15.7, 15.6, 7.2]];
   return list.map((c, i) => `<path d="${HEX(...pos[i])}" fill="${CC[c]}" stroke="var(--icon-bg)" stroke-width="1.3"/>`).join(''); }
+const PETALS = [0, 72, 144, 216, 288].map(a => { const r = a * Math.PI / 180; return `<circle cx="${(12 + 5 * Math.sin(r)).toFixed(2)}" cy="${(12 - 5 * Math.cos(r)).toFixed(2)}" r="4" fill="currentColor" stroke="none"/>`; }).join('');
 Object.assign(P, {
+  flower: `${PETALS}<circle cx="12" cy="12" r="2.7" fill="var(--t-yellow)" stroke="var(--icon-bg)" stroke-width="1.2"/>`,
+  ringFlame: `<circle cx="12" cy="12" r="9.2"/>${IN('flame', .62)}`,
+  chalice: '<path d="M5.8 3.6h12.4v3.8c0 3.8-2.8 6.6-6.2 6.6s-6.2-2.8-6.2-6.6z" fill="currentColor"/><path d="M10.9 13.6h2.2v3.8h-2.2z" fill="currentColor" stroke="none"/><path d="M7.4 20.4c0-1.8 2-2.9 4.6-2.9s4.6 1.1 4.6 2.9z" fill="currentColor"/><path d="M8.4 6.6h7.2" stroke="var(--icon-bg)" stroke-width="1.3"/>',
   cardsBAQ: CARDS(['B', 'A', 'Q']), cardsBA: CARDS(['B', 'A']), cardsBQ: CARDS(['B', 'Q']), cardsAQ: CARDS(['A', 'Q']),
   atkDef: `<path d="M12 2.6 19.8 5.7v5.8c0 5.1-3.6 8.9-7.8 10.7-4.2-1.8-7.8-5.6-7.8-10.7V5.7z" fill="color-mix(in srgb, var(--t-orange) 25%, transparent)" stroke="var(--t-orange)" stroke-width="2"/><g transform="translate(12 12) scale(.8) translate(-12 -12)"><g stroke="var(--icon-bg)" stroke-width="4.4" fill="var(--icon-bg)">${SWORD}</g><g style="color:var(--t-atk)" stroke-width="2.2">${SWORD}</g></g>`,
   hexStar: `<path d="${HEX(12,12,9.2)}" fill="currentColor"/>`,
@@ -792,6 +796,7 @@ const EFFECT = {
   stun: ['lock', 'yellow'], charm: ['heart', 'charm'], terror: ['eye', 'blue'], skillSeal: ['lock', 'red'], npSeal: ['lock', 'orange'],
   swap: ['swap', 'util'], seal: ['seal', 'charm'], ocUp: ['burstPlusC', 'np'], quickHitDebuff: ['card', 'Q'], npOnBurnHit: ['gauge', 'np'],
   cardsBAQ: ['cardsBAQ', 'EX'], cardsBA: ['cardsBA', 'EX'], cardsBQ: ['cardsBQ', 'EX'], cardsAQ: ['cardsAQ', 'EX'], atkDef: ['atkDef', 'atk'],
+  kurFlower: ['flower', 'red'], livingFlame: ['ringFlame', 'blue'], holyGrail: ['chalice', 'gold'],
   buffBlock: ['noEntry', 'blue'], trait: ['tag', 'util'], delayed: ['hourglass', 'util'],
 };
 const CLASS = { Saber: 'sword', Archer: 'bow', Lancer: 'spear', Rider: 'horse', Caster: 'wand', Assassin: 'mask', Berserker: 'bull', Shielder: 'shield', Ruler: 'flag', Avenger: 'avenge', 'Moon Cancer': 'moon', 'Alter Ego': 'halves', Foreigner: 'outer', Pretender: 'crown', 'Beast I': 'claws', 'Beast II': 'horns', Unbeast: 'planet' };
@@ -800,8 +805,12 @@ function svg(glyph, cls = '') {
   return `<svg class="ico ${cls}" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${P[glyph] || P.sparkle}</svg>`;
 }
 function classIcon(cls) { return `<span class="clsico" title="${cls}" aria-label="${cls}">${svg(CLASS[cls] || 'sparkle')}</span>`; }
+// Named statuses with their own icon (matched on the effect's label), for the skill and for the status badge.
+const STATUS_ICON = { 'Blessing of Kur': 'kurFlower', 'Living Flame': 'livingFlame', 'Holy Grail Possession': 'holyGrail' };
+function statusKey(b) { return (b && (STATUS_ICON[b.label] || STATUS_ICON[b.trait])) || null; }
 function effectKey(e) {
   if (!e) return 'sparkle';
+  if (statusKey(e)) return statusKey(e);
   if (e.k === 'buff') return e.s;
   if (e.k === 'control') return e.kind;
   if (e.k === 'dot') return e.kind;
@@ -837,11 +846,11 @@ function skillIcon(skill, size = '', plain = true) {
   const e = skill.e[0];
   const key = skillKey(skill);
   if (key === 'heal' && !(e && e.k === 'heal')) return badge(key, { tip: skill.n, size, plain });
-  const dir = e && e.k === 'buff' && typeof e.v === 'number' && !['taunt', 'evade', 'invincible', 'sureHit', 'ignoreDef', 'ignoreInv', 'allBuster', 'npToArts', 'debuffImmune', 'trait', 'buffBlock'].includes(e.s) ? (e.v >= 0 ? 'up' : 'down') : null;
+  const dir = e && e.k === 'buff' && typeof e.v === 'number' && !['taunt', 'evade', 'invincible', 'sureHit', 'ignoreDef', 'ignoreInv', 'allBuster', 'npToArts', 'debuffImmune', 'trait', 'buffBlock', 'trigger'].includes(e.s) ? (e.v >= 0 ? 'up' : 'down') : null;
   const neg = e && (e.to === 'enemy' || e.to === 'enemies');
   return badge(key, { neg, dir, tip: skill.n, size, plain });
 }
-const API = { svg, classIcon, badge, skillIcon, skillKey, effectKey, EFFECT };
+const API = { svg, classIcon, badge, skillIcon, skillKey, effectKey, statusKey, EFFECT, STATUS_ICON };
 root.Icons = API;
 })(typeof window !== 'undefined' ? window : globalThis);
 </script>
@@ -3397,6 +3406,7 @@ function buffBadge(b) {
   const dir = NOARROW.has(b.s) || typeof b.v !== 'number' ? null : (b.v >= 0 ? 'up' : 'down');
   const tip = `${E.describeBuff(b)}${b.from ? ' · from ' + b.from : ''}`;
   if (b.icon) return I.badge(b.icon, { tip: esc(tip) }); // e.g. Alice's Robin substitute
+  if (I.statusKey(b)) return I.badge(I.statusKey(b), { neg: !!b.debuff, tip: esc(tip) }); // e.g. Blessing of Kur, Living Flame
   return I.badge(b.s, { neg: !!b.debuff, dir: b.s.endsWith('Res') && b.debuff ? 'down' : dir, tip: esc(tip) });
 }
 const $ = sel => document.querySelector(sel);

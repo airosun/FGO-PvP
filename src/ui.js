@@ -20,6 +20,7 @@ function buffBadge(b) {
   const dir = NOARROW.has(b.s) || typeof b.v !== 'number' ? null : (b.v >= 0 ? 'up' : 'down');
   const tip = `${E.describeBuff(b)}${b.from ? ' · from ' + b.from : ''}`;
   if (b.icon) return I.badge(b.icon, { tip: esc(tip) }); // e.g. Alice's Robin substitute
+  if (I.statusKey(b)) return I.badge(I.statusKey(b), { neg: !!b.debuff, tip: esc(tip) }); // e.g. Blessing of Kur, Living Flame
   return I.badge(b.s, { neg: !!b.debuff, dir: b.s.endsWith('Res') && b.debuff ? 'down' : dir, tip: esc(tip) });
 }
 const $ = sel => document.querySelector(sel);
