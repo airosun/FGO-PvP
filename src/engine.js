@@ -634,7 +634,6 @@ function applyEffectTargets(g, e, src, choice, ctx) {
       }
       case 'control': {
         if (e.selfInflicted) { t.buffs.push({ s: e.kind, v: 1, t: e.t, debuff: true, selfInflicted: true, from: ctx.from }); log(g, `${t.name} inflicts ${STAT_LABEL[e.kind]} on themselves (${e.t}T).`, 'debuff'); fx(g, { t: 'eff', uid: t.uid, key: e.kind, neg: true, label: `${STAT_LABEL[e.kind]} ${e.t}T` }); break; }
-        if (NO_ACT.includes(e.kind) && has(t, 'ctrlImmune')) { log(g, `${t.name} is immune to control this turn.`, 'miss'); fx(g, { t: 'eff', uid: t.uid, key: 'ctrlImmune', label: 'Immune', miss: true }); break; }
         if (!debuffLands(g, src, t, e)) break;
         if (e.kind === 'terror') { t.buffs.push({ s: 'terror', v: e.stunChance ?? 40, t: e.t, debuff: true, used: false, from: ctx.from }); log(g, `${t.name} is inflicted with Terror (${e.t}T).`, 'debuff'); fx(g, { t: 'eff', uid: t.uid, key: 'terror', neg: true, label: `Terror ${e.t}T` }); break; }
         const turns = Math.min(e.t, 1);
@@ -642,7 +641,6 @@ function applyEffectTargets(g, e, src, choice, ctx) {
         // so it lasts through the next turn's skill phase. Stuns and other control still end with the turn.
         const carry = e.kind === 'skillSeal' && g.phase === 'cards' && !g.inEndTurn;
         t.buffs.push({ s: e.kind, v: 1, t: turns + (carry ? 1 : 0), debuff: true, from: ctx.from });
-        if (NO_ACT.includes(e.kind)) t.buffs.push({ s: 'ctrlImmune', v: 1, t: turns + 1, from: 'Control rule' });
         log(g, `${t.name} is inflicted with ${STAT_LABEL[e.kind]} (${turns}T${carry ? ', lasts through next turn\'s skills' : ''}).`, 'debuff');
         fx(g, { t: 'eff', uid: t.uid, key: e.kind, neg: true, label: `${STAT_LABEL[e.kind]} ${turns}T` });
         break;
