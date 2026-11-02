@@ -3302,7 +3302,7 @@ function endTurn(g) {
   }
   // durations and cooldowns
   for (const u of Object.values(g.units)) {
-    if (!u.dead && !onField(u)) { u.cds = u.cds.map(c => Math.max(0, c - 1)); continue; } // reserve: skill cooldowns still recover
+    if (!u.dead && !onField(u)) continue; // reserve: durations and skill cooldowns wait until they're back on the field
     for (const b of u.buffs) if (b.t !== Infinity && existing.has(b)) b.t -= 1;
     for (const b of u.buffs.filter(x => x.s === 'doom' && x.t <= 0)) { // Thirst of Death runs out
       if (u.dead) break;
