@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0f1320">
+<meta name="theme-color" content="#0c0c0d">
 <title>Grand Order PvP</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=Figtree:wght@400;600;700&family=JetBrains+Mono:wght@500&display=swap">
@@ -11,7 +11,7 @@
 /* Layout: one Chaldea command console. Field on the left (enemy row over your row), log and details on the right; stacks on phones. */
 :root {
   color-scheme: dark;
-  --bg: #0f1320; --panel: #171c2c; --panel2: #1f2538; --line: #2c3450; --ink: #e7e9f2; --muted: #8e97b2;
+  --bg: #0c0c0d; --panel: #161617; --panel2: #202022; --line: #333336; --ink: #ececed; --muted: #9b9ba1;
   --gold: #d8b45f; --gold-ink: #1b1608;
   --buster: #d9573f; --arts: #3f7ad9; --quick: #3aa76a;
   --p0: #6fc3dc; --p1: #e09a6c; --neg: #e2737a; --pos: #84c79a;
@@ -19,7 +19,7 @@
   --f-body: 'Figtree', 'Segoe UI', system-ui, sans-serif;
   --f-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Consolas, monospace;
   --r: 10px;
-  --icon-bg: #171c2c;
+  --icon-bg: #161617;
   --t-atk: #e0805a; --t-def: #6fa8e8; --t-np: #d8b45f; --t-crit: #f0d36b; --t-star: #f0c84a; --t-res: #8fd0c2; --t-heal: #7fd18f; --t-util: #b3a7e6; --t-charm: #f08fb8;
   --t-orange: #f0913a; --t-gold: #e9c04b; --t-purple: #b47ff0; --t-dpurple: #9a62e8; --t-blue: #4f93ec; --t-white: #eef0f6; --t-red: #e8524e; --t-yellow: #f2d548; --t-pink: #f49bcb; --t-silver: #c3cad8;
 }
@@ -143,7 +143,7 @@ button.primary { background: var(--gold); color: var(--gold-ink); border-color: 
 .koc small { text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--muted); }
 #tip { white-space: pre-line; }
 /* servant info pop-up */
-.modal-back { position: fixed; inset: 0; z-index: 60; background: rgba(5, 7, 15, .62); backdrop-filter: blur(3px); display: grid; place-items: center; padding: 16px; animation: mfade .16s ease-out; }
+.modal-back { position: fixed; inset: 0; z-index: 60; background: rgba(0, 0, 0, .62); backdrop-filter: blur(3px); display: grid; place-items: center; padding: 16px; animation: mfade .16s ease-out; }
 .modal { position: relative; width: min(560px, 100%); max-height: min(88vh, 900px); display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 24px 70px rgba(0, 0, 0, .55); animation: mpop .2s cubic-bezier(.2,.8,.3,1); }
 .modal-body { overflow-y: auto; padding: 18px 20px 16px; overscroll-behavior: contain; }
 .modal-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 12px 16px; border-top: 1px solid var(--line); background: var(--panel); border-radius: 0 0 16px 16px; }
@@ -290,7 +290,7 @@ button.primary { background: var(--gold); color: var(--gold-ink); border-color: 
 .focus .effects small { color: var(--muted); }
 .focus .effects .neg { color: var(--neg); }
 .focus button { margin-top: 10px; }
-.cover { position: fixed; inset: 0; background: rgba(8, 10, 18, .94); display: grid; place-items: center; padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); z-index: 20; }
+.cover { position: fixed; inset: 0; background: rgba(10, 10, 11, .94); display: grid; place-items: center; padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); z-index: 20; }
 .cover-card { max-width: 440px; display: grid; gap: 14px; text-align: center; background: var(--panel); border: 1px solid var(--gold); border-radius: 14px; padding: 28px 24px; }
 
 @media (max-width: 1100px) {
@@ -630,9 +630,9 @@ small.you { font-family: var(--f-body); font-size: .62rem; font-weight: 700; let
 #scenes[hidden] { display: none; }
 #scenes .scene { position: absolute; inset: 0; }
 #scenes .scene svg { width: 100%; height: 100%; display: block; }
-#scenes::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(8,10,20,.10), rgba(8,10,20,.38)); box-shadow: inset 0 0 40px rgba(0,0,0,.45); }
+#scenes::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.10), rgba(0,0,0,.38)); box-shadow: inset 0 0 40px rgba(0,0,0,.45); }
 .battle .stage.scenic { border-color: transparent; }
-#scenes .scenename { position: absolute; left: 50%; bottom: 12px; translate: -50% 0; z-index: 2; padding: 4px 14px; border-radius: 999px; background: rgba(10,12,24,.62); border: 1px solid rgba(255,255,255,.4); color: #fff; font-family: var(--f-display); font-size: 1rem; letter-spacing: .04em; white-space: nowrap; opacity: 0; }
+#scenes .scenename { position: absolute; left: 50%; bottom: 12px; translate: -50% 0; z-index: 2; padding: 4px 14px; border-radius: 999px; background: rgba(12,12,13,.62); border: 1px solid rgba(255,255,255,.4); color: #fff; font-family: var(--f-display); font-size: 1rem; letter-spacing: .04em; white-space: nowrap; opacity: 0; }
 .scene .spin { animation: sceneSpin 60s linear infinite; } .scene .spin.slow { animation-duration: 120s; }
 @keyframes sceneSpin { to { transform: rotate(360deg); } }
 .scene .drift { animation: sceneDrift 18s ease-in-out infinite alternate; } .scene .drift.slow { animation-duration: 28s; }
@@ -2338,7 +2338,6 @@ function applyEffectTargets(g, e, src, choice, ctx) {
       }
       case 'control': {
         if (e.selfInflicted) { t.buffs.push({ s: e.kind, v: 1, t: e.t, debuff: true, selfInflicted: true, from: ctx.from }); log(g, `${t.name} inflicts ${STAT_LABEL[e.kind]} on themselves (${e.t}T).`, 'debuff'); fx(g, { t: 'eff', uid: t.uid, key: e.kind, neg: true, label: `${STAT_LABEL[e.kind]} ${e.t}T` }); break; }
-        if (NO_ACT.includes(e.kind) && has(t, 'ctrlImmune')) { log(g, `${t.name} is immune to control this turn.`, 'miss'); fx(g, { t: 'eff', uid: t.uid, key: 'ctrlImmune', label: 'Immune', miss: true }); break; }
         if (!debuffLands(g, src, t, e)) break;
         if (e.kind === 'terror') { t.buffs.push({ s: 'terror', v: e.stunChance ?? 40, t: e.t, debuff: true, used: false, from: ctx.from }); log(g, `${t.name} is inflicted with Terror (${e.t}T).`, 'debuff'); fx(g, { t: 'eff', uid: t.uid, key: 'terror', neg: true, label: `Terror ${e.t}T` }); break; }
         const turns = Math.min(e.t, 1);
@@ -2346,7 +2345,6 @@ function applyEffectTargets(g, e, src, choice, ctx) {
         // so it lasts through the next turn's skill phase. Stuns and other control still end with the turn.
         const carry = e.kind === 'skillSeal' && g.phase === 'cards' && !g.inEndTurn;
         t.buffs.push({ s: e.kind, v: 1, t: turns + (carry ? 1 : 0), debuff: true, from: ctx.from });
-        if (NO_ACT.includes(e.kind)) t.buffs.push({ s: 'ctrlImmune', v: 1, t: turns + 1, from: 'Control rule' });
         log(g, `${t.name} is inflicted with ${STAT_LABEL[e.kind]} (${turns}T${carry ? ', lasts through next turn\'s skills' : ''}).`, 'debuff');
         fx(g, { t: 'eff', uid: t.uid, key: e.kind, neg: true, label: `${STAT_LABEL[e.kind]} ${turns}T` });
         break;
