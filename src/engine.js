@@ -548,7 +548,7 @@ function applyEffectTargets(g, e, src, choice, ctx) {
         if (!g.inEndTurn) fireTriggers(g, t, 'healed', {});
         break;
       }
-      case 'cdReduce': { t.cds = t.cds.map(c => Math.max(0, c - e.v)); log(g, `${t.name}: skill cooldowns −${e.v}.`, 'buff'); fx(g, { t: 'eff', uid: t.uid, key: 'delayed', label: `Cooldowns −${e.v}` }); break; }
+      case 'cdReduce': { t.cds = t.cds.map(c => Math.max(0, c - e.v)); log(g, `${t.name}: skill cooldowns −${e.v}.`, 'buff'); fx(g, { t: 'eff', uid: t.uid, key: 'cdReduce', label: `Cooldowns −${e.v}` }); break; }
       case 'cleanse': {
         if (e.marks) { // removes one particular effect by name, buff or debuff (count: only that many stacks, oldest first)
           let gone = t.buffs.filter(b => b.marks && b.marks.some(m => e.marks.includes(m)));
