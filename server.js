@@ -14,6 +14,8 @@ const E = require('./src/engine.js');
 const { KITS } = require('./src/kits.js');
 const ROSTER = require('./src/roster.json');
 const R = {}; for (const d of ROSTER) R[d.id] = d;
+const AI = require('./src/ai.js');
+const CPU = { id: 'cpu', name: 'CPU', token: null, online: true };
 
 const PORT = process.env.PORT || 3000;
 const MAX_PLAYERS = 6;
@@ -35,7 +37,7 @@ function newCode() {
   const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
   for (;;) { let c = ''; for (let i = 0; i < 4; i++) c += A[Math.floor(Math.random() * A.length)]; if (!rooms.has(c)) return c; }
 }
-function personById(room, id) { for (const t of room.members) { const p = people.get(t); if (p && p.id === id) return p; } return null; }
+function personById(room, id) { if (id === 'cpu') return CPU; for (const t of room.members) { const p = people.get(t); if (p && p.id === id) return p; } return null; }
 function roomView(room) {
   return {
     code: room.code, host: room.host, opts: room.opts, queue: room.queue.slice(),
@@ -84,15 +86,17 @@ function newMatch(room, a, b) {
     phase: 'draft', actions: [], pending: [null, null], stage: null,
     draft: { teams: [[], []], taken: new Set(), i: 0 }, g: null, winner: null,
   };
+  m.cpu = seats.indexOf('cpu'); if (m.cpu < 0) m.cpu = null;
   m.draft.order = E.snakeOrder(m.first);
   room.match = m; room.notice = '';
   io.to(room.code).emit('match', matchView(m));
   sendRoom(room);
+  cpuStep(room);
 }
 function matchView(m) {
   if (!m) return null;
   return { id: m.id, seats: m.seats, names: m.names, seed: m.seed, first: m.first, seals: m.seals, actions: m.actions,
-    phase: m.phase, stage: m.stage, locked: m.pending.map(Boolean), winner: m.winner, next: m.next || null };
+    phase: m.phase, stage: m.stage, locked: m.pending.map(Boolean), winner: m.winner, next: m.next || null, cpu: m.cpu };
 }
 function push(room, a) {
   const m = room.match; m.actions.push(a);
@@ -173,6 +177,25 @@ function act(room, person, a, reply) {
   }
   return reply('That move does not fit this part of the game.');
 }
+// The CPU takes its turn a moment after it becomes able to, through the same checks as a person.
+function cpuStep(room) {
+  const m = room.match; if (!m || m.cpu == null || m.phase === 'over') return;
+  const c = m.cpu; const id = m.id;
+  const later = (ms, f) => setTimeout(() => { if (room.match !== m || m.id !== id) return; try { f(); } catch (e) { console.error('CPU error', e); } }, ms);
+  const go = a => act(room, CPU, a, err => { if (err) console.error('CPU move refused:', err, a.t); else cpuStep(room); });
+  if (m.phase === 'draft') { const D = m.draft; if (D.order[D.i] !== c) return; const i = D.i; later(700, () => { if (D.i !== i) return; const d = AI.draftPick(D.teams[c], D.taken, R, KITS); if (d) go({ t: 'pick', id: d.id }); }); return; }
+  if (m.pending[c]) return;
+  if (m.phase === 'fields') return later(900, () => !m.pending[c] && m.phase === 'fields' && go({ t: 'fields', picks: AI.pickFields(m.draft.teams[c], KITS) }));
+  if (m.phase === 'lineup') return later(900, () => !m.pending[c] && m.phase === 'lineup' && go({ t: 'lineup', order: AI.lineup(m.draft.teams[c], R, KITS) }));
+  if (m.phase === 'battle') {
+    const st = m.stage, turn = m.g.turn;
+    return later(1200, () => {
+      if (m.pending[c] || m.stage !== st || m.g.turn !== turn || m.phase !== 'battle') return;
+      if (st === 'skills') go({ t: 'skills', ...AI.planSkills(m.g, c) });
+      else go({ t: 'cards', sel: AI.planCards(m.g, c) });
+    });
+  }
+}
 const arr = x => Array.isArray(x) ? x.slice(0, 40) : [];
 // Re-queue a player's picks through the engine so only legal skills go through, in the order they were picked.
 function applySkillPicks(g, p, s) {
@@ -204,13 +227,13 @@ function cardPicks(g, p, sel) {
 function finish(room) {
   const m = room.match; m.phase = 'over'; m.winner = m.g.winner;
   const left = room.queue.filter(id => !m.seats.includes(id));
-  m.next = left.length ? 'next' : 'again';
+  m.next = m.cpu != null || !left.length ? 'again' : 'next';
   io.to(room.code).emit('over', { id: m.id, winner: m.winner, next: m.next });
   sendRoom(room);
 }
 // After a battle: the loser goes to the back of the queue, the winner stays on top.
 function rotateQueue(room) {
-  const m = room.match; if (!m || m.winner == null) return;
+  const m = room.match; if (!m || m.winner == null || m.cpu != null) return;
   const w = m.winner === 'draw' ? m.seats[0] : m.seats[m.winner];
   const l = m.seats.find(id => id !== w);
   const rest = room.queue.filter(id => id !== w && id !== l);
@@ -219,13 +242,14 @@ function rotateQueue(room) {
 function post(room, person, choice, reply) {
   const m = room.match; if (!m || m.phase !== 'over') return reply('The battle is not over.');
   const p = m.seats.indexOf(person.id);
-  const isWinner = m.winner === 'draw' ? p >= 0 : p === m.winner;
+  const isWinner = m.cpu != null ? p >= 0 : m.winner === 'draw' ? p >= 0 : p === m.winner; // vs the CPU, the human always decides
   if (choice === 'lobby') {
     if (!isWinner && person.id !== room.host) return reply('Only the winner or the host can do that.');
     rotateQueue(room); room.match = null; room.notice = '';
     io.to(room.code).emit('match', null); sendRoom(room); return reply(null);
   }
   if (!isWinner) return reply('Only the winner can start the next battle.');
+  if (m.cpu != null) { newMatch(room, person.id, 'cpu'); return reply(null); }
   rotateQueue(room);
   if (room.queue.length < 2) { room.match = null; io.to(room.code).emit('match', null); sendRoom(room); return reply('Not enough people in the battle queue.'); }
   newMatch(room, room.queue[0], room.queue[1]);
@@ -296,7 +320,13 @@ io.on('connection', sock => {
     room.match = null; room.notice = `${me.name} ended the battle.`;
     io.to(room.code).emit('match', null); sendRoom(room); ok(cb);
   });
-  sock.on('act', (a, cb) => { const room = me && rooms.get(me.code); if (!room) return ok(cb, 'Not in a room.'); act(room, me, a, err => ok(cb, err)); });
+  sock.on('act', (a, cb) => { const room = me && rooms.get(me.code); if (!room) return ok(cb, 'Not in a room.'); act(room, me, a, err => { ok(cb, err); if (!err) cpuStep(room); }); });
+  sock.on('startCpu', (_, cb) => {
+    const room = me && rooms.get(me.code); if (!room) return ok(cb, 'Not in a room.');
+    if (room.host !== me.id) return ok(cb, 'Only the host can start a battle.');
+    if (room.match && room.match.phase !== 'over') return ok(cb, 'A battle is already running.');
+    newMatch(room, me.id, 'cpu'); ok(cb);
+  });
   sock.on('post', (d, cb) => { const room = me && rooms.get(me.code); if (!room) return ok(cb, 'Not in a room.'); post(room, me, d && d.choice, err => ok(cb, err)); });
   sock.on('disconnect', () => {
     if (!me || me.sid !== sock.id) return;

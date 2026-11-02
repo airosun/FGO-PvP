@@ -101,6 +101,22 @@ function mkRng(seed) {
   let s = seed >>> 0;
   return function () { s = (s + 0x6D2B79F5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 }
+// A private copy of a battle for "what if" look-ahead (the CPU uses it). Servant data and kits are shared, everything
+// that changes during play is copied, and the copy gets its own random numbers so it can't peek at real rolls.
+function cloneGame(g, seed) {
+  const cp = v => Array.isArray(v) ? v.map(x => (x && typeof x === 'object' && !Array.isArray(x) && !x.uid ? { ...x } : Array.isArray(x) ? x.slice() : x)) : v && typeof v === 'object' ? { ...v } : v;
+  const c = { ...g, rng: mkRng(seed == null ? Math.floor(Math.random() * 2 ** 31) : seed), fx: null, log: g.log.slice(-20), units: {}, players: [] };
+  for (const [uid, u] of Object.entries(g.units)) {
+    const x = { ...u, g: c };
+    for (const k of Object.keys(u)) if (k !== 'g' && k !== 'd' && k !== 'kit' && u[k] && typeof u[k] === 'object') x[k] = cp(u[k]);
+    x.buffs = u.buffs.map(b => ({ ...b }));
+    c.units[uid] = x;
+  }
+  c.players = g.players.map(P => { const Q = {}; for (const k of Object.keys(P)) Q[k] = cp(P[k]); return Q; });
+  for (const k of ['fields', '_meal', '_plans']) if (Array.isArray(g[k])) c[k] = g[k].slice();
+  if (g.fieldOverride) c.fieldOverride = { ...g.fieldOverride };
+  return c;
+}
 
 // ---------------------------------------------------------------- Draft
 function costOf(d) { return CFG.cost[d.rar]; }
@@ -117,6 +133,8 @@ function snakeOrder(first) {
 // Lord El-Melloi II, Skadi (Caster), Skadi (Ruler), Larva/Tiamat (Archer).
 const META = [284, 314, 150, 353, 62, 37, 215, 357, 450];
 const EXCLUSIVE = [[190, 191], [424, 425], [472, 473]]; // Mecha Eli-chan / Mk.II; Kishinami Hakuno (Male/Female); Gray Lily (Saber/Lancer)
+const BYCOST = new WeakMap(); // every servant sorted by cost, cached per roster
+function byCost(R) { let s = BYCOST.get(R); if (!s) { s = Object.values(R).sort((a, b) => costOf(a) - costOf(b)); BYCOST.set(R, s); } return s; }
 function canPick(team, id, taken, R) {
   if (taken.has(id)) return { ok: false, why: 'Already picked' };
   const grp = EXCLUSIVE.find(gp => gp.includes(id));
@@ -130,7 +148,8 @@ function canPick(team, id, taken, R) {
   const cost = teamCost(next, R);
   if (cost > CFG.costCap) return { ok: false, why: `Over the ${CFG.costCap} cost cap` };
   const left = CFG.picks - next.length;
-  const cheapest = Object.values(R).filter(x => !taken.has(x.id) && x.id !== id).map(costOf).sort((a, b) => a - b).slice(0, left).reduce((a, b) => a + b, 0);
+  let cheapest = 0, got = 0;
+  for (const x of byCost(R)) { if (got >= left) break; if (taken.has(x.id) || x.id === id) continue; cheapest += costOf(x); got++; }
   if (cost + cheapest > CFG.costCap) return { ok: false, why: 'Leaves no room for the remaining picks' };
   return { ok: true };
 }
@@ -1621,7 +1640,7 @@ function decideByLimit(g) {
 const API = {
   CFG, STAT_LABEL, cardWillChange, fullCap, cardSealed, fieldActive, effCls, affLevel, AFF_NAME, CLASS_LIST, FIELDS, fieldName, currentField, fieldTurnsLeft, actBlocker, rawAffinity, snap, sealUsable, sealTargetOk, queueSeal, unqueueSeal, MASTER, masterUsable, queueMaster, unqueueMaster, swappingOut, npCap, npLevel, hasNoNP, allyTargetOk, COLOR, costOf, teamCost, snakeOrder, canPick, EXCLUSIVE, META, starRate, npPerHit, skillRank, skillOption, newBattle, front, maxHp, has, sumStat,
   skillUsable, skillTargetKind, queueSkill, unqueueSkill, resolveSkills, availableNPs, cardColor, npColor, canAct,
-  setCards, resolveCards, describeBuff, classMult, attrMult, aliveCount, hpPct, mkRng,
+  setCards, resolveCards, describeBuff, cloneGame, classMult, attrMult, aliveCount, hpPct, mkRng,
 };
 if (typeof module !== 'undefined') module.exports = API; else root.Engine = API;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -990,7 +990,7 @@ function resetBattleView() { if (app.play) app.play.skip = true; app.play = null
 // A new match (or joining one in progress): rebuild it by replaying every public move instantly.
 function loadMatch(m) {
   const n = app.net; resetBattleView();
-  n.match = { id: m.id, seats: m.seats, names: m.names, seed: m.seed, first: m.first, seals: m.seals, got: m.actions.length, winner: m.winner, next: m.next, over: m.phase === 'over' };
+  n.match = { id: m.id, seats: m.seats, names: m.names, seed: m.seed, first: m.first, seals: m.seals, got: m.actions.length, winner: m.winner, next: m.next, over: m.phase === 'over', cpu: m.cpu };
   n.seat = m.seats.indexOf(n.me); if (n.seat < 0) n.seat = null;
   n.inbox = []; n.busy = false; n.locked = [false, false]; n.confirmEnd = false;
   startDraft(m.first);
@@ -1084,7 +1084,7 @@ function netTurnBar() {
   const status = p => `<span class="lk${n.locked[p] ? ' done' : ''}">${esc(PN(p))}: ${n.locked[p] ? 'locked in ✓' : 'choosing…'}</span>`;
   const what = u.stage === 'wait' ? (u.waitFor || 'skills') : u.stage;
   if (u.stage === 'over') {
-    const w = g.winner; const iWon = w === 'draw' ? me != null : me === w;
+    const w = g.winner; const iWon = M.cpu != null ? me != null : w === 'draw' ? me != null : me === w; // vs the CPU the human always gets the buttons
     const head = `<p><b>${w === 'draw' ? 'Draw' : `${esc(PN(w))} wins`}</b> on turn ${g.turn}. Servants left: ${esc(PN(0))} ${E.aliveCount(g, 0)}, ${esc(PN(1))} ${E.aliveCount(g, 1)}.${g.limitBy === 'hp' ? ` Average HP left: ${Math.round(E.hpPct(g, 0) * 100)}% vs ${Math.round(E.hpPct(g, 1) * 100)}%.` : ''}</p>`;
     if (!M.over) return `<div class="turnbar over">${head}<p class="hint">Wrapping up…</p></div>`;
     const btns = (iWon ? `<button class="primary" data-act="net-go">${M.next === 'next' ? 'Play Next Matchup' : 'Play Again'}</button>` : '') + (iWon || amHost() ? '<button data-act="net-lobby">Return to Lobby</button>' : '');
@@ -1135,6 +1135,7 @@ function renderLobby() {
       ${me ? `<button data-act="net-role" data-r="${inQ ? 'spectate' : 'queue'}">${inQ ? 'Go to the spectator stands' : 'Join the battle queue'}</button>` : ''}
       ${host ? `<button class="toggle" data-act="net-seals" role="switch" aria-checked="${room.opts.seals}"><span class="knob" aria-hidden="true"></span><span><b>Command Seals</b> ${room.opts.seals ? 'on' : 'off'}</span></button>
         <button class="primary" data-act="net-start" ${ready.length >= 2 ? '' : 'disabled'}>${ready.length >= 2 ? `Start battle: ${esc(ready[0].name)} vs ${esc(ready[1].name)}` : 'Start battle (needs 2 in the queue)'}</button>` : `<p class="hint">${ready.length >= 2 ? `Waiting for the host to start ${esc(ready[0].name)} vs ${esc(ready[1].name)}.` : 'Waiting for two people in the battle queue.'}</p>`}
+      ${host ? '<button data-act="net-cpu" title="Fight a computer opponent. Anyone else in the room watches.">Battle the CPU</button>' : ''}
       <button class="chartbtn" data-act="aff-chart">Class chart</button>
     </div>
     <p class="hint">Up to 6 people per room. The top two in the queue fight; after each battle the winner stays on and the loser goes to the back of the queue.</p>
@@ -1152,6 +1153,7 @@ async function netClick(a, el) {
     case 'net-role': return netSend('role', { role: el.dataset.r });
     case 'net-seals': return netSend('opts', { seals: !(n.room && n.room.opts.seals) });
     case 'net-start': return netSend('start', {});
+    case 'net-cpu': return netSend('startCpu', {});
     case 'net-copy': { const link = el.dataset.link; try { await navigator.clipboard.writeText(link); toast('Invite link copied.'); } catch (_) { toast(link, 8000); } return; }
     case 'net-local': app.localPlay = true; app.screen = 'setup'; return render();
     case 'net-home': app.localPlay = false; resetBattleView(); app.screen = n.room ? 'lobby' : 'landing'; return render();
