@@ -55,7 +55,7 @@ const RAW_AFF = (() => {
   const STD = [...BASE, 'Berserker'], EXTRA = ['Ruler', 'Avenger', 'Moon Cancer', 'Alter Ego', 'Foreigner', 'Pretender'];
   for (const c of STD) { set('Beast I', c, c === 'Berserker' ? 2 : 1.5); set(c, 'Beast I', 0.5); }
   for (const c of EXTRA) { set('Beast I', c, 0.5); set(c, 'Beast I', 2); }
-  // Beast II (Space Ereshkigal): half-beats and resists the Extra classes except Avenger, which beats her; neutral to everything else, Berserker included.
+  // Beast II (Space Ereshkigal): half-beats and resists the Extra classes except Avenger, which beats them; neutral to everything else, Berserker included.
   for (const c of ['Ruler', 'Moon Cancer', 'Alter Ego', 'Foreigner', 'Pretender']) { set('Beast II', c, 1.5); set(c, 'Beast II', 0.5); }
   set('Avenger', 'Beast II', 2); set('Beast II', 'Avenger', 0.5);
   set('Beast II', 'Berserker', 1); set('Berserker', 'Beast II', 1);
@@ -479,7 +479,7 @@ function applyEffectInner(g, e, src, choice, ctx) {
       const cs = x.buffs.filter(b => b.s === 'curse'); if (!cs.length) continue;
       x.buffs = x.buffs.filter(b => b.s !== 'curse'); src.buffs.push(...cs); n += cs.length;
     }
-    log(g, n ? `${src.name} draws ${n} Curse${n > 1 ? 's' : ''} onto herself.` : `${src.name}: no Curses to draw in.`, 'act'); return;
+    log(g, n ? `${src.name} draws ${n} Curse${n > 1 ? 's' : ''} onto themselves.` : `${src.name}: no Curses to draw in.`, 'act'); return;
   }
   if (e.k === 'retreat') { // Miss Crane: she leaves for the back of the reserves and the next reserve steps in
     const P = g.players[src.side]; const next = P.reserve.find(id => !U(g, id).dead);
@@ -703,7 +703,7 @@ function describeBuff(b) {
   if (b.s === 'trueInvincible' && b.label) return `${b.label}: blocks the next hit completely, even through Ignore Invincible${uses}${turns}`;
   if (b.perField) return `${L} +${b.perField.add}% per ${b.perField.trait === 'Servant' ? 'enemy' : b.perField.trait} on the field${turns}`;
   if (b.s === 'knighthood') return `Knighthood Conferment: other allies' Guts revive with +${b.gutsHp} HP and grant ATK +${b.atkUp}% (3T)`;
-  if (b.s === 'guardianParry') return `Giant's Protection: blocks a hit on any ally on her field${uses}${turns}`;
+  if (b.s === 'guardianParry') return `Giant's Protection: blocks a hit on any ally on their field${uses}${turns}`;
   if (b.s === 'doom') return `Thirst of Death: when it runs out, a death roll (DEF −50% for 1 turn if it fails)${turns}`;
   if (b.s === 'npEcho') return `NP +${b.v}% of what ${b.cls && b.cls.length ? b.cls.join('/') + ' ' : ''}allies spend on their NP${turns}`;
   if (b.s === 'fullCap') return `Fullness cap +${b.v}${turns}`;
@@ -793,7 +793,7 @@ function fireTriggers(g, u, on, ctx = {}) {
   }
 }
 // Reflected damage (Aŋra Mainiiu's NP): after all attacks resolve, each attacker takes back what they dealt, as true damage.
-// Reflected damage (Aŋra Mainiiu's NP): after all attacks resolve, everything he took while the reflect was up comes back
+// Reflected damage (Aŋra Mainiiu's NP): after all attacks resolve, everything they took while the reflect was up comes back
 // multiplied, to every enemy on the field, as true damage (no defense, buffs, cuts or class/attribute multipliers apply).
 function resolveReflections(g) {
   for (const t of Object.values(g.units)) {
@@ -1520,8 +1520,11 @@ function endTurn(g) {
   // Effects that appear during end-of-turn processing (delayed effects, Guts revives from damage over
   // time) have no turn left to act in, so they start counting down from the next turn.
   const existing = new Set(); for (const u of Object.values(g.units)) for (const b of u.buffs) existing.add(b);
+  // Servants waiting in reserve are frozen: their effects neither tick, trigger nor count down until they return.
+  // (An effect they placed on someone still on the field carries on as normal.)
+  const onField = u => g.players[u.side].front.includes(u.uid);
   for (const u of Object.values(g.units)) {
-    if (u.dead) continue;
+    if (u.dead || !onField(u)) continue;
     // damage over time
     for (const b of u.buffs.filter(x => DOTS.has(x.s))) {
       let v = b.v;
@@ -1529,7 +1532,7 @@ function endTurn(g) {
       if (b.s === 'curse' && has(u, 'curseNoDeath')) v = Math.min(v, Math.max(0, u.hp - 1)); // Curse can't finish her off
       const dc = sumStat(u, 'dotCut'); if (dc) v = Math.max(0, v - dc); // Alice: less damage from Poison/Curse/Burn
       if (u.buffs.some(x => x.s === 'dotHeal' && x.kind === b.s)) { // Locusta: Poison heals her instead
-        if (!has(u, 'noHeal')) { u.hp = Math.min(maxHp(u), u.hp + v); log(g, `${u.name}'s ${b.s} heals her for ${v} HP.`, 'buff'); fx(g, { t: 'eff', uid: u.uid, key: 'heal', label: `+${v} HP` }); }
+        if (!has(u, 'noHeal')) { u.hp = Math.min(maxHp(u), u.hp + v); log(g, `${u.name}'s ${b.s} heals them for ${v} HP.`, 'buff'); fx(g, { t: 'eff', uid: u.uid, key: 'heal', label: `+${v} HP` }); }
         continue;
       }
       u.hp -= v; log(g, `${u.name} takes ${v} ${b.s} damage.`, 'dmg'); fx(g, { t: 'hit', uid: u.uid, dmg: v, aff: 'even', dot: b.s });
@@ -1549,6 +1552,7 @@ function endTurn(g) {
   }
   // durations and cooldowns
   for (const u of Object.values(g.units)) {
+    if (!u.dead && !onField(u)) { u.cds = u.cds.map(c => Math.max(0, c - 1)); continue; } // reserve: skill cooldowns still recover
     for (const b of u.buffs) if (b.t !== Infinity && existing.has(b)) b.t -= 1;
     for (const b of u.buffs.filter(x => x.s === 'doom' && x.t <= 0)) { // Thirst of Death runs out
       if (u.dead) break;

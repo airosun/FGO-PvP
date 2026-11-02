@@ -56,7 +56,7 @@ function conds(e) {
   if (e.minAffection != null) c.push(`only at Affection Lv ${e.minAffection}+`);
   if (e.ifAllyTrait) c.push(`only if another ${e.ifAllyTrait} ally is on your field`);
   if (e.minStars) c.push(`only with ${e.minStars}+ stars`);
-  if (e.ifHungry) c.push('only while she is less than half full');
+  if (e.ifHungry) c.push('only while they are less than half full');
   if (e.ifRemoved) c.push('only if the removal just before it removed something');
   if (e.whileMark === 2999) c.push('only while an Illya is on the field');
   else if (e.whileMark != null) c.push(`only while it has ${({ 2951: 'Mark of Sin', 2873: 'My Fair Soldier', 2885: 'Magic Bullets', 2887: 'no Robin counters left', 3005: 'a debuff', 3004: 'a buff', 3121: 'the Moon stance' })[e.whileMark] || 'that status'}`);
@@ -281,7 +281,7 @@ function describeKit(kit, d) {
     if (s.e.some(e => e.branch)) {
       L = lines(s.e.filter(e => !e.branch));
       const other = lines(s.e.filter(e => e.branch === 'other')), self = lines(s.e.filter(e => e.branch === 'self'));
-      L.push({ text: 'Used on another ally:', sub: other }, { text: 'Used on herself:', sub: self });
+      L.push({ text: 'Used on another ally:', sub: other }, { text: 'Used on themselves:', sub: self });
     }
     if (s.needNp) L.unshift({ text: `Only usable with at least ${s.needNp}% NP` });
     if (s.needStars) L.unshift({ text: `Only usable with at least ${s.needStars} stars` });
@@ -314,8 +314,8 @@ function describeKit(kit, d) {
       out.np = { name: np.n, card, target, level: d && d.npl, lines: L, oc: lines(np.oc), ocNote: (np.oc || []).some(e => e.v5 != null || e.hp5 != null || e.p5 != null) };
     }
   }
-  if (kit.fullness) out.passives.push({ text: 'Fullness gauge for every ally on her team (0–4, Super Giants 0–8): meals fill it, each attack digests 1, full allies can\'t eat' });
-  if (kit.affection) out.passives.push({ text: 'Affection gauge (Lv 1–10, every 10 points is a level; starts at 5, +5 if she starts on the field): +3 per card of hers chosen, +6 Brave Chain, +3 per skill she uses (+2 if it is your first skill that turn), +5/+10/+15 for NP overcharge 200/300/400%+, +10 when the field becomes Waterside, +5 Master skill, +10 Command Seal' });
+  if (kit.fullness) out.passives.push({ text: 'Fullness gauge for every ally on their team (0–4, Super Giants 0–8): meals fill it, each attack digests 1, full allies can\'t eat' });
+  if (kit.affection) out.passives.push({ text: 'Affection gauge (Lv 1–10, every 10 points is a level; starts at 5, +5 if they start on the field): +3 per card of theirs chosen, +6 Brave Chain, +3 per skill they use (+2 if it is your first skill that turn), +5/+10/+15 for NP overcharge 200/300/400%+, +10 when the field becomes Waterside, +5 Master skill, +10 Command Seal' });
   if (d && d.aoeCards) out.passives.push({ text: `${d.aoeCards.map(c => ({ A: 'Arts', B: 'Buster', Q: 'Quick', EX: 'Extra' })[c]).join(' and ')} attacks hit all enemies (half damage each when there is more than one)` });
   for (const p of kit.pas || []) {
     const e = Array.isArray(p) ? { k: 'buff', to: 'self', s: p[0], v: p[1] } : { k: 'buff', to: 'self', ...p };

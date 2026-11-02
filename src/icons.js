@@ -96,6 +96,7 @@ Object.assign(P, {
   pBrand: '<path fill-rule="evenodd" d="M6.6 2.8h6.6c3.5 0 6 2.2 6 5.1s-2.5 5.1-6 5.1h-2.4v3.2L8.7 21.4 6.6 16.2zM10.8 6.1v3.8h2.2c1.4 0 2.3-.8 2.3-1.9s-.9-1.9-2.3-1.9z" fill="currentColor" stroke="none"/>',
   cwDrop: `${CW}${IN('drop', .5, 'color:var(--t-dpurple)')}`,
   ringDots: [0, 45, 90, 135, 180, 225, 270, 315].map(a => { const r = a * Math.PI / 180; return `<circle cx="${(12 + 7.2 * Math.cos(r)).toFixed(2)}" cy="${(12 + 7.2 * Math.sin(r)).toFixed(2)}" r="2" fill="currentColor" stroke="none"/>`; }).join(''),
+  swordPlus: `${SWORD}${CP}`,
   chalice: '<path d="M5.8 3.6h12.4v3.8c0 3.8-2.8 6.6-6.2 6.6s-6.2-2.8-6.2-6.6z" fill="currentColor"/><path d="M10.9 13.6h2.2v3.8h-2.2z" fill="currentColor" stroke="none"/><path d="M7.4 20.4c0-1.8 2-2.9 4.6-2.9s4.6 1.1 4.6 2.9z" fill="currentColor"/><path d="M8.4 6.6h7.2" stroke="var(--icon-bg)" stroke-width="1.3"/>',
   cardsBAQ: CARDS(['B', 'A', 'Q']), cardsBA: CARDS(['B', 'A']), cardsBQ: CARDS(['B', 'Q']), cardsAQ: CARDS(['A', 'Q']),
   atkDef: `<path d="M12 2.6 19.8 5.7v5.8c0 5.1-3.6 8.9-7.8 10.7-4.2-1.8-7.8-5.6-7.8-10.7V5.7z" fill="color-mix(in srgb, var(--t-orange) 25%, transparent)" stroke="var(--t-orange)" stroke-width="2"/><g transform="translate(12 12) scale(.8) translate(-12 -12)"><g stroke="var(--icon-bg)" stroke-width="4.4" fill="var(--icon-bg)">${SWORD}</g><g style="color:var(--t-atk)" stroke-width="2.2">${SWORD}</g></g>`,
@@ -146,7 +147,7 @@ const EFFECT = {
   stun: ['lock', 'yellow'], charm: ['heart', 'charm'], terror: ['stopwatch', 'blue'], skillSeal: ['lock', 'red'], npSeal: ['lock', 'orange'],
   swap: ['swap', 'util'], seal: ['seal', 'charm'], ocUp: ['burstPlusC', 'np'], quickHitDebuff: ['card', 'Q'], npOnBurnHit: ['gauge', 'np'],
   cardsBAQ: ['cardsBAQ', 'EX'], cardsBA: ['cardsBA', 'EX'], cardsBQ: ['cardsBQ', 'EX'], cardsAQ: ['cardsAQ', 'EX'], atkDef: ['atkDef', 'atk'],
-  kurFlower: ['flower', 'red'], livingFlame: ['ringFlame', 'blue'], holyGrail: ['chalice', 'gold'], romanShield: ['scutum', 'red'], facelessMoon: ['moonFull', 'purple'], like: ['thumbUp', 'heal'], grudge: ['kanjiEn', 'red'], pastAlt: ['wheel', 'white'], timedBad: ['stopwatch', 'blue'], eternalSleep: ['cloudZ', 'peri'], sinBrand: ['pBrand', 'red'], poisonHeal: ['cwDrop', 'heal'], rankUp: ['ringDots', 'yellow'], doom: ['skullDark', 'blue'],
+  kurFlower: ['flower', 'red'], livingFlame: ['ringFlame', 'blue'], holyGrail: ['chalice', 'gold'], romanShield: ['scutum', 'red'], facelessMoon: ['moonFull', 'purple'], like: ['thumbUp', 'heal'], grudge: ['kanjiEn', 'red'], pastAlt: ['wheel', 'white'], timedBad: ['stopwatch', 'blue'], eternalSleep: ['cloudZ', 'peri'], sinBrand: ['pBrand', 'red'], poisonHeal: ['cwDrop', 'heal'], rankUp: ['ringDots', 'yellow'], atkPlus: ['swordPlus', 'atk'], doom: ['skullDark', 'blue'],
   buffBlock: ['noEntry', 'blue'], trait: ['tag', 'util'], delayed: ['stopwatch', 'orange'], cdReduce: ['hourglassDark', 'gold'],
 };
 const CLASS = { Saber: 'sword', Archer: 'bow', Lancer: 'spear', Rider: 'horse', Caster: 'wand', Assassin: 'mask', Berserker: 'bull', Shielder: 'shield', Ruler: 'flag', Avenger: 'avenge', 'Moon Cancer': 'moon', 'Alter Ego': 'halves', Foreigner: 'outer', Pretender: 'crown', 'Beast I': 'claws', 'Beast II': 'horns', Unbeast: 'planet' };
@@ -170,7 +171,15 @@ function statusKey(b) {
   if ((b.s === 'delayed' || b.k === 'delayed') && badDelayed(b)) return 'timedBad';
   if (b.tags && b.tags.includes('Mark Of Sin')) return 'sinBrand';      // Brand of Sin stacks
   if (b.s === 'dotHeal' && b.kind === 'poison') return 'poisonHeal'; // Poison Recovery
-  return STATUS_ICON[b.label] || STATUS_ICON[b.trait] || FROM_ICON[b.from + '|' + b.s] || null;
+  return STATUS_ICON[b.label] || STATUS_ICON[b.trait] || FROM_ICON[b.from + '|' + b.s] || atkTrigger(b) || null;
+}
+// On-attack effects: a sword with a minus when the hit lands something bad on the enemy (a debuff, burn, buff removal…),
+// a sword with a plus when it gives the attacker (or their team) something good.
+const ATTACK_ON = new Set(['attack', 'cardBefore', 'cardAfter', 'npBefore', 'npAfter']);
+function atkTrigger(b) {
+  if (b.s !== 'trigger' || !ATTACK_ON.has(b.on)) return null;
+  const bad = (b.eff || []).some(x => x && (x.to === 'enemy' || x.to === 'enemies')); // anything landed on the enemy counts as a debuff
+  return bad ? 'curseOnAttack' : 'atkPlus';
 }
 function effectKey(e) {
   if (!e) return 'sparkle';
