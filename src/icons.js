@@ -140,10 +140,10 @@ const EFFECT = {
   critRes: ['resCrit', 'orange'], classRel: ['swap', 'util'],
   healGiven: ['heartPlusC', 'heal'], dmgTakenPlus: ['plus', 'blue'], multiHit: ['crossSwords', 'atk'], noCards: ['lock', 'white'], buffRecv: ['shieldCheck', 'orange'],
   ndGain: ['gaugePlusC', 'np'], critDmgTaken: ['critTaken', 'blue'], trigger: ['sparkle', 'util'], reflect: ['bullet', 'blue'],
-  stun: ['lock', 'yellow'], charm: ['heart', 'charm'], terror: ['eye', 'blue'], skillSeal: ['lock', 'red'], npSeal: ['lock', 'orange'],
+  stun: ['lock', 'yellow'], charm: ['heart', 'charm'], terror: ['stopwatch', 'blue'], skillSeal: ['lock', 'red'], npSeal: ['lock', 'orange'],
   swap: ['swap', 'util'], seal: ['seal', 'charm'], ocUp: ['burstPlusC', 'np'], quickHitDebuff: ['card', 'Q'], npOnBurnHit: ['gauge', 'np'],
   cardsBAQ: ['cardsBAQ', 'EX'], cardsBA: ['cardsBA', 'EX'], cardsBQ: ['cardsBQ', 'EX'], cardsAQ: ['cardsAQ', 'EX'], atkDef: ['atkDef', 'atk'],
-  kurFlower: ['flower', 'red'], livingFlame: ['ringFlame', 'blue'], holyGrail: ['chalice', 'gold'], romanShield: ['scutum', 'red'], facelessMoon: ['moonFull', 'purple'], like: ['thumbUp', 'heal'], grudge: ['kanjiEn', 'red'], pastAlt: ['wheel', 'white'], doom: ['skullDark', 'blue'],
+  kurFlower: ['flower', 'red'], livingFlame: ['ringFlame', 'blue'], holyGrail: ['chalice', 'gold'], romanShield: ['scutum', 'red'], facelessMoon: ['moonFull', 'purple'], like: ['thumbUp', 'heal'], grudge: ['kanjiEn', 'red'], pastAlt: ['wheel', 'white'], timedBad: ['stopwatch', 'blue'], eternalSleep: ['cloudZ', 'peri'], doom: ['skullDark', 'blue'],
   buffBlock: ['noEntry', 'blue'], trait: ['tag', 'util'], delayed: ['stopwatch', 'orange'], cdReduce: ['hourglassDark', 'gold'],
 };
 const CLASS = { Saber: 'sword', Archer: 'bow', Lancer: 'spear', Rider: 'horse', Caster: 'wand', Assassin: 'mask', Berserker: 'bull', Shielder: 'shield', Ruler: 'flag', Avenger: 'avenge', 'Moon Cancer': 'moon', 'Alter Ego': 'halves', Foreigner: 'outer', Pretender: 'crown', 'Beast I': 'claws', 'Beast II': 'horns', Unbeast: 'planet' };
@@ -153,11 +153,20 @@ function svg(glyph, cls = '') {
 }
 function classIcon(cls) { return `<span class="clsico" title="${cls}" aria-label="${cls}">${svg(CLASS[cls] || 'sparkle')}</span>`; }
 // Named statuses with their own icon (matched on the effect's label), for the skill and for the status badge.
-const STATUS_ICON = { 'Blessing of Kur': 'kurFlower', 'Living Flame': 'livingFlame', 'Holy Grail Possession': 'holyGrail', Roman: 'romanShield', 'Like!': 'like', Like: 'like', 'Grudge of Vengeance': 'grudge', Vengeance: 'grudge', 'Past Alteration': 'pastAlt' };
+const STATUS_ICON = { 'Blessing of Kur': 'kurFlower', 'Living Flame': 'livingFlame', 'Holy Grail Possession': 'holyGrail', Roman: 'romanShield', 'Like!': 'like', Like: 'like', 'Grudge of Vengeance': 'grudge', Vengeance: 'grudge', 'Past Alteration': 'pastAlt', Confusion: 'timedBad' };
 // Skills whose icon is picked by name, and buffs from those skills that share it (BB (Summer)'s card lock).
 const SKILL_ICON = { 'Faceless Moon EX': 'facelessMoon' };
 const FROM_ICON = { 'Faceless Moon EX|lockHand': 'facelessMoon' };
-function statusKey(b) { return (b && (STATUS_ICON[b.label] || STATUS_ICON[b.trait] || FROM_ICON[b.from + '|' + b.s])) || null; }
+// A delayed effect that will hurt its holder or their team (a self-stun, a self-KO, sealed cards...) reads as a debuff.
+const BAD_TO = new Set([undefined, 'self', 'others', 'allies', 'ally']);
+function badDelayed(b) {
+  return (b.eff || []).some(x => x && BAD_TO.has(x.to) && (['control', 'koSelf', 'selfDmg', 'dot', 'hpLoss'].includes(x.k) || (x.k === 'buff' && ((typeof x.v === 'number' && x.v < 0) || ['noCards', 'buffBlock', 'noHeal', 'dmgTakenPlus', 'doom'].includes(x.s)))));
+}
+function statusKey(b) {
+  if (!b) return null;
+  if ((b.s === 'delayed' || b.k === 'delayed') && badDelayed(b)) return 'timedBad';
+  return STATUS_ICON[b.label] || STATUS_ICON[b.trait] || FROM_ICON[b.from + '|' + b.s] || null;
+}
 function effectKey(e) {
   if (!e) return 'sparkle';
   if (statusKey(e)) return statusKey(e);

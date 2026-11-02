@@ -21,7 +21,7 @@
   --r: 10px;
   --icon-bg: #161617;
   --t-atk: #e0805a; --t-def: #6fa8e8; --t-np: #d8b45f; --t-crit: #f0d36b; --t-star: #f0c84a; --t-res: #8fd0c2; --t-heal: #7fd18f; --t-util: #b3a7e6; --t-charm: #f08fb8;
-  --t-orange: #f0913a; --t-gold: #e9c04b; --t-purple: #b47ff0; --t-dpurple: #9a62e8; --t-blue: #4f93ec; --t-white: #eef0f6; --t-red: #e8524e; --t-yellow: #f2d548; --t-pink: #f49bcb; --t-silver: #c3cad8;
+  --t-orange: #f0913a; --t-gold: #e9c04b; --t-purple: #b47ff0; --t-dpurple: #9a62e8; --t-blue: #4f93ec; --t-white: #eef0f6; --t-red: #e8524e; --t-yellow: #f2d548; --t-pink: #f49bcb; --t-silver: #c3cad8; --t-peri: #a3a9f5;
 }
 html, body { height: 100%; }
 body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.45; }
@@ -179,7 +179,7 @@ button.primary { background: var(--gold); color: var(--gold-ink); border-color: 
 .badge.t-star { color: var(--t-star); } .badge.t-res { color: var(--t-res); } .badge.t-heal { color: var(--t-heal); } .badge.t-util { color: var(--t-util); } .badge.t-charm { color: var(--t-charm); }
 .badge.t-robin { color: #5aa9ff; background: rgba(90, 169, 255, .14); }
 .badge.t-orange { color: var(--t-orange); } .badge.t-gold { color: var(--t-gold); } .badge.t-purple { color: var(--t-purple); } .badge.t-dpurple { color: var(--t-dpurple); } .badge.t-blue { color: var(--t-blue); }
-.badge.t-white { color: var(--t-white); } .badge.t-red { color: var(--t-red); } .badge.t-yellow { color: var(--t-yellow); } .badge.t-pink { color: var(--t-pink); } .badge.t-silver { color: var(--t-silver); }
+.badge.t-white { color: var(--t-white); } .badge.t-red { color: var(--t-red); } .badge.t-yellow { color: var(--t-yellow); } .badge.t-pink { color: var(--t-pink); } .badge.t-silver { color: var(--t-silver); } .badge.t-peri { color: var(--t-peri); }
 .badge.t-B { color: var(--buster); } .badge.t-A { color: var(--arts); } .badge.t-Q { color: var(--quick); } .badge.t-EX { color: var(--ink); }
 .badge.t-bad { color: var(--neg); --icon-bg: color-mix(in srgb, var(--neg) 12%, var(--panel2)); background: var(--icon-bg); }
 .badge.neg { border-color: var(--neg); --icon-bg: color-mix(in srgb, var(--neg) 16%, var(--panel2)); background: var(--icon-bg); }
@@ -803,10 +803,10 @@ const EFFECT = {
   critRes: ['resCrit', 'orange'], classRel: ['swap', 'util'],
   healGiven: ['heartPlusC', 'heal'], dmgTakenPlus: ['plus', 'blue'], multiHit: ['crossSwords', 'atk'], noCards: ['lock', 'white'], buffRecv: ['shieldCheck', 'orange'],
   ndGain: ['gaugePlusC', 'np'], critDmgTaken: ['critTaken', 'blue'], trigger: ['sparkle', 'util'], reflect: ['bullet', 'blue'],
-  stun: ['lock', 'yellow'], charm: ['heart', 'charm'], terror: ['eye', 'blue'], skillSeal: ['lock', 'red'], npSeal: ['lock', 'orange'],
+  stun: ['lock', 'yellow'], charm: ['heart', 'charm'], terror: ['stopwatch', 'blue'], skillSeal: ['lock', 'red'], npSeal: ['lock', 'orange'],
   swap: ['swap', 'util'], seal: ['seal', 'charm'], ocUp: ['burstPlusC', 'np'], quickHitDebuff: ['card', 'Q'], npOnBurnHit: ['gauge', 'np'],
   cardsBAQ: ['cardsBAQ', 'EX'], cardsBA: ['cardsBA', 'EX'], cardsBQ: ['cardsBQ', 'EX'], cardsAQ: ['cardsAQ', 'EX'], atkDef: ['atkDef', 'atk'],
-  kurFlower: ['flower', 'red'], livingFlame: ['ringFlame', 'blue'], holyGrail: ['chalice', 'gold'], romanShield: ['scutum', 'red'], facelessMoon: ['moonFull', 'purple'], like: ['thumbUp', 'heal'], grudge: ['kanjiEn', 'red'], pastAlt: ['wheel', 'white'], doom: ['skullDark', 'blue'],
+  kurFlower: ['flower', 'red'], livingFlame: ['ringFlame', 'blue'], holyGrail: ['chalice', 'gold'], romanShield: ['scutum', 'red'], facelessMoon: ['moonFull', 'purple'], like: ['thumbUp', 'heal'], grudge: ['kanjiEn', 'red'], pastAlt: ['wheel', 'white'], timedBad: ['stopwatch', 'blue'], eternalSleep: ['cloudZ', 'peri'], doom: ['skullDark', 'blue'],
   buffBlock: ['noEntry', 'blue'], trait: ['tag', 'util'], delayed: ['stopwatch', 'orange'], cdReduce: ['hourglassDark', 'gold'],
 };
 const CLASS = { Saber: 'sword', Archer: 'bow', Lancer: 'spear', Rider: 'horse', Caster: 'wand', Assassin: 'mask', Berserker: 'bull', Shielder: 'shield', Ruler: 'flag', Avenger: 'avenge', 'Moon Cancer': 'moon', 'Alter Ego': 'halves', Foreigner: 'outer', Pretender: 'crown', 'Beast I': 'claws', 'Beast II': 'horns', Unbeast: 'planet' };
@@ -816,11 +816,20 @@ function svg(glyph, cls = '') {
 }
 function classIcon(cls) { return `<span class="clsico" title="${cls}" aria-label="${cls}">${svg(CLASS[cls] || 'sparkle')}</span>`; }
 // Named statuses with their own icon (matched on the effect's label), for the skill and for the status badge.
-const STATUS_ICON = { 'Blessing of Kur': 'kurFlower', 'Living Flame': 'livingFlame', 'Holy Grail Possession': 'holyGrail', Roman: 'romanShield', 'Like!': 'like', Like: 'like', 'Grudge of Vengeance': 'grudge', Vengeance: 'grudge', 'Past Alteration': 'pastAlt' };
+const STATUS_ICON = { 'Blessing of Kur': 'kurFlower', 'Living Flame': 'livingFlame', 'Holy Grail Possession': 'holyGrail', Roman: 'romanShield', 'Like!': 'like', Like: 'like', 'Grudge of Vengeance': 'grudge', Vengeance: 'grudge', 'Past Alteration': 'pastAlt', Confusion: 'timedBad' };
 // Skills whose icon is picked by name, and buffs from those skills that share it (BB (Summer)'s card lock).
 const SKILL_ICON = { 'Faceless Moon EX': 'facelessMoon' };
 const FROM_ICON = { 'Faceless Moon EX|lockHand': 'facelessMoon' };
-function statusKey(b) { return (b && (STATUS_ICON[b.label] || STATUS_ICON[b.trait] || FROM_ICON[b.from + '|' + b.s])) || null; }
+// A delayed effect that will hurt its holder or their team (a self-stun, a self-KO, sealed cards...) reads as a debuff.
+const BAD_TO = new Set([undefined, 'self', 'others', 'allies', 'ally']);
+function badDelayed(b) {
+  return (b.eff || []).some(x => x && BAD_TO.has(x.to) && (['control', 'koSelf', 'selfDmg', 'dot', 'hpLoss'].includes(x.k) || (x.k === 'buff' && ((typeof x.v === 'number' && x.v < 0) || ['noCards', 'buffBlock', 'noHeal', 'dmgTakenPlus', 'doom'].includes(x.s)))));
+}
+function statusKey(b) {
+  if (!b) return null;
+  if ((b.s === 'delayed' || b.k === 'delayed') && badDelayed(b)) return 'timedBad';
+  return STATUS_ICON[b.label] || STATUS_ICON[b.trait] || FROM_ICON[b.from + '|' + b.s] || null;
+}
 function effectKey(e) {
   if (!e) return 'sparkle';
   if (statusKey(e)) return statusKey(e);
