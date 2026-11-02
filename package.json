@@ -1,0 +1,17 @@
+{
+  "name": "grand-order-pvp-online",
+  "version": "1.0.0",
+  "description": "Online rooms for the Grand Order PvP battler: lobby, battle queue, spectators.",
+  "main": "server.js",
+  "private": true,
+  "scripts": {
+    "build": "node build.js",
+    "start": "node server.js",
+    "dev": "node build.js && node server.js"
+  },
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "express": "^4.21.2",
+    "socket.io": "^4.8.1"
+  }
+}
