@@ -1367,7 +1367,7 @@ function attackCard(g, u, t, color, a, tag) {
   if (color === 'B' && has(u, 'busterAtkNp')) { const b = u.buffs.find(x => x.s === 'busterAtkNp'); u.np = Math.min(npCap(u), u.np + b.v); consume(u, 'busterAtkNp'); }
   if (colorStat) consumeCardUses(u, colorStat);
   log(g, `${tag}: ${u.name} ${COLOR[color]}${crit ? ' CRIT' : ''} → ${t.name} for ${dmg}. NP ${Math.floor(u.np)}%, +${fmtStars(made)}★`, 'dmg', { dmgNum: dmg, aff: affOf(u, t) });
-  fx(g, { t: 'hit', uid: t.uid, src: u.uid, dmg, aff: affOf(u, t), crit, color, dist: hitSplit(u, color, hits) });
+  fx(g, { t: 'hit', uid: t.uid, src: u.uid, dmg, aff: affOf(u, t), crit, color, dist: hitSplit(u, color, hits), aoe: !!a.aoeHalf });
   if (dmg > 0 && t.hp > 0) fireTriggers(g, t, 'damaged', { crit, target: u, isHit: true });
   if (dmg > 0) wake(g, t);
   if (!t.dead && t.hp > 0 && !u.dead && has(t, 'counter')) counterAttack(g, t, u);

@@ -3117,7 +3117,7 @@ function attackCard(g, u, t, color, a, tag) {
   if (color === 'B' && has(u, 'busterAtkNp')) { const b = u.buffs.find(x => x.s === 'busterAtkNp'); u.np = Math.min(npCap(u), u.np + b.v); consume(u, 'busterAtkNp'); }
   if (colorStat) consumeCardUses(u, colorStat);
   log(g, `${tag}: ${u.name} ${COLOR[color]}${crit ? ' CRIT' : ''} → ${t.name} for ${dmg}. NP ${Math.floor(u.np)}%, +${fmtStars(made)}★`, 'dmg', { dmgNum: dmg, aff: affOf(u, t) });
-  fx(g, { t: 'hit', uid: t.uid, src: u.uid, dmg, aff: affOf(u, t), crit, color, dist: hitSplit(u, color, hits) });
+  fx(g, { t: 'hit', uid: t.uid, src: u.uid, dmg, aff: affOf(u, t), crit, color, dist: hitSplit(u, color, hits), aoe: !!a.aoeHalf });
   if (dmg > 0 && t.hp > 0) fireTriggers(g, t, 'damaged', { crit, target: u, isHit: true });
   if (dmg > 0) wake(g, t);
   if (!t.dead && t.hp > 0 && !u.dead && has(t, 'counter')) counterAttack(g, t, u);
@@ -4187,33 +4187,33 @@ async function strikeOne(atk, tk, ev, tok, big) {
   await moveTo(atk, inPos, 'none', 260);
 }
 // AoE NP: the attacker strikes every target at once on each hit.
-async function strikeAll(atk, tks, evs, tok) {
+async function strikeAll(atk, tks, evs, tok, big = true) { // big: NP; otherwise an AoE card attack (smaller, no glow)
   const n = Math.max(...evs.map(e => (e.dist || [100]).length));
   const parts = evs.map(e => splitDamage(e.dmg, (e.dist || [100])));
   const hp = evs.map(e => e.snap && e.snap.units[e.uid] ? e.snap.units[e.uid].hp + e.dmg : null);
   const avgY = evs.reduce((a, e) => a + tks[e.uid]._home.cy, 0) / evs.length;
   const fx0 = tks[evs[0].uid]._home.cx;
   const dx = (fx0 - atk._home.cx) * 0.42, dy = avgY - atk._home.cy;
-  const inPos = `translate(${dx}px, ${dy}px) scale(1.18)`;
-  atk.classList.add('npglow');
-  await moveTo(atk, 'none', inPos, 340); if (tok.skip) return;
+  const inPos = `translate(${dx}px, ${dy}px) scale(${big ? 1.18 : 1.06})`;
+  if (big) atk.classList.add('npglow');
+  await moveTo(atk, 'none', inPos, big ? 340 : 260); if (tok.skip) return;
   const st = document.getElementById('stage');
-  const gap = Math.max(160, Math.min(320, 1300 / n));
+  const gap = big ? Math.max(160, Math.min(320, 1300 / n)) : Math.max(120, Math.min(240, 800 / n));
   for (let k = 0; k < n; k++) {
     if (tok.skip) return;
-    atk.animate([{ transform: inPos }, { transform: `${inPos} translate(${Math.sign(dx) * 18}px, 0) scale(1.06)` }, { transform: inPos }], { duration: dur(gap * 0.85), easing: 'ease-out' });
-    if (st) { const w = document.createElement('div'); w.className = 'npwave' + (Math.sign(dx) < 0 ? ' rev' : ''); st.appendChild(w); setTimeout(() => w.remove(), 500); }
+    atk.animate([{ transform: inPos }, { transform: `${inPos} translate(${Math.sign(dx) * (big ? 18 : 10)}px, 0) scale(${big ? 1.06 : 1.03})` }, { transform: inPos }], { duration: dur(gap * 0.85), easing: 'ease-out' });
+    if (st && big) { const w = document.createElement('div'); w.className = 'npwave' + (Math.sign(dx) < 0 ? ' rev' : ''); st.appendChild(w); setTimeout(() => w.remove(), 500); }
     evs.forEach((e, i) => {
       const tk = tks[e.uid]; if (!tk || k >= parts[i].length) return;
-      shake(tk, true); slash(tk, true, k + i);
+      shake(tk, big); slash(tk, big, k + i);
       if (hp[i] != null) { hp[i] -= parts[i][k]; setTokenHp(tk, e.uid, hp[i]); }
-      hitPop(tk, `<b class="dnum ${e.aff}">${parts[i][k]}</b>`, k, true, false, tk._home.cx > atk._home.cx ? 'sL' : 'sR');
+      hitPop(tk, `<b class="dnum ${e.aff}">${parts[i][k]}</b>`, k, big, false, tk._home.cx > atk._home.cx ? 'sL' : 'sR');
     });
     await wait(gap, tok);
   }
   evs.forEach(e => { if ((e.dist || []).length > 1) hitPop(tks[e.uid], `<span class="hittotal">${e.dist.length} hits · <b class="dnum ${e.aff}">${e.dmg}</b></span>`, n, false, true); });
   patchView(evs[evs.length - 1].snap);
-  await moveTo(atk, inPos, 'none', 300);
+  await moveTo(atk, inPos, 'none', big ? 300 : 240);
   atk.classList.remove('npglow');
 }
 async function arena(act, seq, tok) {
@@ -4255,6 +4255,12 @@ async function arena(act, seq, tok) {
       const group = seq.filter(e => e.t === 'hit' && e.np && e.src === ev.src && tks[e.uid] && !done.has(e));
       group.forEach(e => done.add(e));
       await strikeAll(atk, tks, group, tok); if (tok.skip) return;
+    } else if (ev.t === 'hit' && tk && ev.aoe && !ev.np) {
+      // an AoE card (or AoE Extra Attack): every enemy is hit together, on a regular-attack scale
+      const group = seq.filter(e => e.t === 'hit' && e.aoe && !e.np && e.src === ev.src && tks[e.uid] && !done.has(e));
+      group.forEach(e => done.add(e));
+      if (group.length > 1) await strikeAll(atk, tks, group, tok, false); else await strikeOne(atk, tk, ev, tok, false);
+      if (tok.skip) return;
     } else if (ev.t === 'hit' && tk) {
       await strikeOne(atk, tk, ev, tok, !!ev.np); if (tok.skip) return;
     } else if (ev.t === 'eff' && ev.miss && tk && (ev.key === 'evade' || ev.key === 'invincible')) {
