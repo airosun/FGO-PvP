@@ -785,11 +785,12 @@ Object.assign(P, {
   gaugePlusC: `<g transform="translate(0 -2.6)"><rect x="3.5" y="7" width="15.5" height="10" rx="2"/><path d="M20.5 10.5v3"/><rect x="5.8" y="9.3" width="7" height="5.4" fill="currentColor" stroke="none"/></g>${CP}`,
   burstPlusC: `<g transform="translate(12 12) scale(.86) translate(-13.4 -13.4)"><path d="M12 2.8l2.1 5.2 5.5-.8-3.4 4.4 3.4 4.4-5.5-.8L12 20.4l-2.1-5.2-5.5.8 3.4-4.4L4.4 7.2l5.5.8z" fill="currentColor"/></g>${CP}`,
   gun: `<path d="M2.8 7.2h16.4l1.2 1.2v2.9h-9.6l-.9 1.3.5 1.1-1.6 6.3H4.6l2.1-7.6-3.9-.1z" fill="currentColor"/><path d="M10.9 11.3l-.4 2.8h-2" stroke-width="1.5"/>`,
+  magicBullet: '<path d="M8 20V10c0-2.7 1.8-5.3 4-7 2.2 1.7 4 4.3 4 7v10z" fill="#d9e0e9" stroke="#8cf2ff" stroke-width="2.2" style="filter:drop-shadow(0 0 2px #65eaff)"/><path d="M9.3 11v7.7h2.1V8.3c-.9.7-1.6 1.6-2.1 2.7z" fill="#fff" stroke="none"/><path d="M13.2 8.3V20h1.7V10c0-.6-.1-1.2-.3-1.8z" fill="#8795a7" stroke="none"/><path d="M8 17.6h8M8 19.3h8" stroke="#f7fbff" stroke-width="1.1"/>',
 });
 
 // effect key -> [glyph, tone]
 const EFFECT = {
-  robin: ['robin', 'robin'],
+  robin: ['robin', 'robin'], magicBullet: ['magicBullet', 'silver'],
   atk: ['sword', 'atk'], def: ['shield', 'orange'], buster: ['hexStar', 'B'], arts: ['hexStar', 'A'], quick: ['hexStar', 'Q'], extra: ['hexStar', 'EX'],
   busterRes: ['resB', 'orange'], artsRes: ['resA', 'orange'], quickRes: ['resQ', 'orange'], allBuster: ['card', 'B'], npToArts: ['card', 'A'],
   npDmg: ['burst', 'np'], critDmg: ['bolt', 'crit'], critRate: ['bolt', 'crit'], starDrop: ['ringStar', 'star'], starGather: ['star', 'star'], starRegen: ['cwStar', 'star'], stars: ['star', 'star'],
@@ -820,9 +821,9 @@ function svg(glyph, cls = '') {
 }
 function classIcon(cls) { return `<span class="clsico" title="${cls}" aria-label="${cls}">${svg(CLASS[cls] || 'sparkle')}</span>`; }
 // Named statuses with their own icon (matched on the effect's label), for the skill and for the status badge.
-const STATUS_ICON = { 'Blessing of Kur': 'kurFlower', 'Living Flame': 'livingFlame', 'Holy Grail Possession': 'holyGrail', Roman: 'romanShield', 'Like!': 'like', Like: 'like', 'Grudge of Vengeance': 'grudge', Vengeance: 'grudge', 'Past Alteration': 'pastAlt', Confusion: 'timedBad' };
+const STATUS_ICON = { 'Blessing of Kur': 'kurFlower', 'Living Flame': 'livingFlame', 'Holy Grail Possession': 'holyGrail', 'Magic Bullet': 'magicBullet', Roman: 'romanShield', 'Like!': 'like', Like: 'like', 'Grudge of Vengeance': 'grudge', Vengeance: 'grudge', 'Past Alteration': 'pastAlt', Confusion: 'timedBad' };
 // Skills whose icon is picked by name, and buffs from those skills that share it (BB (Summer)'s card lock).
-const SKILL_ICON = { 'Faceless Moon EX': 'facelessMoon' };
+const SKILL_ICON = { 'Faceless Moon EX': 'facelessMoon', 'Load Magic Bullet B': 'magicBullet' };
 const FROM_ICON = { 'Faceless Moon EX|lockHand': 'facelessMoon' };
 // A delayed effect that will hurt its holder or their team (a self-stun, a self-KO, sealed cards...) reads as a debuff.
 const BAD_TO = new Set([undefined, 'self', 'others', 'allies', 'ally']);
@@ -887,7 +888,7 @@ function skillIcon(skill, size = '', plain = true) {
   const neg = e && (e.to === 'enemy' || e.to === 'enemies');
   return badge(key, { neg, dir, tip: skill.n, size, plain });
 }
-const API = { SKILL_ICON, svg, classIcon, badge, skillIcon, skillKey, effectKey, statusKey, EFFECT, STATUS_ICON };
+const API = { SKILL_ICON, svg, classIcon, badge, skillIcon, skillKey, effectKey, statusKey, EFFECT, STATUS_ICON, CLASS, glyphs: Object.keys(P) };
 root.Icons = API;
 })(typeof window !== 'undefined' ? window : globalThis);
 </script>
@@ -2694,7 +2695,7 @@ const MASTER = [
     e: [{ k: 'heal', to: 'ally', v: 200 }, { k: 'stars', v: 15 }] },
   { n: 'Mana Enhancement', cd: 8, kind: 'ally', icon: 'atk', text: "500% chance to increase one servant's ATK by 40% (1T). Charge that servant's NP gauge by 10%.",
     e: [{ k: 'buff', to: 'ally', s: 'atk', v: 40, t: 1, p: 500 }, { k: 'np', to: 'ally', v: 10 }] },
-  { n: 'Order Change', cd: 7, kind: 'swap', icon: 'swap', text: 'Swap one servant on the field with one in reserve. Happens before all other skills; the incoming servant takes over the outgoing servant\'s Command Cards this turn, and skills aimed at the outgoing servant land on the incoming one.', e: [] },
+  { n: 'Order Change', cd: 7, kind: 'swap', icon: 'swap', text: 'Immediately swap one servant on the field with one in reserve during skill selection. The incoming servant can use skills this phase and takes over the outgoing servant\'s Command Cards this turn.', e: [] },
 ];
 function masterUsable(g, p, i) {
   const P = g.players[p];
@@ -2767,6 +2768,18 @@ function doOrderChange(g, p, outUid, inUid) {
   log(g, `P${p + 1} Order Change: ${inn.name} swaps in for ${out.name}.`, 'act');
   fx(g, { t: 'swap', p, out: outUid, in: inUid });
   return true;
+}
+function activateOrderChange(g, p, outUid, inUid) {
+  const ready = masterUsable(g, p, 2);
+  if (!ready.ok) return ready;
+  const P = g.players[p], out = U(g, outUid), inn = U(g, inUid);
+  if (!out || !inn || !P.front.includes(outUid) || !P.reserve.includes(inUid) || out.dead || inn.dead || has(out, 'noSwap')) return { ok: false, why: 'Those servants cannot be swapped.' };
+  P.skillQueue = P.skillQueue.filter(q => q.uid !== outUid);
+  P.mcds[2] = MASTER[2].cd;
+  log(g, `P${p + 1} Master activates ${MASTER[2].n}!`, 'activate', { master: 2 });
+  fx(g, { t: 'master', p, i: 2, uid: outUid });
+  doOrderChange(g, p, outUid, inUid);
+  return { ok: true };
 }
 function skillUsable(g, u, i) {
   if (u.dead || !g.players[u.side].front.includes(u.uid)) return { ok: false, why: 'Not on the field' };
@@ -3389,7 +3402,7 @@ function decideByLimit(g) {
 
 const API = {
   CFG, STAT_LABEL, cardWillChange, fullCap, cardSealed, fieldActive, effCls, affLevel, AFF_NAME, CLASS_LIST, FIELDS, fieldName, currentField, fieldTurnsLeft, actBlocker, rawAffinity, snap, sealUsable, sealTargetOk, queueSeal, unqueueSeal, MASTER, masterUsable, queueMaster, unqueueMaster, swappingOut, npCap, npLevel, hasNoNP, allyTargetOk, COLOR, costOf, teamCost, snakeOrder, canPick, EXCLUSIVE, META, starRate, npPerHit, skillRank, skillOption, newBattle, front, maxHp, has, sumStat,
-  skillUsable, skillTargetKind, queueSkill, unqueueSkill, resolveSkills, availableNPs, cardColor, npColor, canAct,
+  skillUsable, skillTargetKind, queueSkill, unqueueSkill, activateOrderChange, resolveSkills, availableNPs, cardColor, npColor, canAct,
   setCards, resolveCards, describeBuff, cloneGame, classMult, attrMult, aliveCount, hpPct, mkRng,
 };
 if (typeof module !== 'undefined') module.exports = API; else root.Engine = API;
@@ -3776,6 +3789,21 @@ function lockSkills() {
   E.resolveSkills(app.g);
   const evs = app.g.fx; app.g.fx = null;
   u.stage = 'skills-reveal'; u.cover = null; play(evs, pre);
+}
+function selectOrderChange(out, incoming) {
+  const u = app.ui, g = app.g;
+  u.targeting = null;
+  if (NET()) {
+    u.stage = 'wait-swap'; render();
+    netSend('act', { t: 'orderChange', out, in: incoming }).then(r => {
+      if (r.error && app.ui.stage === 'wait-swap') { app.ui.stage = 'skills'; render(); }
+    });
+    return;
+  }
+  const pre = E.snap(g); g.fx = [];
+  const result = E.activateOrderChange(g, u.actor, out, incoming);
+  const evs = g.fx; g.fx = null;
+  if (result.ok) play(evs, pre); else render();
 }
 function lockCards() {
   const u = app.ui; const g = app.g;
@@ -4491,6 +4519,19 @@ async function applyAction(a, instant) {
     return startBattle(a.orders, { initiative: a.initiative, instant });
   }
   const g = app.g; const u = app.ui;
+  if (a.t === 'orderChange') {
+    const pre = E.snap(g); let evs = [];
+    if (!instant) g.fx = [];
+    const result = E.activateOrderChange(g, a.p, a.out, a.in);
+    if (!instant) { evs = g.fx; g.fx = null; }
+    if (!result.ok) throw new Error(result.why);
+    checkSync(a);
+    if (u.stage === 'wait-swap') u.stage = 'skills';
+    u.targeting = null;
+    if (instant) return;
+    await play(evs, pre);
+    return;
+  }
   if (a.t === 'skills') {
     for (let q = 0; q < 2; q++) { const P = g.players[q]; P.skillQueue = clone(a.q[q].skillQueue) || []; P.masterQueue = clone(a.q[q].masterQueue) || []; P.sealQueue = clone(a.q[q].sealQueue); }
     g.qseq = a.qseq; n.locked = [false, false]; u.targeting = null; u.sel = []; u.pendingSlot = null;
@@ -4535,6 +4576,7 @@ function netTurnBar() {
   const g = app.g; const u = app.ui; const n = app.net; const M = NET(); const me = n.seat;
   const status = p => `<span class="lk${n.locked[p] ? ' done' : ''}">${esc(PN(p))}: ${n.locked[p] ? 'locked in ✓' : 'choosing…'}</span>`;
   const what = u.stage === 'wait' ? (u.waitFor || 'skills') : u.stage;
+  if (u.stage === 'wait-swap') return `<div class="turnbar"><p><b>Order Change is activating…</b> Waiting for the field update before choosing skills.</p></div>`;
   if (u.stage === 'over') {
     const w = g.winner; const iWon = M.cpu != null ? me != null : w === 'draw' ? me != null : me === w; // vs the CPU the human always gets the buttons
     const head = `<p><b>${w === 'draw' ? 'Draw' : `${esc(PN(w))} wins`}</b> on turn ${g.turn}. Servants left: ${esc(PN(0))} ${E.aliveCount(g, 0)}, ${esc(PN(1))} ${E.aliveCount(g, 1)}.${g.limitBy === 'hp' ? ` Average HP left: ${Math.round(E.hpPct(g, 0) * 100)}% vs ${Math.round(E.hpPct(g, 1) * 100)}%.` : ''}</p>`;
@@ -4698,7 +4740,7 @@ document.addEventListener('click', ev => {
       E.queueSkill(g, u.actor, T.uid, T.i, null, el.dataset.v); u.targeting = null; return render();
     }
     case 'mskill': { const i = +el.dataset.i; u.targeting = { master: true, i, kind: i === 2 ? 'swapOut' : 'ally' }; return render(); }
-    case 'swap-in': { if (u.targeting && u.targeting.kind === 'swapIn') { E.queueMaster(g, u.actor, 2, u.targeting.out, +el.dataset.uid); u.targeting = null; } return render(); }
+    case 'swap-in': { if (u.targeting && u.targeting.kind === 'swapIn') selectOrderChange(u.targeting.out, +el.dataset.uid); return; }
     case 'toggle-seals': app.opts.seals = !app.opts.seals; return render();
     case 'seal': u.targeting = { seal: true, kind: el.dataset.k }; return render();
     case 'seal-pick': if (u.targeting && u.targeting.seal) { E.queueSeal(g, u.actor, u.targeting.kind, +el.dataset.uid); u.targeting = null; } return render();
