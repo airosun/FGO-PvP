@@ -211,12 +211,32 @@ function cpuStep(room) {
 const arr = x => Array.isArray(x) ? x.slice(0, 40) : [];
 // Re-queue a player's picks through the engine so only legal skills go through, in the order they were picked.
 function applySkillPicks(g, p, s) {
-  const P = g.players[p]; P.skillQueue = []; P.masterQueue = []; P.sealQueue = null;
+  const P = g.players[p];
+  const applied = P.masterQueue.filter(m => m.i === 2 && m.applied);
+  for (const queued of s.masterQueue.filter(m => m && m.i === 2 && m.applied)) {
+    const saved = applied.find(m => m.out === +queued.out && m.in === +queued.in);
+    if (saved) saved.outSkills = (queued.outSkills || []).map(x => ({ i: +x.i, seq: +x.seq }));
+  }
+  P.skillQueue = []; P.masterQueue = applied; P.sealQueue = null;
   const items = [...s.skillQueue.map(x => ({ k: 'skill', x })), ...s.masterQueue.map(x => ({ k: 'master', x })), ...(s.sealQueue ? [{ k: 'seal', x: s.sealQueue }] : [])]
     .filter(o => o.x && typeof o.x === 'object').sort((a, b) => (+a.x.seq || 0) - (+b.x.seq || 0));
   for (const { k, x } of items) {
     try {
-      if (k === 'skill' && g.units[x.uid] && g.units[x.uid].side === p) E.queueSkill(g, p, +x.uid, +x.i, x.target == null ? null : +x.target, x.opt == null ? undefined : x.opt);
+      if (k === 'skill' && g.units[x.uid] && g.units[x.uid].side === p) {
+        const swap = applied.find(m => m.out === +x.uid);
+        const wasQueuedBeforeSwap = swap && swap.outSkills.some(q => q.i === +x.i && q.seq === +x.seq);
+        if (!P.front.includes(+x.uid) && !wasQueuedBeforeSwap) continue;
+        const result = E.queueSkill(g, p, +x.uid, +x.i, x.target == null ? null : +x.target, x.opt == null ? undefined : x.opt);
+        if (result.ok && wasQueuedBeforeSwap) {
+          const queued = P.skillQueue[P.skillQueue.length - 1];
+          const allowance = swap.outSkills.find(q => q.i === +x.i && q.seq === +x.seq);
+          allowance.seq = queued.seq;
+        }
+      }
+      else if (k === 'master' && +x.i === 2 && x.applied) {
+        const queued = applied.find(m => m.out === +x.out && m.in === +x.in);
+        if (queued) { g.qseq = (g.qseq || 0) + 1; queued.seq = g.qseq; }
+      }
       else if (k === 'master') { if (+x.i === 2) E.queueMaster(g, p, 2, +x.out, +x.in); else E.queueMaster(g, p, +x.i, +x.target); }
       else if (k === 'seal') E.queueSeal(g, p, x.kind, +x.uid);
     } catch (e) { /* an illegal pick is simply dropped */ }
