@@ -341,10 +341,13 @@ function selectOrderChange(out, incoming) {
     });
     return;
   }
-  const pre = E.snap(g); g.fx = [];
+  const pre = app.view || E.snap(g); g.fx = [];
   const result = E.activateOrderChange(g, u.actor, out, incoming);
-  const evs = g.fx; g.fx = null;
-  if (result.ok) play(evs, pre); else render();
+  g.fx = null;
+  if (result.ok) {
+    app.view = pre; render();
+    banner(`Order Change incoming: ${g.units[out].name} out, ${g.units[incoming].name} in`, u.actor);
+  } else render();
 }
 function lockCards() {
   const u = app.ui; const g = app.g;
@@ -482,7 +485,7 @@ function skillDock() {
   const master = `<div class="skrow master"><span class="skname">Master</span><div class="skbtns">${E.MASTER.map((M, i) => { const ok = E.masterUsable(g, p, i);
     return `<button class="skill${T && T.master && T.i === i ? ' arming' : ''}" data-act="mskill" data-i="${i}" ${ok.ok ? '' : 'disabled'} data-tip="${esc(M.n + ' (CD ' + M.cd + '): ' + M.text)}">${mIcon(M)}<span class="sktxt"><b>${esc(M.n)}</b><small>${ok.ok ? `CD ${M.cd} · ${i === 2 ? 'swap' : 'ally'}` : esc(ok.why)}</small></span></button>`; }).join('')}</div></div>`;
   const reservePick = T && T.kind === 'swapIn' ? `<div class="reserves"><span class="hint">Bring in for ${esc(g.units[T.out].name)}:</span>${P.reserve.filter(id => !g.units[id].dead && !E.has(g.units[id], 'noSwap')).map(id => { const r = g.units[id]; return `<button class="resbtn" data-act="swap-in" data-uid="${id}">${CI(r.cls)}<span>${esc(r.name)}</span><small>HP ${Math.round(r.hp)}${E.hasNoNP(r) ? " · No NP" : ` · NP ${Math.floor(r.np)}%`}</small></button>`; }).join('')}</div>` : '';
-  const mq = P.masterQueue.map((m, k) => { const M = E.MASTER[m.i]; const txt = m.i === 2 ? `${g.units[m.out].name} ⇄ ${g.units[m.in].name}` : g.units[m.target].name; return `<li class="qchip master" data-seq="${m.seq}" data-tip="${esc('Master: ' + M.n + ' → ' + txt)}">${mIcon(M)}<span>${esc(M.n)} → ${esc(txt)}</span><button class="x" data-act="unmaster" data-k="${k}" aria-label="Remove ${esc(M.n)}">✕</button></li>`; }).join('');
+  const mq = P.masterQueue.map((m, k) => { const M = E.MASTER[m.i]; const txt = m.i === 2 ? `${g.units[m.out].name} ⇄ ${g.units[m.in].name}` : g.units[m.target].name; return `<li class="qchip master" data-seq="${m.seq}" data-tip="${esc('Master: ' + M.n + ' → ' + txt)}">${mIcon(M)}<span>${esc(M.n)} → ${esc(txt)}${m.applied ? ' · activated' : ''}</span>${m.applied ? '' : `<button class="x" data-act="unmaster" data-k="${k}" aria-label="Remove ${esc(M.n)}">✕</button>`}</li>`; }).join('');
   const sealOk = E.sealUsable(g, p);
   const sealRow = g.seals ? `<span class="sealbtns"><span class="seallbl">${I.svg('seal')}Seal</span>${[['heal', 'Full heal', 'heal'], ['np', 'NP +100%', 'np']].map(([k, label, ic]) => `<button class="sealbtn${T && T.seal && T.kind === k ? ' arming' : ''}" data-act="seal" data-k="${k}" ${sealOk.ok ? '' : 'disabled'} data-tip="${esc((k === 'heal' ? 'Command Seal: fully heal one injured servant, on the field or in reserve.' : 'Command Seal: charge one servant\'s NP gauge by 100%, on the field or in reserve.') + (sealOk.ok ? ' Once per game.' : ' (' + sealOk.why + ')'))}">${I.badge(ic, { plain: true, size: 'sm' })}${label}</button>`).join('')}</span>` : '';
   const sealPick = T && T.seal ? `<div class="reserves"><span class="hint">${T.kind === 'heal' ? 'Fully heal' : 'NP +100% for'}:</span>${P.order.filter(id => !g.units[id].dead).map(id => { const r = g.units[id]; const ok = E.sealTargetOk(g, p, T.kind, id); return `<button class="resbtn" data-act="seal-pick" data-uid="${id}" ${ok ? '' : 'disabled'}>${CI(r.cls)}<span>${esc(r.name)}${P.front.includes(id) ? '' : ' (reserve)'}</span><small>HP ${Math.round(r.hp)}/${Math.round(E.maxHp(r))}${E.hasNoNP(r) ? " · No NP" : ` · NP ${Math.floor(r.np)}%`}</small></button>`; }).join('')}</div>` : '';
@@ -609,7 +612,11 @@ function banner(label, side) {
 }
 async function step(ev, tok) {
   const g = app.g;
-  if (ev.t === 'skill') {
+  if (ev.t === 'swapNotice') {
+    const out = g.units[ev.out], incoming = g.units[ev.in];
+    banner(`Order Change incoming: ${out.name} out, ${incoming.name} in`, ev.p);
+    await wait(450, tok);
+  } else if (ev.t === 'skill') {
     const x = g.units[ev.uid]; const sk = x.kit.sk[ev.i];
     flash(ev.uid, 'casting', 700);
     floater(ev.uid, `${I.skillIcon(sk, 'sm')}<span>${esc(sk.n)}</span>`, 'skillname');
@@ -1061,7 +1068,7 @@ async function applyAction(a, instant) {
   }
   const g = app.g; const u = app.ui;
   if (a.t === 'orderChange') {
-    const pre = E.snap(g);
+    const pre = app.view || E.snap(g);
     let evs = [];
     if (!instant) g.fx = [];
     const result = E.activateOrderChange(g, a.p, a.out, a.in);
@@ -1071,7 +1078,9 @@ async function applyAction(a, instant) {
     if (u.stage === 'wait-swap') u.stage = 'skills';
     u.targeting = null;
     if (instant) return;
-    await play(evs, pre);
+    const notice = evs.find(e => e.t === 'swapNotice');
+    app.view = pre; render();
+    if (notice) banner(`Order Change incoming: ${g.units[notice.out].name} out, ${g.units[notice.in].name} in`, notice.p);
     return;
   }
   if (a.t === 'skills') {
@@ -1080,7 +1089,7 @@ async function applyAction(a, instant) {
     if (instant) { E.resolveSkills(g); checkSync(a); u.stage = g.over ? 'over' : 'cards'; return; }
     if (app.turnIntro) { app.turnIntro.skip = true; app.turnIntro = null; document.querySelectorAll('.tbannounce').forEach(e => e.remove()); }
     u.revealFrom = g.log.length;
-    const pre = E.snap(g); g.fx = []; E.resolveSkills(g); const evs = g.fx; g.fx = null; checkSync(a);
+    const pre = app.view || E.snap(g); g.fx = []; E.resolveSkills(g); const evs = g.fx; g.fx = null; checkSync(a);
     u.stage = 'skills-reveal'; u.cover = null;
     await play(evs, pre);
     if (g.over) { u.stage = 'over'; return render(); }
@@ -1287,7 +1296,7 @@ document.addEventListener('click', ev => {
     case 'seal': u.targeting = { seal: true, kind: el.dataset.k }; return render();
     case 'seal-pick': if (u.targeting && u.targeting.seal) { E.queueSeal(g, u.actor, u.targeting.kind, +el.dataset.uid); u.targeting = null; } return render();
     case 'unseal': E.unqueueSeal(g, u.actor); return render();
-    case 'unmaster': E.unqueueMaster(g, u.actor, +el.dataset.k); return render();
+    case 'unmaster': if (!g.players[u.actor].masterQueue[+el.dataset.k]?.applied) E.unqueueMaster(g, u.actor, +el.dataset.k); return render();
     case 'unqueue': E.unqueueSkill(g, u.actor, +el.dataset.k); return render();
     case 'lock-skills': return lockSkills();
     case 'to-cards': return beginStage('cards', NET() ? SEAT() : 0);

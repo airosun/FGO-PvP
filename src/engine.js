@@ -333,7 +333,18 @@ function snap(g) {
   return { units, field: currentField(g), fieldNegated: !!currentField(g) && !fieldActive(g, currentField(g)), initiative: g.initiative, sealUsed: g.players.map(P => P.sealUsed), fronts: g.players.map(P => P.front.slice()), reserves: g.players.map(P => P.reserve.slice()), stars: g.players.map(P => P.stars), log: g.log.length };
 }
 // Animation events: only recorded when the UI turns them on (g.fx = []).
-function fx(g, ev) { if (g.fx) { ev.snap = snap(g); g.fx.push(ev); } }
+function fx(g, ev) {
+  if (!g.fx) return;
+  ev.snap = snap(g);
+  for (let p = 0; p < 2; p++) {
+    const pending = g.players[p].masterQueue.find(m => m.applied && !m.revealed && m.visualBefore);
+    if (pending) {
+      ev.snap.fronts[p] = pending.visualBefore.front.slice();
+      ev.snap.reserves[p] = pending.visualBefore.reserve.slice();
+    }
+  }
+  g.fx.push(ev);
+}
 function log(g, msg, cls, extra) {
   const e = { turn: g.turn, msg, cls, ...(extra || {}) };
   // Negative effects carry the skill or NP that caused them, so the log can show them together.
@@ -954,7 +965,7 @@ function masterUsable(g, p, i) {
   return { ok: true };
 }
 function nextSeq(g) { g.qseq = (g.qseq || 0) + 1; return g.qseq; }
-function swappingOut(g, p) { const m = g.players[p].masterQueue.find(x => x.i === 2); return m ? m.out : null; }
+function swappingOut(g, p) { const m = g.players[p].masterQueue.find(x => x.i === 2 && !x.applied); return m ? m.out : null; }
 function queueMaster(g, p, i, target, inUid) {
   const ok = masterUsable(g, p, i); if (!ok.ok) return ok;
   const P = g.players[p];
@@ -1003,7 +1014,7 @@ function useSeal(g, p) {
   else { u.np = Math.min(npCap(u), u.np + 100); log(g, `P${p + 1} Command Seal: ${u.name}'s NP +100% (now ${Math.floor(u.np)}%).`, 'buff'); }
   fx(g, { t: 'seal', p, uid: u.uid, kind: q.kind, onField: P.front.includes(u.uid) });
 }
-function doOrderChange(g, p, outUid, inUid) {
+function doOrderChange(g, p, outUid, inUid, reveal = true) {
   const P = g.players[p]; const out = U(g, outUid), inn = U(g, inUid);
   const k = P.front.indexOf(outUid), r = P.reserve.indexOf(inUid);
   if (k < 0 || r < 0 || out.dead || inn.dead || has(out, 'noSwap')) { log(g, `P${p + 1}'s Order Change fizzles${has(out, 'noSwap') ? ` (${out.name} can't be swapped out)` : ''}.`, 'miss'); return false; }
@@ -1015,7 +1026,7 @@ function doOrderChange(g, p, outUid, inUid) {
     for (const m of g.players[q].masterQueue) if (m.target === outUid) m.target = inUid;
   }
   log(g, `P${p + 1} Order Change: ${inn.name} swaps in for ${out.name}.`, 'act');
-  fx(g, { t: 'swap', p, out: outUid, in: inUid });
+  if (reveal) fx(g, { t: 'swap', p, out: outUid, in: inUid });
   return true;
 }
 function activateOrderChange(g, p, outUid, inUid) {
@@ -1025,15 +1036,19 @@ function activateOrderChange(g, p, outUid, inUid) {
   if (!out || !inn || !P.front.includes(outUid) || !P.reserve.includes(inUid) || out.dead || inn.dead || has(out, 'noSwap')) {
     return { ok: false, why: 'Those servants cannot be swapped.' };
   }
-  P.skillQueue = P.skillQueue.filter(q => q.uid !== outUid);
+  P.masterQueue.push({ i: 2, out: outUid, in: inUid, seq: nextSeq(g), applied: true,
+    visualBefore: { front: P.front.slice(), reserve: P.reserve.slice() }, revealed: false,
+    outSkills: P.skillQueue.filter(q => q.uid === outUid).map(q => ({ i: q.i, seq: q.seq })) });
   P.mcds[2] = MASTER[2].cd;
   log(g, `P${p + 1} Master activates ${MASTER[2].n}!`, 'activate', { master: 2 });
-  fx(g, { t: 'master', p, i: 2, uid: outUid });
-  doOrderChange(g, p, outUid, inUid);
+  fx(g, { t: 'swapNotice', p, out: outUid, in: inUid });
+  doOrderChange(g, p, outUid, inUid, false);
   return { ok: true };
 }
 function skillUsable(g, u, i) {
-  if (u.dead || !g.players[u.side].front.includes(u.uid)) return { ok: false, why: 'Not on the field' };
+  const P = g.players[u.side];
+  const queuedOut = P.masterQueue.some(m => m.applied && m.out === u.uid && (m.outSkills || []).some(q => q.i === i));
+  if (u.dead || (!P.front.includes(u.uid) && !queuedOut)) return { ok: false, why: 'Not on the field' };
   if (swappingOut(g, u.side) === u.uid) return { ok: false, why: 'Swapping out' };
   if (u.cds[i] > 0) return { ok: false, why: `Cooldown ${u.cds[i]}` };
   const sk_ = u.kit.sk[i];
@@ -1103,6 +1118,12 @@ function resolveItem(g, p, item) {
   if (item.kind === 'seal') { useSeal(g, p); return; }
   if (item.kind === 'master') {
     const m = item.m; const M = MASTER[m.i];
+    if (m.i === 2 && m.applied) {
+      fx(g, { t: 'master', p, i: 2, uid: m.out });
+      m.revealed = true;
+      fx(g, { t: 'swap', p, out: m.out, in: m.in });
+      return;
+    }
     g.players[p].mcds[m.i] = M.cd;
     log(g, `P${p + 1} Master activates ${M.n}!`, 'activate', { master: m.i });
     if (m.i === 2) { fx(g, { t: 'master', p, i: 2, uid: m.out }); doOrderChange(g, p, m.out, m.in); return; }
@@ -1114,7 +1135,8 @@ function resolveItem(g, p, item) {
     return;
   }
   const q = item.q; const u = U(g, q.uid); const sk = u.kit.sk[q.i];
-  if (!g.players[p].front.includes(u.uid)) { log(g, `${u.name}'s ${sk.n} fizzles (not on the field).`, 'miss'); return; }
+  const allowedAfterSwap = g.players[p].masterQueue.some(m => m.applied && m.out === u.uid && q.seq < m.seq && (m.outSkills || []).some(x => x.i === q.i && x.seq === q.seq));
+  if (!g.players[p].front.includes(u.uid) && !allowedAfterSwap) { log(g, `${u.name}'s ${sk.n} fizzles (not on the field).`, 'miss'); return; }
   // Stunned, charmed or skill-sealed before activating: canceled, and the skill stays ready.
   const why = u.dead ? 'defeated' : actBlocker(u) || (has(u, 'skillSeal') ? 'Skill Seal' : null);
   if (why) {
