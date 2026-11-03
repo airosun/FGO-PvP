@@ -122,11 +122,12 @@ Object.assign(P, {
   gaugePlusC: `<g transform="translate(0 -2.6)"><rect x="3.5" y="7" width="15.5" height="10" rx="2"/><path d="M20.5 10.5v3"/><rect x="5.8" y="9.3" width="7" height="5.4" fill="currentColor" stroke="none"/></g>${CP}`,
   burstPlusC: `<g transform="translate(12 12) scale(.86) translate(-13.4 -13.4)"><path d="M12 2.8l2.1 5.2 5.5-.8-3.4 4.4 3.4 4.4-5.5-.8L12 20.4l-2.1-5.2-5.5.8 3.4-4.4L4.4 7.2l5.5.8z" fill="currentColor"/></g>${CP}`,
   gun: `<path d="M2.8 7.2h16.4l1.2 1.2v2.9h-9.6l-.9 1.3.5 1.1-1.6 6.3H4.6l2.1-7.6-3.9-.1z" fill="currentColor"/><path d="M10.9 11.3l-.4 2.8h-2" stroke-width="1.5"/>`,
+  magicBullet: '<path d="M8 20V10c0-2.7 1.8-5.3 4-7 2.2 1.7 4 4.3 4 7v10z" fill="#d9e0e9" stroke="#8cf2ff" stroke-width="2.2" style="filter:drop-shadow(0 0 2px #65eaff)"/><path d="M9.3 11v7.7h2.1V8.3c-.9.7-1.6 1.6-2.1 2.7z" fill="#fff" stroke="none"/><path d="M13.2 8.3V20h1.7V10c0-.6-.1-1.2-.3-1.8z" fill="#8795a7" stroke="none"/><path d="M8 17.6h8M8 19.3h8" stroke="#f7fbff" stroke-width="1.1"/>',
 });
 
 // effect key -> [glyph, tone]
 const EFFECT = {
-  robin: ['robin', 'robin'],
+  robin: ['robin', 'robin'], magicBullet: ['magicBullet', 'silver'],
   atk: ['sword', 'atk'], def: ['shield', 'orange'], buster: ['hexStar', 'B'], arts: ['hexStar', 'A'], quick: ['hexStar', 'Q'], extra: ['hexStar', 'EX'],
   busterRes: ['resB', 'orange'], artsRes: ['resA', 'orange'], quickRes: ['resQ', 'orange'], allBuster: ['card', 'B'], npToArts: ['card', 'A'],
   npDmg: ['burst', 'np'], critDmg: ['bolt', 'crit'], critRate: ['bolt', 'crit'], starDrop: ['ringStar', 'star'], starGather: ['star', 'star'], starRegen: ['cwStar', 'star'], stars: ['star', 'star'],
@@ -157,9 +158,9 @@ function svg(glyph, cls = '') {
 }
 function classIcon(cls) { return `<span class="clsico" title="${cls}" aria-label="${cls}">${svg(CLASS[cls] || 'sparkle')}</span>`; }
 // Named statuses with their own icon (matched on the effect's label), for the skill and for the status badge.
-const STATUS_ICON = { 'Blessing of Kur': 'kurFlower', 'Living Flame': 'livingFlame', 'Holy Grail Possession': 'holyGrail', Roman: 'romanShield', 'Like!': 'like', Like: 'like', 'Grudge of Vengeance': 'grudge', Vengeance: 'grudge', 'Past Alteration': 'pastAlt', Confusion: 'timedBad' };
+const STATUS_ICON = { 'Blessing of Kur': 'kurFlower', 'Living Flame': 'livingFlame', 'Holy Grail Possession': 'holyGrail', 'Magic Bullet': 'magicBullet', Roman: 'romanShield', 'Like!': 'like', Like: 'like', 'Grudge of Vengeance': 'grudge', Vengeance: 'grudge', 'Past Alteration': 'pastAlt', Confusion: 'timedBad' };
 // Skills whose icon is picked by name, and buffs from those skills that share it (BB (Summer)'s card lock).
-const SKILL_ICON = { 'Faceless Moon EX': 'facelessMoon' };
+const SKILL_ICON = { 'Faceless Moon EX': 'facelessMoon', 'Load Magic Bullet B': 'magicBullet' };
 const FROM_ICON = { 'Faceless Moon EX|lockHand': 'facelessMoon' };
 // A delayed effect that will hurt its holder or their team (a self-stun, a self-KO, sealed cards...) reads as a debuff.
 const BAD_TO = new Set([undefined, 'self', 'others', 'allies', 'ally']);
@@ -224,6 +225,6 @@ function skillIcon(skill, size = '', plain = true) {
   const neg = e && (e.to === 'enemy' || e.to === 'enemies');
   return badge(key, { neg, dir, tip: skill.n, size, plain });
 }
-const API = { SKILL_ICON, svg, classIcon, badge, skillIcon, skillKey, effectKey, statusKey, EFFECT, STATUS_ICON };
+const API = { SKILL_ICON, svg, classIcon, badge, skillIcon, skillKey, effectKey, statusKey, EFFECT, STATUS_ICON, CLASS, glyphs: Object.keys(P) };
 root.Icons = API;
 })(typeof window !== 'undefined' ? window : globalThis);

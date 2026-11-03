@@ -944,7 +944,7 @@ const MASTER = [
     e: [{ k: 'heal', to: 'ally', v: 200 }, { k: 'stars', v: 15 }] },
   { n: 'Mana Enhancement', cd: 8, kind: 'ally', icon: 'atk', text: "500% chance to increase one servant's ATK by 40% (1T). Charge that servant's NP gauge by 10%.",
     e: [{ k: 'buff', to: 'ally', s: 'atk', v: 40, t: 1, p: 500 }, { k: 'np', to: 'ally', v: 10 }] },
-  { n: 'Order Change', cd: 7, kind: 'swap', icon: 'swap', text: 'Swap one servant on the field with one in reserve. Happens before all other skills; the incoming servant takes over the outgoing servant\'s Command Cards this turn, and skills aimed at the outgoing servant land on the incoming one.', e: [] },
+  { n: 'Order Change', cd: 7, kind: 'swap', icon: 'swap', text: 'Immediately swap one servant on the field with one in reserve during skill selection. The incoming servant can use skills this phase and takes over the outgoing servant\'s Command Cards this turn.', e: [] },
 ];
 function masterUsable(g, p, i) {
   const P = g.players[p];
@@ -1017,6 +1017,20 @@ function doOrderChange(g, p, outUid, inUid) {
   log(g, `P${p + 1} Order Change: ${inn.name} swaps in for ${out.name}.`, 'act');
   fx(g, { t: 'swap', p, out: outUid, in: inUid });
   return true;
+}
+function activateOrderChange(g, p, outUid, inUid) {
+  const ready = masterUsable(g, p, 2);
+  if (!ready.ok) return ready;
+  const P = g.players[p], out = U(g, outUid), inn = U(g, inUid);
+  if (!out || !inn || !P.front.includes(outUid) || !P.reserve.includes(inUid) || out.dead || inn.dead || has(out, 'noSwap')) {
+    return { ok: false, why: 'Those servants cannot be swapped.' };
+  }
+  P.skillQueue = P.skillQueue.filter(q => q.uid !== outUid);
+  P.mcds[2] = MASTER[2].cd;
+  log(g, `P${p + 1} Master activates ${MASTER[2].n}!`, 'activate', { master: 2 });
+  fx(g, { t: 'master', p, i: 2, uid: outUid });
+  doOrderChange(g, p, outUid, inUid);
+  return { ok: true };
 }
 function skillUsable(g, u, i) {
   if (u.dead || !g.players[u.side].front.includes(u.uid)) return { ok: false, why: 'Not on the field' };
@@ -1639,7 +1653,7 @@ function decideByLimit(g) {
 
 const API = {
   CFG, STAT_LABEL, cardWillChange, fullCap, cardSealed, fieldActive, effCls, affLevel, AFF_NAME, CLASS_LIST, FIELDS, fieldName, currentField, fieldTurnsLeft, actBlocker, rawAffinity, snap, sealUsable, sealTargetOk, queueSeal, unqueueSeal, MASTER, masterUsable, queueMaster, unqueueMaster, swappingOut, npCap, npLevel, hasNoNP, allyTargetOk, COLOR, costOf, teamCost, snakeOrder, canPick, EXCLUSIVE, META, starRate, npPerHit, skillRank, skillOption, newBattle, front, maxHp, has, sumStat,
-  skillUsable, skillTargetKind, queueSkill, unqueueSkill, resolveSkills, availableNPs, cardColor, npColor, canAct,
+  skillUsable, skillTargetKind, queueSkill, unqueueSkill, activateOrderChange, resolveSkills, availableNPs, cardColor, npColor, canAct,
   setCards, resolveCards, describeBuff, cloneGame, classMult, attrMult, aliveCount, hpPct, mkRng,
 };
 if (typeof module !== 'undefined') module.exports = API; else root.Engine = API;

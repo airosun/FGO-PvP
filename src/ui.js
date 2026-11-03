@@ -331,6 +331,21 @@ function lockSkills() {
   const evs = app.g.fx; app.g.fx = null;
   u.stage = 'skills-reveal'; u.cover = null; play(evs, pre);
 }
+function selectOrderChange(out, incoming) {
+  const u = app.ui, g = app.g;
+  u.targeting = null;
+  if (NET()) {
+    u.stage = 'wait-swap'; render();
+    netSend('act', { t: 'orderChange', out, in: incoming }).then(r => {
+      if (r.error && app.ui.stage === 'wait-swap') { app.ui.stage = 'skills'; render(); }
+    });
+    return;
+  }
+  const pre = E.snap(g); g.fx = [];
+  const result = E.activateOrderChange(g, u.actor, out, incoming);
+  const evs = g.fx; g.fx = null;
+  if (result.ok) play(evs, pre); else render();
+}
 function lockCards() {
   const u = app.ui; const g = app.g;
   if (NET()) {
@@ -1045,6 +1060,20 @@ async function applyAction(a, instant) {
     return startBattle(a.orders, { initiative: a.initiative, instant });
   }
   const g = app.g; const u = app.ui;
+  if (a.t === 'orderChange') {
+    const pre = E.snap(g);
+    let evs = [];
+    if (!instant) g.fx = [];
+    const result = E.activateOrderChange(g, a.p, a.out, a.in);
+    if (!instant) { evs = g.fx; g.fx = null; }
+    if (!result.ok) throw new Error(result.why);
+    checkSync(a);
+    if (u.stage === 'wait-swap') u.stage = 'skills';
+    u.targeting = null;
+    if (instant) return;
+    await play(evs, pre);
+    return;
+  }
   if (a.t === 'skills') {
     for (let q = 0; q < 2; q++) { const P = g.players[q]; P.skillQueue = clone(a.q[q].skillQueue) || []; P.masterQueue = clone(a.q[q].masterQueue) || []; P.sealQueue = clone(a.q[q].sealQueue); }
     g.qseq = a.qseq; n.locked = [false, false]; u.targeting = null; u.sel = []; u.pendingSlot = null;
@@ -1089,6 +1118,7 @@ function netTurnBar() {
   const g = app.g; const u = app.ui; const n = app.net; const M = NET(); const me = n.seat;
   const status = p => `<span class="lk${n.locked[p] ? ' done' : ''}">${esc(PN(p))}: ${n.locked[p] ? 'locked in ✓' : 'choosing…'}</span>`;
   const what = u.stage === 'wait' ? (u.waitFor || 'skills') : u.stage;
+  if (u.stage === 'wait-swap') return `<div class="turnbar"><p><b>Order Change is activating…</b> Waiting for the field update before choosing skills.</p></div>`;
   if (u.stage === 'over') {
     const w = g.winner; const iWon = M.cpu != null ? me != null : w === 'draw' ? me != null : me === w; // vs the CPU the human always gets the buttons
     const head = `<p><b>${w === 'draw' ? 'Draw' : `${esc(PN(w))} wins`}</b> on turn ${g.turn}. Servants left: ${esc(PN(0))} ${E.aliveCount(g, 0)}, ${esc(PN(1))} ${E.aliveCount(g, 1)}.${g.limitBy === 'hp' ? ` Average HP left: ${Math.round(E.hpPct(g, 0) * 100)}% vs ${Math.round(E.hpPct(g, 1) * 100)}%.` : ''}</p>`;
@@ -1252,7 +1282,7 @@ document.addEventListener('click', ev => {
       E.queueSkill(g, u.actor, T.uid, T.i, null, el.dataset.v); u.targeting = null; return render();
     }
     case 'mskill': { const i = +el.dataset.i; u.targeting = { master: true, i, kind: i === 2 ? 'swapOut' : 'ally' }; return render(); }
-    case 'swap-in': { if (u.targeting && u.targeting.kind === 'swapIn') { E.queueMaster(g, u.actor, 2, u.targeting.out, +el.dataset.uid); u.targeting = null; } return render(); }
+    case 'swap-in': { if (u.targeting && u.targeting.kind === 'swapIn') selectOrderChange(u.targeting.out, +el.dataset.uid); return; }
     case 'toggle-seals': app.opts.seals = !app.opts.seals; return render();
     case 'seal': u.targeting = { seal: true, kind: el.dataset.k }; return render();
     case 'seal-pick': if (u.targeting && u.targeting.seal) { E.queueSeal(g, u.actor, u.targeting.kind, +el.dataset.uid); u.targeting = null; } return render();
