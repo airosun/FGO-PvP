@@ -145,6 +145,13 @@ function act(room, person, a, reply) {
     }
     return reply(null);
   }
+  if (m.phase === 'battle' && m.stage === 'skills' && a.t === 'orderChange') {
+    if (m.pending[p]) return reply('Skills are already locked in.');
+    const result = E.activateOrderChange(m.g, p, +a.out, +a.in);
+    if (!result.ok) return reply(result.why);
+    push(room, { t: 'orderChange', p, out: +a.out, in: +a.in, h: hash(m.g) });
+    return reply(null);
+  }
   if (m.phase === 'battle' && a.t === 'skills' && m.stage === 'skills') {
     if (m.pending[p]) return reply('Already locked in.');
     m.pending[p] = { skillQueue: arr(a.skillQueue), masterQueue: arr(a.masterQueue), sealQueue: a.sealQueue && typeof a.sealQueue === 'object' ? a.sealQueue : null };
@@ -191,7 +198,12 @@ function cpuStep(room) {
     const st = m.stage, turn = m.g.turn;
     return later(1200, () => {
       if (m.pending[c] || m.stage !== st || m.g.turn !== turn || m.phase !== 'battle') return;
-      if (st === 'skills') go({ t: 'skills', ...AI.planSkills(m.g, c) });
+      if (st === 'skills') {
+        const plan = AI.planSkills(m.g, c);
+        const swap = plan.masterQueue.find(x => x.i === 2);
+        if (swap) go({ t: 'orderChange', out: swap.out, in: swap.in });
+        else go({ t: 'skills', ...plan });
+      }
       else go({ t: 'cards', sel: AI.planCards(m.g, c) });
     });
   }
