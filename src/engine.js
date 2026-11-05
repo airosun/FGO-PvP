@@ -483,7 +483,7 @@ function debuffLands(g, src, t, e) {
   return false;
 }
 function buffLands(g, src, t, e) {
-  if (has(t, 'buffBlock')) { consume(t, 'buffBlock'); log(g, `${t.name}'s Buff Block stopped a buff.`, 'miss'); fx(g, { t: 'eff', uid: t.uid, key: 'buffBlock', label: 'Blocked', miss: true }); return false; }
+  if (has(t, 'buffBlock') && e.s !== 'counter') { /* Fragarach Counter goes through Buff Block */ consume(t, 'buffBlock'); log(g, `${t.name}'s Buff Block stopped a buff.`, 'miss'); fx(g, { t: 'eff', uid: t.uid, key: 'buffBlock', label: 'Blocked', miss: true }); return false; }
   const succ = sumStat(src, 'buffSuccess');
   if (e.p == null && succ >= 0) return true;
   const p = (e.p ?? 100) / 100 + succ / 100 + sumStat(t, 'buffRecv') / 100;
@@ -588,6 +588,7 @@ function applyEffectTargets(g, e, src, choice, ctx) {
   for (const t of targets) {
     if (!t || t.dead) continue;
     if (!targetPassesCond(e, t)) continue;
+    if (t.side !== src.side) markCounter(g, t, src); // a debuff, buff removal or NP drain from the enemy sets off her counter
     const harmful = isHarmful(e, src.side, t);
     if (t === src && has(src, 'plotArmor') && (e.k === 'selfDmg' || (e.k === 'control' && e.selfInflicted) || (e.k === 'dot' && t.side === src.side) || (e.k === 'buff' && e.v < 0 && !harmful && !['trigger', 'trait'].includes(e.s)) || (e.k === 'drain'))) {
       log(g, `${t.name}'s Plot Armor cancels the drawback.`, 'buff'); continue; // Aoko: demerits of its own skills and NP are nullified
@@ -799,7 +800,7 @@ function describeBuff(b) {
   if (b.s === 'lockHand') return `Hand locked (same cards each turn)${turns}`;
   if (b.s === 'immuneTo') return `Immune to ${b.cats.map(c => STAT_LABEL[c] || c).join(' and ')}${uses}${turns}`;
   if (b.s === 'aura') return `${b.label || 'Aura'}: allies' ${STAT_LABEL[b.aura.s] || b.aura.s} ${b.aura.v > 0 ? '+' : ''}${b.aura.v}%${b.aura.cond ? ` (${b.aura.cond} only)` : ''}${b.aura.notVsClass ? ` (not vs ${b.aura.notVsClass.join(', ')})` : ''} while on the field`;
-  if (b.s === 'counter') return `Counters each enemy card attack with ${b.np ? b.np.n : 'an NP'}${turns}`;
+  if (b.s === 'counter') return `Counters each enemy attack, NP or debuff aimed at them with ${b.np ? b.np.n : 'an NP'}${turns}`;
   if (b.s === 'eternalSleep') return 'Eternal Slumber (can\'t act, permanent)';
   if (b.s === 'rankUp') return `Skill Rank Up${turns}`;
   if (b.s === 'npType') return `NP is ${b.color}${turns}`;
@@ -836,7 +837,7 @@ function buffCats(b) {
   if (!b.debuff && ['atk', 'buster', 'arts', 'quick', 'extra', 'npDmg', 'critDmg', 'special', 'dmgPlus'].includes(b.s)) c.add('dmgUp');
   return c;
 }
-function removable(b) { return !b.passive && !['delayed', 'trigger', 'eternalSleep', 'noSwap'].includes(b.s) && b.from !== 'Control rule'; }
+function removable(b) { return !b.passive && !['delayed', 'trigger', 'eternalSleep', 'noSwap', 'counter'].includes(b.s) && b.from !== 'Control rule'; }
 // Effects that fire when the holder attacks, lands a crit, triggers Guts, etc.
 function fireTriggers(g, u, on, ctx = {}) {
   if (!u || u.dead && on !== 'death') return;
@@ -1193,10 +1194,11 @@ function resolveSkills(g) {
   g.phase = 'cards';
 }
 function resolveItem(g, p, item) {
-  if (!g.stats || item.kind !== 'skill') { resolveItem0(g, p, item); scanBuffs(g); return; }
+  g._ctr = null;
+  if (!g.stats || item.kind !== 'skill') { resolveItem0(g, p, item); flushCounters(g); scanBuffs(g); return; }
   const prev = g._actor; g._actor = item.q.uid; g._atkDmg = 0;
   resolveItem0(g, p, item);
-  g._actor = prev; scanBuffs(g);
+  g._actor = prev; flushCounters(g); scanBuffs(g);
 }
 function resolveItem0(g, p, item) {
   if (item.kind === 'seal') { useSeal(g, p); return; }
@@ -1402,6 +1404,11 @@ function pickTarget(g, attacker, wanted) {
 }
 
 function execAction(g, a) {
+  g._ctr = null;
+  execAction1(g, a);
+  flushCounters(g);
+}
+function execAction1(g, a) {
   const u = U(g, a.card.uid);
   if (!g.stats || !u) return execAction0(g, a);
   const prev = g._actor; g._actor = u.uid; g._atkDmg = 0;
@@ -1465,7 +1472,7 @@ function attackCard(g, u, t, color, a, tag) {
   if (g.stats && !a.aoeRest) { if (blocked) g.stats[t.uid].evaded++; else g.stats[u.uid].attacks++; } else if (g.stats && blocked) g.stats[t.uid].evaded++;
   if (blocked) {
     log(g, `${tag}: ${u.name}'s ${COLOR[color]} is blocked by ${t.name}'s ${blocked}.`, 'miss'); fx(g, { t: 'eff', uid: t.uid, key: blocked === 'Evade' ? 'evade' : 'invincible', label: blocked, miss: true });
-    if (!t.dead && t.hp > 0 && !u.dead && has(t, 'counter')) counterAttack(g, t, u); // being targeted is enough, even if the attack is blocked
+    markCounter(g, t, u); // being targeted is enough, even if the attack is blocked
     return;
   }
   if (!a.aoeRest) fireTriggers(g, u, 'cardBefore', { color, target: t });
@@ -1507,7 +1514,7 @@ function attackCard(g, u, t, color, a, tag) {
   fx(g, { t: 'hit', uid: t.uid, src: u.uid, dmg, aff: affOf(u, t), crit, color, dist: hitSplit(u, color, hits), aoe: !!a.aoeHalf });
   if (dmg > 0 && t.hp > 0) fireTriggers(g, t, 'damaged', { crit, target: u, isHit: true });
   if (dmg > 0) wake(g, t);
-  if (!t.dead && t.hp > 0 && !u.dead && has(t, 'counter')) counterAttack(g, t, u);
+  markCounter(g, t, u);
   onHitRiders(g, u, t, color, false);
   if (!a.aoeMore) { fireTriggers(g, u, 'cardAfter', { color, crit, target: t }); fireTriggers(g, u, 'attack', { color, crit, target: t }); }
   if (t.hp <= 0) killOrGuts(g, t, u);
@@ -1568,6 +1575,24 @@ function hitSplit(u, card, hits) {
   if (hits > d.length && hits % d.length === 0) { const m = hits / d.length; d = d.flatMap(x => Array(m).fill(x / m)); }
   return d;
 }
+// Manannán mac Lir's Fragarach Counter: each enemy action aimed at her (or her side) is answered once, after it resolves,
+// straight at whoever acted (Taunt doesn't redirect it). Not while she can't act, and not if the action took her down
+// (unless Guts brought her back).
+function markCounter(g, t, src) {
+  if (!t || !src || t.side === src.side || !has(t, 'counter')) return;
+  (g._ctr || (g._ctr = new Map())).set(t.uid, src.uid);
+}
+function flushCounters(g) {
+  const list = g._ctr; g._ctr = null; if (!list || !list.size || g.over) return;
+  for (const [tid, sid] of list) {
+    const me = g.units[tid], foe = g.units[sid];
+    if (!me || !foe || me.dead || me.hp <= 0 || foe.dead || foe.hp <= 0 || !has(me, 'counter') || !canAct(me)) continue;
+    if (!g.players[me.side].front.includes(me.uid) || !g.players[foe.side].front.includes(foe.uid)) continue;
+    const prev = g._actor; g._actor = me.uid;
+    counterAttack(g, me, foe);
+    g._actor = prev;
+  }
+}
 function counterAttack(g, u, t) {
   const b = u.buffs.find(x => x.s === 'counter'); const np = b && b.np; if (!np) return;
   const letter = LETTER[np.card] || 'Q';
@@ -1623,6 +1648,7 @@ function execNP(g, u, a, tag) {
     const hits = Math.max(1, u.d.hits.NP || 1);
     const letter = LETTER[color];
     for (const t of targets) {
+      markCounter(g, t, u); // an NP aimed at her (or hitting her side) sets off her counter, blocked or not
       const blocked = hitBlocked(g, u, t);
       if (blocked) { log(g, `${t.name} blocks the NP with ${blocked}.`, 'miss'); fx(g, { t: 'eff', uid: t.uid, key: blocked === 'Evade' ? 'evade' : 'invincible', label: blocked, miss: true }); continue; }
       const cardUp = sumStat(u, { B: 'buster', A: 'arts', Q: 'quick' }[letter]);

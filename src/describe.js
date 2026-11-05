@@ -120,7 +120,7 @@ function buffWhat(e) {
     case 'noSwap': return "Can't be swapped out by Order Change";
     case 'counter': {
       const n = e.np || {};
-      return `Counters every enemy card attack aimed at it with ${n.n || 'its NP'} (${num(n.dmg || 0)}% ${n.card || ''} damage${(n.post || []).length ? ', plus its effects' : ''})`;
+      return `Counters every enemy attack, NP, debuff, buff removal or NP drain aimed at them with ${n.n || 'their NP'} (${num(n.dmg || 0)}% ${n.card || ''} damage${(n.post || []).length ? ', plus its effects' : ''}), even when the attack is blocked. Goes through Buff Block and can't be removed; doesn't fire while they can't act`;
     }
     case 'noHeal': return 'Recovery Disabled (can\'t restore HP)';
     case 'npDmgRes': return `NP damage taken −${num(v)}%`;
