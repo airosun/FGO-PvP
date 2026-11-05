@@ -189,7 +189,14 @@ function cpuStep(room) {
   const m = room.match; if (!m || m.cpu == null || m.phase === 'over') return;
   const c = m.cpu; const id = m.id;
   const later = (ms, f) => setTimeout(() => { if (room.match !== m || m.id !== id) return; try { f(); } catch (e) { console.error('CPU error', e); } }, ms);
-  const go = a => act(room, CPU, a, err => { if (err) console.error('CPU move refused:', err, a.t); else cpuStep(room); });
+  // A refused move never leaves the CPU stuck: it falls back to the simplest legal move for that step.
+  const go = a => act(room, CPU, a, err => {
+    if (!err) return cpuStep(room);
+    console.error('CPU move refused:', err, a.t);
+    if (a.fallback) return;
+    if (a.t === 'orderChange' || a.t === 'skills') return go({ t: 'skills', skillQueue: [], masterQueue: (m.g.players[c].masterQueue || []).filter(x => x.applied), sealQueue: null, fallback: true });
+    if (a.t === 'cards') { const pool = E.availableNPs(m.g, c).concat(m.g.players[c].hand); const foe = E.front(m.g, 1 - c).find(u => !u.dead); return go({ t: 'cards', sel: pool.slice(0, 3).map(x => ({ id: x.id, target: foe && foe.uid })), fallback: true }); }
+  });
   if (m.phase === 'draft') { const D = m.draft; if (D.order[D.i] !== c) return; const i = D.i; later(700, () => { if (D.i !== i) return; const d = AI.draftPick(D.teams[c], D.taken, R, KITS); if (d) go({ t: 'pick', id: d.id }); }); return; }
   if (m.pending[c]) return;
   if (m.phase === 'fields') return later(900, () => !m.pending[c] && m.phase === 'fields' && go({ t: 'fields', picks: AI.pickFields(m.draft.teams[c], KITS) }));
@@ -200,7 +207,7 @@ function cpuStep(room) {
       if (m.pending[c] || m.stage !== st || m.g.turn !== turn || m.phase !== 'battle') return;
       if (st === 'skills') {
         const plan = AI.planSkills(m.g, c);
-        const swap = plan.masterQueue.find(x => E.isSwap(m.g, c, x.i));
+        const swap = plan.masterQueue.find(x => E.isSwap(m.g, c, x.i) && !x.applied); // an Order Change already made this turn is part of the plan, not a new one
         if (swap) go({ t: 'orderChange', out: swap.out, in: swap.in });
         else go({ t: 'skills', ...plan });
       }
@@ -377,4 +384,4 @@ setInterval(() => {
 }, 60 * 1000).unref();
 
 if (require.main === module) server.listen(PORT, () => console.log(`Grand Order PvP online on :${PORT}`));
-module.exports = { server, io, rooms };
+module.exports = { server, io, rooms, _test: { act, newMatch, people, cpuStep } };

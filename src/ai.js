@@ -292,6 +292,9 @@ function planCards(g, p) {
   const seqs = [];
   const rec = (pick, used) => { if (pick.length === n) { seqs.push(pick.slice()); return; } for (let i = 0; i < pool.length; i++) if (!used.has(i)) { used.add(i); pick.push(pool[i]); rec(pick, used); pick.pop(); used.delete(i); } };
   rec([], new Set());
+  // A ready NP always goes off: only chains that use every ready NP (up to 3) are considered
+  const ready = E.availableNPs(g, p).filter(c => E.canAct(g.units[c.uid])).slice(0, n);
+  if (ready.length) { const must = seqs.filter(s => ready.every(r => s.some(c => c.id === r.id))); if (must.length) seqs.splice(0, seqs.length, ...must); }
   // cap the work on huge hands: keep the most promising sequences by a quick heuristic
   let cands = seqs;
   if (cands.length > 160) {
