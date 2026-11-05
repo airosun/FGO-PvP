@@ -185,7 +185,7 @@ function line(e, ctx = {}) {
         else if (e.mainOnly) when += ' (cards and NP, not the Extra Attack)';
         if (e.crit) when += ' (critical hits)';
         if (e.vsAny) when += ` against ${e.vsAny.join('/')} targets`;
-        if (e.chance != null) when += ` (${num(e.chance)}% chance)`;
+        if (e.chance != null) when += ` (${num(e.chance)}% chance${e.label === 'Confusion' && !e.keep ? ', ends once it triggers' : ''})`;
         const sp = span(e);
         const r = { text: `${when}${sp && !once ? ` (${sp})` : ''}:` };
         r.sub = (e.eff || []).map(x => line(x, { inTrigger: true, all: ctx.all })).filter(Boolean);
@@ -212,7 +212,7 @@ function line(e, ctx = {}) {
     }
     case 'control': {
       const nm = CTRL[e.kind] || e.kind;
-      if (e.kind === 'terror') return wrap(`Terror (each turn, ${num(e.stunChance ?? 40)}% chance to be stunned)`);
+      if (e.kind === 'terror') return wrap(`Terror (each turn, ${num(e.stunChance ?? 40)}% chance to be stunned; ends once it stuns)`);
       const sub = e.kind === 'skillSeal' ? " (can't use skills)" : e.kind === 'npSeal' ? " (can't use NP)" : e.kind === 'charm' ? " (can't act)" : ['stun', 'bind', 'petrify', 'sleep', 'pigify'].includes(e.kind) ? " (can't act)" : '';
       const t = e.selfInflicted ? e.t : Math.min(e.t, 1);
       const extra = e.p5 != null ? [`up to ${num(e.p5)}% at 500% overcharge`] : [];

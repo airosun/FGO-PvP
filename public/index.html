@@ -1444,7 +1444,7 @@ function line(e, ctx = {}) {
         else if (e.mainOnly) when += ' (cards and NP, not the Extra Attack)';
         if (e.crit) when += ' (critical hits)';
         if (e.vsAny) when += ` against ${e.vsAny.join('/')} targets`;
-        if (e.chance != null) when += ` (${num(e.chance)}% chance)`;
+        if (e.chance != null) when += ` (${num(e.chance)}% chance${e.label === 'Confusion' && !e.keep ? ', ends once it triggers' : ''})`;
         const sp = span(e);
         const r = { text: `${when}${sp && !once ? ` (${sp})` : ''}:` };
         r.sub = (e.eff || []).map(x => line(x, { inTrigger: true, all: ctx.all })).filter(Boolean);
@@ -1471,7 +1471,7 @@ function line(e, ctx = {}) {
     }
     case 'control': {
       const nm = CTRL[e.kind] || e.kind;
-      if (e.kind === 'terror') return wrap(`Terror (each turn, ${num(e.stunChance ?? 40)}% chance to be stunned)`);
+      if (e.kind === 'terror') return wrap(`Terror (each turn, ${num(e.stunChance ?? 40)}% chance to be stunned; ends once it stuns)`);
       const sub = e.kind === 'skillSeal' ? " (can't use skills)" : e.kind === 'npSeal' ? " (can't use NP)" : e.kind === 'charm' ? " (can't act)" : ['stun', 'bind', 'petrify', 'sleep', 'pigify'].includes(e.kind) ? " (can't act)" : '';
       const t = e.selfInflicted ? e.t : Math.min(e.t, 1);
       const extra = e.p5 != null ? [`up to ${num(e.p5)}% at 500% overcharge`] : [];
@@ -2010,6 +2010,7 @@ function rawAffinity(a, d) { return (RAW_AFF[a] && RAW_AFF[a][d]) || 1; }
 const ATTR_BEATS = { Man: 'Sky', Sky: 'Earth', Earth: 'Man' };
 const CONTROL = new Set(['stun', 'charm', 'bind', 'petrify', 'sleep', 'pigify', 'terror', 'skillSeal', 'npSeal']);
 const MENTAL = new Set(['charm', 'terror', 'sleep']);
+const ONE_AT_A_TIME = new Set(['evade', 'invincible', 'trueInvincible']);
 // Statuses that stop a servant from attacking or using its NP this turn.
 const NO_ACT = ['stun', 'charm', 'bind', 'petrify', 'sleep', 'pigify', 'eternalSleep']; // Pigify plays like a stun, but is its own status (some servants are immune to it)
 // FGO battlefields. Picked by the players before the battle; some skills only work on certain fields.
@@ -2534,11 +2535,16 @@ function applyEffectTargets(g, e, src, choice, ctx) {
       case 'buff': {
         if (!harmful && hasNoNP(t) && NP_GAUGE_BUFFS.has(e.s)) break;
         if (e.stackLimit && markCount(t, e.stackLimit.mark) >= e.stackLimit.n) break; // e.g. Growth caps at 10 stacks
+        // Evade, Invincible and Anti-Enforcement DEF don't double up: a second one while the first is active doesn't land
+        if (!harmful && ONE_AT_A_TIME.has(e.s) && t.buffs.some(b => b.s === e.s && (b.n == null || b.n > 0))) {
+          log(g, `${t.name} already has ${STAT_LABEL[e.s] || e.s}; the new one doesn't take effect.`, 'miss');
+          fx(g, { t: 'eff', uid: t.uid, key: e.s, label: 'Already active', miss: true }); break;
+        }
         if (harmful ? !debuffLands(g, src, t, e) : !buffLands(g, src, t, e)) break;
         let v = e.v;
         if (e.missingHpBonus) v += e.missingHpBonus * (1 - t.hp / maxHp(t));
         // carry: gained mid-turn, it still lasts through the next turn (outside end-of-turn, which already starts counting next turn)
-        const b = { s: e.s, v: Math.round(v * 100) / 100, t: e.carry && !g.inEndTurn ? e.t + 1 : e.t, n: e.n, debuff: harmful, vs: e.vs, vsList: e.vsList, status: e.status, statusAny: e.statusAny, alignVs: e.alignVs, trait: e.trait, tags: e.tags, eff: e.eff, on: e.on, cards: e.cards, crit: e.crit, vsAny: e.vsAny, label: e.label, chance: e.chance, marks: e.marks, hpBelow: e.hpBelow, vLow: e.vLow, atk: e.atk, def: e.def, whileHas: e.whileHas, whileMark: e.whileMark, hpAbove: e.hpAbove, perMark: e.perMark, perField: e.perField, perMarkOp: e.perMarkOp, cats: e.cats, mainOnly: e.mainOnly, np: e.np, color: e.color, icon: e.icon, cls: e.cls, srcUid: src.uid, dmg: e.dmg, fields: e.fields, kind: e.kind, from: ctx.from };
+        const b = { s: e.s, v: Math.round(v * 100) / 100, t: e.carry && !g.inEndTurn ? e.t + 1 : e.t, n: e.n, debuff: harmful, vs: e.vs, vsList: e.vsList, status: e.status, statusAny: e.statusAny, alignVs: e.alignVs, trait: e.trait, tags: e.tags, eff: e.eff, on: e.on, cards: e.cards, crit: e.crit, vsAny: e.vsAny, label: e.label, chance: e.chance, marks: e.marks, hpBelow: e.hpBelow, vLow: e.vLow, atk: e.atk, def: e.def, whileHas: e.whileHas, whileMark: e.whileMark, hpAbove: e.hpAbove, perMark: e.perMark, perField: e.perField, perMarkOp: e.perMarkOp, cats: e.cats, mainOnly: e.mainOnly, np: e.np, color: e.color, icon: e.icon, cls: e.cls, srcUid: src.uid, dmg: e.dmg, fields: e.fields, kind: e.kind, keep: e.keep, from: ctx.from };
         t.buffs.push(b);
         if (e.s === 'taunt') { g.lastTaunt = g.lastTaunt || [null, null]; g.lastTaunt[t.side] = t.uid; }
         if (e.s === 'maxHp') { g._quiet = true; t.hp = Math.max(1, Math.min(maxHp(t), t.hp + v)); g._quiet = false; if (g.stats && src && src.side === t.side && g.stats[src.uid] && v > 0) g.stats[src.uid].maxHpGiven += Math.round(v); }
@@ -2643,7 +2649,7 @@ function applyEffectTargets(g, e, src, choice, ctx) {
       case 'control': {
         if (e.selfInflicted) { t.buffs.push({ s: e.kind, v: 1, t: e.t, debuff: true, selfInflicted: true, from: ctx.from }); log(g, `${t.name} inflicts ${STAT_LABEL[e.kind]} on themselves (${e.t}T).`, 'debuff'); fx(g, { t: 'eff', uid: t.uid, key: e.kind, neg: true, label: `${STAT_LABEL[e.kind]} ${e.t}T` }); break; }
         if (!debuffLands(g, src, t, e)) break;
-        if (e.kind === 'terror') { t.buffs.push({ s: 'terror', v: e.stunChance ?? 40, t: e.t, debuff: true, used: false, from: ctx.from }); log(g, `${t.name} is inflicted with Terror (${e.t}T).`, 'debuff'); fx(g, { t: 'eff', uid: t.uid, key: 'terror', neg: true, label: `Terror ${e.t}T` }); break; }
+        if (e.kind === 'terror') { t.buffs.push({ s: 'terror', v: e.stunChance ?? 40, t: e.t, debuff: true, used: false, keep: e.keep, from: ctx.from }); log(g, `${t.name} is inflicted with Terror (${e.t}T).`, 'debuff'); fx(g, { t: 'eff', uid: t.uid, key: 'terror', neg: true, label: `Terror ${e.t}T` }); break; }
         const turns = Math.min(e.t, 1);
         // Skill Seal landing after the skill phase (from an attack or NP) would expire before it could block anything,
         // so it lasts through the next turn's skill phase. Stuns and other control still end with the turn.
@@ -2797,7 +2803,8 @@ function fireTriggers(g, u, on, ctx = {}) {
     if (b.vsAny && !(t && b.vsAny.some(v => hasTrait(t, v) || t.buffs.some(x => x.s === v)))) continue;
     log(g, `${u.name}: ${b.label || 'triggered effect'} activates.`, 'act');
     applyEffects(g, b.eff, u, t ? t.uid : null, { from: b.from });
-    if (b.n != null) { b.n -= 1; if (b.n <= 0) u.buffs.splice(u.buffs.indexOf(b), 1); }
+    if (b.n != null) { b.n -= 1; if (b.n <= 0 && u.buffs.includes(b)) u.buffs.splice(u.buffs.indexOf(b), 1); }
+    else if (b.label === 'Confusion' && !b.keep && u.buffs.includes(b)) u.buffs.splice(u.buffs.indexOf(b), 1); // Confusion ends once it has sealed skills
   }
 }
 // Reflected damage (Aŋra Mainiiu's NP): after all attacks resolve, each attacker takes back what they dealt, as true damage.
@@ -2923,7 +2930,10 @@ function startTurn(g) {
   for (const u of Object.values(g.units)) {
     if (u.dead) continue;
     const t = u.buffs.find(b => b.s === 'terror' && !b.used);
-    if (t && g.rng() < t.v / 100) { t.used = true; u.buffs.push({ s: 'stun', v: 1, t: 1, debuff: true }); log(g, `${u.name} freezes in Terror (Stun 1T).`, 'debuff'); }
+    if (t && g.rng() < t.v / 100) {
+      t.used = true; if (!t.keep) u.buffs.splice(u.buffs.indexOf(t), 1); // Terror ends once it has stunned (unless the effect says it lasts)
+      u.buffs.push({ s: 'stun', v: 1, t: 1, debuff: true }); log(g, `${u.name} freezes in Terror (Stun 1T).`, 'debuff');
+    }
   }
 }
 
