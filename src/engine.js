@@ -1095,9 +1095,29 @@ function taunterOf(g, q) {
 // Skills resolve one at a time in the order each player picked them, alternating between players and
 // starting with the tie-breaker holder. When one player runs out, the other finishes their list.
 // Every effect of a skill happens together. Master skills and the Command Seal sit in the same order.
+// A servant announced by Order Change but not swapped in yet: anything aimed at them lands on the servant
+// still holding that spot until the swap resolves.
+function standIn(g, uid) {
+  for (const P of g.players) for (const m of P.masterQueue) if (m.pendingSwap && m.in === uid) return m.out;
+  return uid;
+}
 function resolveSkills(g) {
   log(g, 'Skills revealed', 'phase');
   for (const u of Object.values(g.units)) u.usedSkills = [];
+  // An Order Change picked during selection is shown right away, but on resolution it happens at its place in
+  // the queue: put the outgoing servant back for now, so skills picked before the swap land on the lineup as it
+  // was (Mash's party DEF reaches her fellow starters, not the servant still waiting in reserve).
+  for (let p = 0; p < 2; p++) {
+    const P = g.players[p];
+    for (const m of P.masterQueue.filter(x => x.i === 2 && x.applied && !x.revealed).reverse()) {
+      const k = P.front.indexOf(m.in), r = P.reserve.indexOf(m.out);
+      if (k < 0 || r < 0) continue;
+      P.front[k] = m.out; P.reserve[r] = m.in;
+      for (const c of P.hand) if (c.uid === m.in) c.uid = m.out;
+      rebuildBag(g, p);
+      m.pendingSwap = true;
+    }
+  }
   const lists = [0, 1].map(p => {
     const P = g.players[p];
     const items = [...P.skillQueue.map(q => ({ kind: 'skill', q, seq: q.seq })), ...P.masterQueue.map(m => ({ kind: 'master', m, seq: m.seq })),
@@ -1119,15 +1139,16 @@ function resolveItem(g, p, item) {
   if (item.kind === 'master') {
     const m = item.m; const M = MASTER[m.i];
     if (m.i === 2 && m.applied) {
-      fx(g, { t: 'master', p, i: 2, uid: m.out });
       m.revealed = true;
-      fx(g, { t: 'swap', p, out: m.out, in: m.in });
+      fx(g, { t: 'master', p, i: 2, uid: m.out });
+      if (m.pendingSwap) { m.pendingSwap = false; doOrderChange(g, p, m.out, m.in); } // the swap itself happens now
+      else fx(g, { t: 'swap', p, out: m.out, in: m.in });
       return;
     }
     g.players[p].mcds[m.i] = M.cd;
     log(g, `P${p + 1} Master activates ${M.n}!`, 'activate', { master: m.i });
     if (m.i === 2) { fx(g, { t: 'master', p, i: 2, uid: m.out }); doOrderChange(g, p, m.out, m.in); return; }
-    const t = U(g, m.target);
+    const t = U(g, standIn(g, m.target));
     if (!t || t.dead || !g.players[p].front.includes(t.uid)) { log(g, `P${p + 1}'s ${M.n} fizzles.`, 'miss'); return; }
     fx(g, { t: 'master', p, i: m.i, uid: t.uid });
     addAffection(g, t, 5, 'Master skill');
@@ -1169,7 +1190,7 @@ function resolveItem(g, p, item) {
     if (sk.opts && e.opt != null && e.opt !== opt) continue;
     if (e.branch === 'self' && q.target !== u.uid) continue;   // Passionlip: one skill on herself,
     if (e.branch === 'other' && q.target === u.uid) continue;  // another on an ally
-    let choice = q.target;
+    let choice = standIn(g, q.target);
     if (e.to === 'enemy') {
       const tz = taunterOf(g, foe);
       if (tz && tz.uid !== q.target) {

@@ -46,6 +46,7 @@ window.__test = { get startBattle() { return startBattle; }, get lockCards() { r
 // ---------------------------------------------------------------- Setup
 function startDraft(first0) {
   const first = first0 != null ? first0 : Math.random() < 0.5 ? 0 : 1;
+  app.browse = null;
   app.draft = { first, order: E.snakeOrder(first), i: 0, teams: [[], []], taken: new Set(), filter: 'All', rar: 'All', role: 'All', focus: null, search: '', mode: 'servant', modeMenu: false };
   app.screen = 'draft';
   render();
@@ -130,36 +131,45 @@ function renderDraft() {
   const ribbon = D.order.map((x, i) => `<span class="rib p${x}${i === D.i ? ' now' : ''}${i < D.i ? ' done' : ''}" title="Pick ${i + 1}: ${PN(x)}">${x + 1}</span>`).join('');
   const team = q => {
     const ids = D.teams[q]; const cost = E.teamCost(ids, R); const fives = ids.filter(id => R[id].rar === 5).length;
-    return `<section class="teambox p${q}${q === p ? ' active' : ''}"><header><h3>${esc(PN(q))}${NET() && SEAT() === q ? ' <small class="you">You</small>' : ''}</h3><span class="meta">Cost <b>${cost}</b>/${E.CFG.costCap} · 5★ ${fives}/${E.CFG.max5}</span></header>
-      <ol class="picks">${ids.map(id => `<li>${CI(R[id].cls)}${esc(R[id].name)}<span class="r">${'★'.repeat(R[id].rar)} · ${E.costOf(R[id])}</span></li>`).join('')}
-      ${Array.from({ length: 6 - ids.length }, () => '<li class="empty">Open slot</li>').join('')}</ol></section>`;
+    return `<section class="teambox p${q}${q === p ? ' active' : ''}"><header><h3>${esc(PN(q))}${NET() && SEAT() === q ? ' <small class="you">You</small>' : ''}</h3><span class="meta">5★ ${fives}/${E.CFG.max5}</span></header>
+      <div class="costbar" title="Team cost ${cost} of ${E.CFG.costCap}"><span style="width:${Math.min(100, cost / E.CFG.costCap * 100)}%"></span><b>${cost}<small>/${E.CFG.costCap}</small></b></div>
+      <ol class="picks">${ids.map((id, k) => `<li class="r${R[id].rar}" data-act="focus" data-id="${id}"><span class="pk">${k + 1}</span>${CI(R[id].cls)}<span class="pn">${esc(R[id].name)}<small><span class="rdot ${ROLE_CLS[ROLE[id]] || ''}"></span>${esc(ROLE[id] || '')}</small></span><span class="r"><span class="pstars">${'★'.repeat(R[id].rar)}</span>${E.costOf(R[id])}</span></li>`).join('')}
+      ${Array.from({ length: 6 - ids.length }, (_, k) => `<li class="empty"><span class="pk">${ids.length + k + 1}</span>Open slot</li>`).join('')}</ol></section>`;
   };
-  const mode = D.mode || 'servant';
-  const roleOk = d => !D.role || D.role === 'All' || (D.role === 'Meta Support' ? isMeta(d.id) : ROLE[d.id] === D.role);
-  const list = POOL.filter(d => (D.filter === 'All' || d.cls === D.filter) && (D.rar === 'All' || d.rar === +D.rar) && roleOk(d) && searchMatch(d, D.search, mode));
-  const tiles = list.map(d => {
-    const taken = D.taken.has(d.id);
-    const chk = E.canPick(D.teams[p], d.id, D.taken, R);
-    return `<button class="tile${isMeta(d.id) ? ' meta' : ''}${taken ? ' taken' : ''}${!taken && !chk.ok ? ' blocked' : ''}${D.focus === d.id ? ' focus' : ''}" data-act="focus" data-id="${d.id}" ${taken ? 'disabled' : ''}>
-      <span class="tid">${String(d.id).padStart(3, '0')}</span><span class="tname">${esc(d.name)}</span>
-      <span class="tmeta">${CI(d.cls)}<span>${'★'.repeat(d.rar)}</span><span class="cost">${E.costOf(d)}</span></span>
-      <span class="tdeck">${deckChips(d.deck)}<span class="npc ${d.np[0]}">${d.np[0]}</span></span><span class="trole">${esc(ROLE[d.id] || '')}${isMeta(d.id) ? '<span class="mtag">Meta</span>' : ''}</span>${D.search && mode !== 'servant' ? `<span class="tmatch">${esc((searchHits(d, D.search, mode) || []).slice(0, 3).join(' · '))}</span>` : ''}</button>`;
-  }).join('');
   const f = D.focus ? R[D.focus] : null;
   const chk = f ? E.canPick(D.teams[p], f.id, D.taken, R) : null;
   return `<div class="draft">
     <div class="draft-head"><div><p class="eyebrow">Snake draft · pick ${D.i + 1} of 12</p><h2>${NET() && SEAT() === p ? 'Your pick' : `${esc(PN(p))} is picking`}</h2></div><div class="draft-actions"><div class="ribbon">${ribbon}</div><div class="row"><button class="chartbtn" data-act="aff-chart">Class chart</button>${!NET() ? `<button data-act="random-pick">Random pick for ${esc(PN(p))}</button><button data-act="random-rest">Randomize the rest</button>` : SEAT() == null ? '' : `${SEAT() === p ? '<button data-act="random-pick">Random pick</button>' : ''}<button data-act="random-rest" ${D.auto ? 'disabled' : ''}>${D.auto ? 'Auto-picking your remaining slots' : 'Randomize my remaining picks'}</button>`}</div></div></div>
     <div class="draft-grid">
       <div class="teams">${team(leftSide())}${team(1 - leftSide())}</div>
-      <div class="pool">
-        <div class="dsearch"><div class="dmode"><button class="dmodebtn" data-act="search-mode-menu" aria-haspopup="true" aria-expanded="${!!D.modeMenu}">${esc(SEARCH_MODES.find(m => m.k === mode).label)} <span aria-hidden="true">▾</span></button>${D.modeMenu ? `<div class="dmenu" role="menu">${SEARCH_MODES.map(m => `<button role="menuitemradio" aria-checked="${m.k === mode}" class="${m.k === mode ? 'on' : ''}" data-act="search-mode" data-m="${m.k}">${esc(m.label)}</button>`).join('')}</div>` : ''}</div><input type="search" id="draftSearch" placeholder="${esc(SEARCH_MODES.find(m => m.k === mode).ph)}" value="${esc(D.search)}" aria-label="Search ${esc(SEARCH_MODES.find(m => m.k === mode).label)}" autocomplete="off">${D.search ? '<button class="dclear" data-act="search-clear" aria-label="Clear search">✕</button>' : ''}<span class="dcount">${list.length} shown</span></div>
-        <div class="filters">${CLASSES.map(c => `<button class="chip${D.filter === c ? ' on' : ''}" data-act="filter" data-c="${c}">${c === 'All' ? 'All classes' : CI(c) + c}</button>`).join('')}</div>
-        <div class="filters">${['All', 5, 4, 3, 2, 1, 0].filter(r => r === 'All' || POOL.some(d => d.rar === r)).map(r => `<button class="chip${String(D.rar) === String(r) ? ' on' : ''}" data-act="rar" data-r="${r}">${r === 'All' ? 'All rarities' : r === 0 ? '0★' : '★'.repeat(r)}</button>`).join('')}</div>
-        <div class="filters">${['All', ...Roles.ROLES, 'Meta Support'].map(r => `<button class="chip${r === 'Meta Support' ? ' metachip' : ''}${(D.role || 'All') === r ? ' on' : ''}" data-act="role" data-r="${esc(r)}">${r === 'All' ? 'All roles' : esc(r)}${r === 'Meta Support' ? ' (max 1)' : ''}</button>`).join('')}</div>
-        <div class="tiles">${tiles || `<p class="hint">No servants match${D.search ? ` “${esc(D.search)}”` : ''} with these filters.</p>`}</div>
+      ${renderPool(D, D.teams[p])}
       </div>
     </div>${f ? modal(servantDetail(f), `<button data-act="close-detail">Back</button>${NET() && SEAT() !== p ? '' : `<button class="primary" data-act="pick" data-id="${f.id}" ${chk.ok ? '' : 'disabled'}>${chk.ok ? `Pick ${esc(f.name)}${NET() ? '' : ` for ${esc(PN(p))}`}` : esc(chk.why)}</button>`}`, 'close-detail', f.name) : ''}${app.affChart ? affChart() : ''}</div>`;
 }
+// Servant list with search and filters: the draft pool, and the lobby's "Browse servants" view (team = null).
+function renderPool(S, team) {
+  const mode = S.mode || 'servant';
+  const roleOk = d => !S.role || S.role === 'All' || (S.role === 'Meta Support' ? isMeta(d.id) : ROLE[d.id] === S.role);
+  const list = POOL.filter(d => (S.filter === 'All' || d.cls === S.filter) && (S.rar === 'All' || d.rar === +S.rar) && roleOk(d) && searchMatch(d, S.search, mode));
+  const tiles = list.map(d => {
+    const taken = S.taken.has(d.id);
+    const chk = team ? E.canPick(team, d.id, S.taken, R) : { ok: true };
+    return `<button class="tile r${d.rar} c-${clsKey(d.cls)}${isMeta(d.id) ? ' meta' : ''}${taken ? ' taken' : ''}${!taken && !chk.ok ? ' blocked' : ''}${S.focus === d.id ? ' focus' : ''}" data-act="focus" data-id="${d.id}" ${taken ? 'disabled' : ''}>
+      <span class="ttop">${CI(d.cls)}<span class="tstars">${d.rar ? '★'.repeat(d.rar) : '0★'}</span><span class="cost" title="Cost">${E.costOf(d)}</span></span>
+      <span class="tname">${esc(d.name)}</span>
+      <span class="tdeck">${deckChips(d.deck)}<span class="npc ${d.np[0]}" title="NP card">${d.np[0]}</span></span><span class="trole"><span class="rdot ${ROLE_CLS[ROLE[d.id]] || ''}"></span>${esc(ROLE[d.id] || '')}${isMeta(d.id) ? '<span class="mtag">Meta</span>' : ''}</span>${S.search && mode !== 'servant' ? `<span class="tmatch">${esc((searchHits(d, S.search, mode) || []).slice(0, 3).join(' · '))}</span>` : ''}</button>`;
+  }).join('');
+  return `<div class="pool">
+        <div class="dsearch"><div class="dmode"><button class="dmodebtn" data-act="search-mode-menu" aria-haspopup="true" aria-expanded="${!!S.modeMenu}">${esc(SEARCH_MODES.find(m => m.k === mode).label)} <span aria-hidden="true">▾</span></button>${S.modeMenu ? `<div class="dmenu" role="menu">${SEARCH_MODES.map(m => `<button role="menuitemradio" aria-checked="${m.k === mode}" class="${m.k === mode ? 'on' : ''}" data-act="search-mode" data-m="${m.k}">${esc(m.label)}</button>`).join('')}</div>` : ''}</div><input type="search" id="draftSearch" placeholder="${esc(SEARCH_MODES.find(m => m.k === mode).ph)}" value="${esc(S.search)}" aria-label="Search ${esc(SEARCH_MODES.find(m => m.k === mode).label)}" autocomplete="off">${S.search ? '<button class="dclear" data-act="search-clear" aria-label="Clear search">✕</button>' : ''}<span class="dcount">${list.length} shown</span></div>
+        <div class="filters">${CLASSES.map(c => `<button class="chip${S.filter === c ? ' on' : ''}" data-act="filter" data-c="${c}">${c === 'All' ? 'All classes' : CI(c) + c}</button>`).join('')}</div>
+        <div class="filters">${['All', 5, 4, 3, 2, 1, 0].filter(r => r === 'All' || POOL.some(d => d.rar === r)).map(r => `<button class="chip${String(S.rar) === String(r) ? ' on' : ''}" data-act="rar" data-r="${r}">${r === 'All' ? 'All rarities' : r === 0 ? '0★' : '★'.repeat(r)}</button>`).join('')}</div>
+        <div class="filters">${['All', ...Roles.ROLES, 'Meta Support'].map(r => `<button class="chip${r === 'Meta Support' ? ' metachip' : ''}${(S.role || 'All') === r ? ' on' : ''}" data-act="role" data-r="${esc(r)}">${r === 'All' ? 'All roles' : esc(r)}${r === 'Meta Support' ? ' (max 1)' : ''}</button>`).join('')}</div>
+        <div class="tiles">${tiles || `<p class="hint">No servants match${S.search ? ` “${esc(S.search)}”` : ''} with these filters.</p>`}</div>
+      </div>`;
+}
+const clsKey = c => String(c).toLowerCase().replace(/[^a-z]/g, '');
+// The servant list being filtered right now: the lobby browser when it's open, otherwise the draft.
+const PS = () => (app.browse && app.screen !== 'draft' ? app.browse : app.draft);
 // ---- Draft search: names first, then NP/skill names and traits. Ignores case and accents ("anra" finds Aŋra).
 const fold = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ŋ/g, 'n').replace(/[^a-z0-9 ]/gi, ' ').toLowerCase().replace(/\s+/g, ' ').trim();
 const SEARCH_MODES = [
@@ -364,18 +374,46 @@ function lockCards() {
   u.stage = g.over ? 'over' : 'cards-reveal'; u.cover = null; play(evs, pre);
 }
 
+// Active effects on a field servant: the same effect stacked from several sources shows once with a count, buffs
+// come first and debuffs after a divider, and each shows the turns it has left. The tooltip lists every source.
+function statusGroups(u) {
+  const groups = new Map();
+  for (const b of u.buffs) {
+    if (b.passive || b.s === 'ctrlImmune') continue;
+    const dir = NOARROW.has(b.s) || typeof b.v !== 'number' ? null : (b.s.endsWith('Res') && b.debuff ? 'down' : b.v >= 0 ? 'up' : 'down');
+    const key = b.icon || I.statusKey(b) || b.s;
+    const id = `${key}|${b.debuff ? 1 : 0}|${dir}`;
+    if (!groups.has(id)) groups.set(id, { key, dir, neg: !!b.debuff, list: [], plain: !!(b.icon || I.statusKey(b)) });
+    groups.get(id).list.push(b);
+  }
+  return [...groups.values()];
+}
+function groupBadge(gp) {
+  const left = Math.min(...gp.list.map(b => b.t));
+  const times = gp.list.reduce((a, b) => a + (b.n || 0), 0);
+  const tip = gp.list.map(b => `${E.describeBuff(b)}${b.from ? ' · from ' + b.from : ''}`).join('\n');
+  const badge = gp.plain ? I.badge(gp.key, { neg: gp.neg, tip: esc(tip) }) : I.badge(gp.key, { neg: gp.neg, dir: gp.dir, tip: esc(tip) });
+  return `<span class="sb${gp.neg ? ' bad' : ''}">${badge}${gp.list.length > 1 ? `<i class="sbn">${gp.list.length}</i>` : ''}${Number.isFinite(left) ? `<i class="sbt">${left}</i>` : times ? `<i class="sbt">${times}×</i>` : ''}</span>`;
+}
+function statusChips(u, max = 14) {
+  const gs = statusGroups(u); if (!gs.length) return '';
+  const good = gs.filter(g => !g.neg), bad = gs.filter(g => g.neg);
+  const shown = [...good, ...bad].slice(0, max); const extra = gs.length - shown.length;
+  const g2 = shown.filter(g => !g.neg), b2 = shown.filter(g => g.neg);
+  return g2.map(groupBadge).join('') + (g2.length && b2.length ? '<span class="sbsep" aria-hidden="true"></span>' : '') + b2.map(groupBadge).join('')
+    + (extra > 0 ? `<button class="sbmore" data-act="unit" data-uid="${u.uid}" data-tip="${extra} more effect${extra > 1 ? 's' : ''}: open the servant to see everything">+${extra}</button>` : '');
+}
 function unitTile(u, opts) {
   const g = app.g;
   const mhp = E.maxHp(u);
   const hpPct = Math.max(0, Math.min(100, u.hp / mhp * 100));
-  const statuses = u.buffs.filter(b => !b.passive && b.s !== 'ctrlImmune');
-  const chips = statuses.slice(0, 16).map(buffBadge).join('') + (statuses.length > 16 ? `<span class="bf more">+${statuses.length - 16}</span>` : '');
+  const chips = statusChips(u);
   const used = (u.usedSkills || []).map(i => `<span class="usedsk" data-tip="${esc(skillTip(u, i))}" tabindex="0">${I.skillIcon(u.kit.sk[i])}</span>`).join('');
   const tgt = (opts.targetable ? ' targetable' : '') + (opts.aff ? ` aff-${opts.aff.k}` : '');
   const sel = opts.selected ? ' selected' : '';
   return `<div class="unit p${u.side}${u.dead ? ' dead' : ''}${tgt}${sel}" data-act="unit" data-uid="${u.uid}" role="button" tabindex="0">
     <span class="uhead">${CI(E.effCls(u))}<span class="uname">${esc(u.name)}</span>${u.full != null ? `<span class="fulll" tabindex="0" data-tip="${esc(`Fullness ${u.full}/${E.fullCap(u)}. Kurakura's Meals feed every ally that isn't full (+2 each; the rare Legendary Rice Ball +12). Each attack (not the Extra Attack) digests 1. Beni-Enma's Sparrow's Tub Bath empties theirs by 2, and their NP raises everyone's cap by 4 for 5 turns.`)}">🍙 ${u.full}/${E.fullCap(u)}</span>` : ''}${u.aff != null ? `<span class="affl" tabindex="0" data-tip="${esc(`Affection Lv ${E.affLevel(u)} (${E.AFF_NAME(E.affLevel(u))}), ${u.aff} points. Every 10 points is a level. Gains: +3 per card of theirs chosen, +6 Brave Chain, +3 per skill they use (+2 more if it's your first skill that turn), +5/+10/+15 for NP overcharge 200/300/400%+, +10 when the field becomes Waterside, +5 Master skill, +10 Command Seal. Her NP gets +10% damage per level above 1; Lv 4+: Death success up; Lv 7+: Ignore DEF and Ignore Invincible; Lv 10: 50 stars and crit chance up.`)}">♥ Lv ${E.affLevel(u)}</span>` : ''}${opts.aff ? `<span class="afftag ${opts.aff.k}">${opts.aff.k === 'up' ? 'Weak' : opts.aff.k === 'down' ? 'Resists' : 'Neutral'} ×${+opts.aff.m.toFixed(2)}</span>` : opts.marks && opts.marks.length ? `<span class="tgtmark">Slot ${opts.marks.join(', ')}</span>` : ''}</span>
-    <span class="bars"><span class="bar hp"><span style="width:${hpPct}%"></span></span>${E.hasNoNP(u) ? '' : `<span class="bar np${u.np >= 100 ? ' full' : ''}" title="NP gauge cap ${E.npCap(u)}% (NP${E.npLevel(u)})">${[0, 1, 2].filter(k => k * 100 < E.npCap(u)).map(k => { const w = Math.max(0, Math.min(100, u.np - k * 100)); return w > 0 ? `<span class="np${k + 1}${w >= 100 ? ' done' : ''}" style="width:${w}%"></span>` : ''; }).join('')}</span>`}</span>
+    <span class="bars"><span class="bar hp${hpPct <= 30 ? ' low' : hpPct <= 60 ? ' mid' : ''}"><span style="width:${hpPct}%"></span></span>${E.hasNoNP(u) ? '' : `<span class="bar np${u.np >= 100 ? ' full' : ''}" title="NP gauge cap ${E.npCap(u)}% (NP${E.npLevel(u)})">${[0, 1, 2].filter(k => k * 100 < E.npCap(u)).map(k => { const w = Math.max(0, Math.min(100, u.np - k * 100)); return w > 0 ? `<span class="np${k + 1}${w >= 100 ? ' done' : ''}" style="width:${w}%"></span>` : ''; }).join('')}</span>`}</span>
     <span class="nums"><span>HP ${Math.max(0, Math.round(u.hp))}/${Math.round(mhp)}</span>${E.hasNoNP(u) ? '<span class="npnum none" title="This form has no Noble Phantasm">No NP</span>' : `<span class="npnum${u.np >= 100 ? ' full' : ''}${u.np >= 300 ? ' l3' : u.np >= 200 ? ' l2' : ''}">NP ${Math.floor(u.np)}%</span>`}</span>
     ${chips || used ? `<span class="chips">${chips}${used ? `<span class="usedrow" title="Skills used this turn"><span class="usedlbl">Used</span>${used}</span>` : ''}</span>` : ''}</div>`;
 }
@@ -956,10 +994,11 @@ function affinityChart() {
     <ul class="triangles"><li><b>Knights:</b> Saber › Lancer › Archer › Saber</li><li><b>Cavalry:</b> Rider › Caster › Assassin › Rider</li><li><b>Extra I:</b> Ruler › Moon Cancer › Avenger › Ruler; Rulers take reduced damage from the six base classes</li><li><b>Extra II:</b> Alter Ego › Foreigner › Pretender › Alter Ego; Alter Ego half-beats Cavalry and is weak into Knights, Pretender the reverse</li><li><b>Beast I</b> (Sodom's Beast): 1.25× into the seven standard classes (1.5× into Berserker) and takes 0.75× from them; deals 0.75× to and takes 1.5× from every Extra class</li><li><b>Beast II</b> (Space Ereshkigal): 1.25× into Ruler, Moon Cancer, Alter Ego, Foreigner and Pretender and takes 0.75× from them; Avengers beat them (1.5× taken, 0.75× dealt); neutral to everyone else, Berserker included</li><li><b>Berserker:</b> deals and takes extra damage against everyone, except Shielder (neutral when Berserker attacks) and Foreigner (resists Berserkers and hits them hard)</li></ul>`;
 }
 function renderSetup() {
+  if (app.browse) return renderBrowse('Before the draft');
   return `<div class="setup"><p class="eyebrow">Playtest build · servants 001–${String(Math.max(...POOL.map(d => d.id))).padStart(3, '0')} (${POOL.length} playable)</p><h1>Grand Order<br>PvP Playtest</h1>
     <p class="lede">Two players, one device. Snake-draft six servants under a ${E.CFG.costCap} cost cap with at most two 5★, set a lineup, then fight. Each turn both players secretly pick skills, then secretly pick three cards. Cards resolve slot by slot, and within a slot Quick goes before Arts, which goes before Buster. NPs move at their card type's speed.</p>
     <div class="opt-row"><button class="toggle" data-act="toggle-seals" role="switch" aria-checked="${app.opts.seals}"><span class="knob" aria-hidden="true"></span><span><b>Command Seals</b> ${app.opts.seals ? 'on' : 'off'}</span></button><span class="hint">Once per game, each player can fully heal a servant or give one +100% NP, on the field or in reserve.</span></div>
-    <div class="row"><button class="primary" data-act="start-draft">Start the draft</button><button data-act="quick">Quick start with random teams</button>${ONLINE ? '<button data-act="net-home">Back to online play</button>' : ''}</div>
+    <div class="row"><button class="primary" data-act="start-draft">Start the draft</button><button data-act="quick">Quick start with random teams</button><button data-act="browse-open">Browse servants &amp; kits</button>${ONLINE ? '<button data-act="net-home">Back to online play</button>' : ''}</div>
     <details class="affchart"><summary>Class affinity chart</summary>${affinityChart()}</details>
     <dl class="rules"><div><dt>Damage</dt><dd>ATK × card value × class and attribute affinity × buffs. Advantage 1.5×, disadvantage 0.75×, Berserker 1.5× both ways.</dd></div>
     <div><dt>NP gauge</dt><dd>NP Charge ATK × card NP value per hit, plus NP Charge DEF per hit taken. AoE NPs earn gauge from every target.</dd></div>
@@ -1014,7 +1053,7 @@ function netSend(ev, data) {
 }
 function toast(msg, ms = 3500) { if (!app.net) return; app.net.toast = msg; clearTimeout(app.net.toastT); app.net.toastT = setTimeout(() => { app.net.toast = null; const t = document.querySelector('.nettoast'); if (t) t.remove(); }, ms); const old = document.querySelector('.nettoast'); if (old) old.remove(); $('#app').insertAdjacentHTML('beforeend', netToast()); }
 function netToast() { return app.net && app.net.toast ? `<div class="nettoast" role="status">${esc(app.net.toast)}</div>` : ''; }
-function resetBattleView() { if (app.play) app.play.skip = true; app.play = null; app.view = null; app.turnIntro = null; clearArena(); document.querySelectorAll('.tbannounce').forEach(e => e.remove()); app.g = null; app.draft = null; app.fieldPick = null; app.lineup = null; app.fields = null; app.affChart = false; }
+function resetBattleView() { app.browse = null; if (app.play) app.play.skip = true; app.play = null; app.view = null; app.turnIntro = null; clearArena(); document.querySelectorAll('.tbannounce').forEach(e => e.remove()); app.g = null; app.draft = null; app.fieldPick = null; app.lineup = null; app.fields = null; app.affChart = false; }
 // A new match (or joining one in progress): rebuild it by replaying every public move instantly.
 function loadMatch(m) {
   const n = app.net; resetBattleView();
@@ -1157,8 +1196,15 @@ function renderLanding() {
     </div>
     <p class="hint"><button class="linkbtn" data-act="net-local">Play on one device instead</button></p></div>`;
 }
+// Servant list and kits, for looking around while waiting for a battle (lobby and the one-device setup screen).
+function renderBrowse(where) {
+  const S = app.browse; const f = S.focus ? R[S.focus] : null;
+  return `<div class="browse"><div class="bhead"><div><p class="eyebrow">${esc(where)}</p><h2>Servants &amp; kits</h2><p class="hint">Tap a servant to read their skills, NP and passives.</p></div><div class="row"><button class="chartbtn" data-act="aff-chart">Class chart</button><button class="primary" data-act="browse-close">Done</button></div></div>
+    ${renderPool(S, null)}</div>${f ? modal(servantDetail(f), '<button data-act="close-detail">Back</button>', 'close-detail', f.name) : ''}${app.affChart ? affChart() : ''}`;
+}
 function renderLobby() {
   const n = app.net; const room = n.room; if (!room) return renderLanding();
+  if (app.browse) return renderBrowse(`Room ${room.code}`);
   const host = amHost(); const me = room.players.find(p => p.id === n.me);
   const by = id => room.players.find(p => p.id === id);
   const tag = p => `${p.id === room.host ? '<span class="ptag host">Host</span>' : ''}${p.id === n.me ? '<span class="ptag you">You</span>' : ''}${p.online ? '' : '<span class="ptag off">Away</span>'}`;
@@ -1181,6 +1227,7 @@ function renderLobby() {
       ${host ? `<button class="toggle" data-act="net-seals" role="switch" aria-checked="${room.opts.seals}"><span class="knob" aria-hidden="true"></span><span><b>Command Seals</b> ${room.opts.seals ? 'on' : 'off'}</span></button>
         <button class="primary" data-act="net-start" ${ready.length >= 2 ? '' : 'disabled'}>${ready.length >= 2 ? `Start battle: ${esc(ready[0].name)} vs ${esc(ready[1].name)}` : 'Start battle (needs 2 in the queue)'}</button>` : `<p class="hint">${ready.length >= 2 ? `Waiting for the host to start ${esc(ready[0].name)} vs ${esc(ready[1].name)}.` : 'Waiting for two people in the battle queue.'}</p>`}
       ${host ? '<button data-act="net-cpu" title="Fight a computer opponent. Anyone else in the room watches.">Battle the CPU</button>' : ''}
+      <button data-act="browse-open">Browse servants &amp; kits</button>
       <button class="chartbtn" data-act="aff-chart">Class chart</button>
     </div>
     <p class="hint">Up to 6 people per room. The top two in the queue fight; after each battle the winner stays on and the loser goes to the back of the queue.</p>
@@ -1229,8 +1276,8 @@ document.addEventListener('focusout', hideTip);
 window.addEventListener('scroll', hideTip, true);
 // Typing in the draft search re-renders the list and keeps the cursor in the box.
 document.addEventListener('input', e => {
-  if (e.target.id !== 'draftSearch' || !app.draft) return;
-  app.draft.search = e.target.value; const pos = e.target.selectionStart;
+  if (e.target.id !== 'draftSearch' || !PS()) return;
+  PS().search = e.target.value; const pos = e.target.selectionStart;
   render();
   const i = document.getElementById('draftSearch'); if (i) { i.focus(); try { i.setSelectionRange(pos, pos); } catch (_) {} }
 });
@@ -1254,16 +1301,18 @@ document.addEventListener('click', ev => {
   switch (a) {
     case 'start-draft': return startDraft();
     case 'quick': return quickStart();
-    case 'filter': app.draft.filter = el.dataset.c; return render();
-    case 'role': app.draft.role = el.dataset.r; return render();
-    case 'rar': app.draft.rar = el.dataset.r; return render();
-    case 'focus': app.draft.focus = +el.dataset.id; return render();
-    case 'close-detail': app.draft.focus = null; return render();
-    case 'search-mode-menu': app.draft.modeMenu = !app.draft.modeMenu; return render();
-    case 'search-mode': { app.draft.mode = el.dataset.m; app.draft.modeMenu = false; render(); const i = document.getElementById('draftSearch'); if (i) { i.focus(); const n = i.value.length; i.setSelectionRange(n, n); } return; }
-    case 'search-clear': app.draft.search = ''; render(); { const i = document.getElementById('draftSearch'); if (i) i.focus(); } return;
+    case 'filter': PS().filter = el.dataset.c; return render();
+    case 'role': PS().role = el.dataset.r; return render();
+    case 'rar': PS().rar = el.dataset.r; return render();
+    case 'focus': PS().focus = +el.dataset.id; return render();
+    case 'close-detail': PS().focus = null; return render();
+    case 'search-mode-menu': PS().modeMenu = !PS().modeMenu; return render();
+    case 'search-mode': { PS().mode = el.dataset.m; PS().modeMenu = false; render(); const i = document.getElementById('draftSearch'); if (i) { i.focus(); const n = i.value.length; i.setSelectionRange(n, n); } return; }
+    case 'search-clear': PS().search = ''; render(); { const i = document.getElementById('draftSearch'); if (i) i.focus(); } return;
     case 'noop': return;
     case 'pick': return draftPick(+el.dataset.id);
+    case 'browse-open': app.browse = { filter: 'All', rar: 'All', role: 'All', search: '', mode: 'servant', modeMenu: false, focus: null, taken: new Set() }; return render();
+    case 'browse-close': app.browse = null; return render();
     case 'runit': u.focus = +el.dataset.uid; return render();
     case 'order': { const L = app.lineup; const o = L.orders[L.p]; const id = +el.dataset.id; const k = o.indexOf(id); if (k >= 0) o.splice(k, 1); else o.push(id); return render(); }
     case 'field': { const F = app.fieldPick; const m = F.picks[F.p]; const f = el.dataset.f; const k = m.indexOf(f); if (k >= 0) m.splice(k, 1); else if (m.length < 3) m.push(f); return render(); }
