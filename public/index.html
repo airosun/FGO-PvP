@@ -3371,15 +3371,17 @@ function execAction0(g, a) {
 
 function hitBlocked(g, u, t) {
   const pierceTI = has(u, 'pierceTrueInv'); // Hakuno / Jade Rabbit: goes through Anti-Enforcement DEF (not Evade)
-  if (has(t, 'trueInvincible') && !pierceTI) { consume(t, 'trueInvincible'); return 'Anti-Enforcement DEF'; }
+  // A defense that gets pierced still loses a use, as in FGO
+  const pierced = (s, label) => { consume(t, s); log(g, `${u.name} pierces ${t.name}'s ${label}.`, 'debuff'); fx(g, { t: 'eff', uid: t.uid, key: s === 'evade' ? 'evade' : 'invincible', label: `${label} pierced`, miss: true }); };
+  if (has(t, 'trueInvincible')) { if (!pierceTI) { consume(t, 'trueInvincible'); return 'Anti-Enforcement DEF'; } pierced('trueInvincible', 'Anti-Enforcement DEF'); }
   if (has(t, 'invincible') && has(t, 'convertInv') && !pierceTI) { consume(t, 'invincible'); return 'Anti-Enforcement DEF'; } // Kukulcan
-  if (has(t, 'invincible') && has(t, 'convertInv') && pierceTI) return null;
-  if (has(t, 'invincible') && !has(u, 'ignoreInv')) { consume(t, 'invincible'); return 'Invincible'; }
-  if (has(t, 'evade') && !has(u, 'sureHit') && !has(u, 'ignoreInv')) { consume(t, 'evade'); return 'Evade'; }
+  if (has(t, 'invincible') && has(t, 'convertInv') && pierceTI) { pierced('invincible', 'Anti-Enforcement DEF'); return null; }
+  if (has(t, 'invincible')) { if (!has(u, 'ignoreInv')) { consume(t, 'invincible'); return 'Invincible'; } pierced('invincible', 'Invincible'); }
+  if (has(t, 'evade')) { if (!has(u, 'sureHit') && !has(u, 'ignoreInv')) { consume(t, 'evade'); return 'Evade'; } pierced('evade', 'Evade'); }
   if (!has(u, 'ignoreInv')) { // Kingprotea Alter's Giant's Protection guards every ally on her field
     const gp = front(g, t.side).find(x => !x.dead && has(x, 'guardianParry'));
     if (gp) { consume(gp, 'guardianParry'); return gp === t ? "Giant's Protection" : `Giant's Protection (from ${gp.name})`; }
-  }
+  } else { const gp = front(g, t.side).find(x => !x.dead && has(x, 'guardianParry')); if (gp) { consume(gp, 'guardianParry'); log(g, `${u.name} pierces ${gp.name}'s Giant's Protection.`, 'debuff'); } }
   return null;
 }
 
