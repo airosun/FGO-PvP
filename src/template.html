@@ -831,7 +831,8 @@ h1, h2 { letter-spacing: .01em; }
 .mcbadge { display: inline-flex; vertical-align: middle; margin-left: 6px; cursor: help; }
 .sidelabel b { display: inline-flex; align-items: center; gap: 2px; }
 .mcbadge .badge { width: 22px !important; height: 22px !important; padding: 2px !important; }
-.mcpick { display: grid; gap: 8px; margin: 6px 0 10px; }
+.mcpick { display: grid; gap: 8px; margin: 4px 0 14px; padding: 12px; border-radius: 14px; background: rgba(255,255,255,.02); border: 1px solid var(--line); }
+.mcquick { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; } .mcq { display: inline-flex; gap: 6px; align-items: center; } .mcq .chip { display: inline-flex; gap: 5px; align-items: center; }
 .mcopts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
 .mcopt { display: flex; align-items: center; gap: 12px; text-align: left; padding: 12px 14px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); }
 .mcopt.on { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold), 0 0 18px color-mix(in srgb, var(--gold) 20%, transparent); }

@@ -838,7 +838,8 @@ h1, h2 { letter-spacing: .01em; }
 .mcbadge { display: inline-flex; vertical-align: middle; margin-left: 6px; cursor: help; }
 .sidelabel b { display: inline-flex; align-items: center; gap: 2px; }
 .mcbadge .badge { width: 22px !important; height: 22px !important; padding: 2px !important; }
-.mcpick { display: grid; gap: 8px; margin: 6px 0 10px; }
+.mcpick { display: grid; gap: 8px; margin: 4px 0 14px; padding: 12px; border-radius: 14px; background: rgba(255,255,255,.02); border: 1px solid var(--line); }
+.mcquick { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; } .mcq { display: inline-flex; gap: 6px; align-items: center; } .mcq .chip { display: inline-flex; gap: 5px; align-items: center; }
 .mcopts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
 .mcopt { display: flex; align-items: center; gap: 12px; text-align: left; padding: 12px 14px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); }
 .mcopt.on { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold), 0 0 18px color-mix(in srgb, var(--gold) 20%, transparent); }
@@ -3851,7 +3852,7 @@ function quickStart() {
     const pick = randomChoice(teams[p], taken);
     teams[p].push(pick.id); taken.add(pick.id);
   }
-  startBattle(teams);
+  startBattle(teams, { mcs: (app.opts.mcs || ['chaldea', 'chaldea']).slice() });
 }
 
 // ---------------------------------------------------------------- Draft
@@ -4015,9 +4016,9 @@ function renderLineup() {
   const p = L.p; const ord = L.orders[p];
   const team = L.teams[p];
   return `<div class="lineup"><p class="eyebrow">Lineup</p><h2>${PN(p)}: set your order</h2>
-    <p class="hint">Tap servants in the order you want them. The first three start on the field; the rest come in, in order, when someone falls.</p>
-    <div class="lineup-grid">${team.map(id => { const k = ord.indexOf(id); return `<button class="lslot${k >= 0 ? ' set' : ''}" data-act="order" data-id="${id}"><span class="lnum">${k >= 0 ? (k < 3 ? 'Start ' + (k + 1) : 'Reserve ' + (k - 2)) : '–'}</span><span class="tname">${esc(R[id].name)}</span><span class="tmeta">${CI(R[id].cls)}${'★'.repeat(R[id].rar)}</span></button>`; }).join('')}</div>
+    <p class="hint">Pick your Mystic Code, then tap servants in the order you want them. The first three start on the field; the rest come in, in order, when someone falls.</p>
     ${mcPicker(L, p)}
+    <div class="lineup-grid">${team.map(id => { const k = ord.indexOf(id); return `<button class="lslot${k >= 0 ? ' set' : ''}" data-act="order" data-id="${id}"><span class="lnum">${k >= 0 ? (k < 3 ? 'Start ' + (k + 1) : 'Reserve ' + (k - 2)) : '–'}</span><span class="tname">${esc(R[id].name)}</span><span class="tmeta">${CI(R[id].cls)}${'★'.repeat(R[id].rar)}</span></button>`; }).join('')}</div>
     <div class="row"><button data-act="order-reset">Reset</button><button data-act="order-random">Random order</button><button class="primary" data-act="order-done" ${ord.length === 6 ? '' : 'disabled'}>${NET() ? 'Lock in lineup' : p === 0 ? 'Done, Player 2 next' : 'Start the battle'}</button></div></div>`;
 }
 
@@ -4806,6 +4807,7 @@ function renderSetup() {
   if (app.browse) return renderBrowse('Before the draft');
   return `<div class="setup"><p class="eyebrow">Playtest build · servants 001–${String(Math.max(...POOL.map(d => d.id))).padStart(3, '0')} (${POOL.length} playable)</p><h1>Grand Order<br>PvP Playtest</h1>
     <p class="lede">Two players, one device. Snake-draft six servants under a ${E.CFG.costCap} cost cap with at most two 5★, set a lineup, then fight. Each turn both players secretly pick skills, then secretly pick three cards. Cards resolve slot by slot, and within a slot Quick goes before Arts, which goes before Buster. NPs move at their card type's speed.</p>
+    <div class="opt-row mcquick"><span class="hint">Mystic Codes for <b>Quick start</b> (in a draft, each player picks theirs while setting their order):</span>${[0, 1].map(p => `<span class="mcq"><b>P${p + 1}</b>${Object.keys(E.MYSTIC).map(k => `<button class="chip${(app.opts.mcs || ['chaldea', 'chaldea'])[p] === k ? ' on' : ''}" data-act="mc-quick" data-p="${p}" data-mc="${k}">${I.badge(MC_ICON[k], { plain: true, size: 'sm' })}${esc(E.MYSTIC[k].n.replace(' Uniform', ''))}</button>`).join('')}</span>`).join('')}</div>
     <div class="opt-row"><button class="toggle" data-act="toggle-seals" role="switch" aria-checked="${app.opts.seals}"><span class="knob" aria-hidden="true"></span><span><b>Command Seals</b> ${app.opts.seals ? 'on' : 'off'}</span></button><span class="hint">Once per game, each player can fully heal a servant or give one +100% NP, on the field or in reserve.</span></div>
     <div class="row"><button class="primary" data-act="start-draft">Start the draft</button><button data-act="quick">Quick start with random teams</button><button data-act="browse-open">Browse servants &amp; kits</button>${ONLINE ? '<button data-act="net-home">Back to online play</button>' : ''}</div>
     <details class="affchart"><summary>Class affinity chart</summary>${affinityChart()}</details>
@@ -5198,6 +5200,7 @@ document.addEventListener('click', ev => {
     case 'random-pick': return randomPick();
     case 'random-rest': return randomizeRest();
     case 'order-done': { const L = app.lineup; L.mc = L.mc || ['chaldea', 'chaldea']; if (NET()) { if (L.orders[L.p].length !== 6) return; netSend('act', { t: 'lineup', order: L.orders[L.p], mc: L.mc[L.p] }); L.sent = true; return render(); } if (L.p === 0) { L.p = 1; return render(); } return startBattle(L.orders, { mcs: L.mc.slice() }); }
+    case 'mc-quick': { app.opts.mcs = (app.opts.mcs || ['chaldea', 'chaldea']).slice(); app.opts.mcs[+el.dataset.p] = el.dataset.mc; return render(); }
     case 'mc-pick': { const L = app.lineup; L.mc = L.mc || ['chaldea', 'chaldea']; L.mc[L.p] = el.dataset.mc; return render(); }
     case 'uncover': u.cover = null; return render();
     case 'skill': {
