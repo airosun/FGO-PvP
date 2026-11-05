@@ -788,6 +788,46 @@ h1, h2 { letter-spacing: .01em; }
 .unit.unit.selected { box-shadow: 0 0 0 2px var(--gold) inset; }
 @keyframes tgtPulse { 50% { filter: brightness(1.12); transform: translateY(-1px); } }
 @media (prefers-reduced-motion: reduce) { .unit.unit.targetable { animation: none; } }
+
+/* ---- Victory announcement */
+.victory { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; padding: 16px; background: radial-gradient(ellipse at center, rgba(0,0,0,.55), rgba(0,0,0,.82)); animation: vFade .35s ease-out; }
+.victory .vcard { position: relative; width: min(560px, 100%); text-align: center; display: grid; gap: 10px; justify-items: center; padding: 34px 26px 26px; border-radius: 20px; overflow: hidden;
+  background: linear-gradient(180deg, #232327, #121214); border: 1px solid color-mix(in srgb, var(--gold) 60%, var(--line)); box-shadow: 0 0 0 1px rgba(0,0,0,.6), 0 30px 80px rgba(0,0,0,.6), 0 0 60px color-mix(in srgb, var(--gold) 22%, transparent); animation: vPop .55s cubic-bezier(.2,1.4,.4,1); }
+.victory .vrays { position: absolute; inset: -60%; z-index: 0; background: repeating-conic-gradient(from 0deg, color-mix(in srgb, var(--gold) 16%, transparent) 0deg 8deg, transparent 8deg 22deg); animation: vSpin 26s linear infinite; mask: radial-gradient(circle, #000 0%, transparent 55%); -webkit-mask: radial-gradient(circle, #000 0%, transparent 55%); }
+.victory .vcard > :not(.vrays) { position: relative; z-index: 1; }
+.victory .vtitle { font-size: clamp(2.6rem, 9vw, 4.4rem); line-height: 1; letter-spacing: .02em; background: linear-gradient(180deg, #fff6d6 0%, var(--gold) 55%, #9c7a24 100%); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 4px 14px rgba(0,0,0,.6)); animation: vTitle .9s cubic-bezier(.2,1.2,.3,1) .1s both; }
+.victory.lost .vtitle { background: linear-gradient(180deg, #e7e7ea, #8a8a92); -webkit-background-clip: text; background-clip: text; }
+.victory.lost .vcard { border-color: var(--line); box-shadow: 0 30px 80px rgba(0,0,0,.6); } .victory.lost .vrays { display: none; }
+.victory .vsub { font-size: 1.15rem; font-weight: 700; }
+.victory.p0 .vsub { color: var(--p0); } .victory.p1 .vsub { color: var(--p1); }
+.victory .vwhy { color: var(--muted); font-size: .88rem; }
+.victory .vmvp { display: grid; gap: 3px; justify-items: center; margin-top: 6px; padding: 10px 16px; border-radius: 12px; background: rgba(255,255,255,.04); border: 1px solid var(--line); }
+.victory .vmvp b { display: inline-flex; align-items: center; gap: 7px; font-size: 1.05rem; } .victory .vmvp .clsico { width: 22px; height: 22px; }
+.victory .vmvp span:last-child { color: var(--muted); font-size: .82rem; }
+.victory .vbtns { justify-content: center; margin-top: 8px; }
+@keyframes vFade { from { opacity: 0; } } @keyframes vPop { from { opacity: 0; transform: scale(.82) translateY(20px); } }
+@keyframes vTitle { from { opacity: 0; transform: scale(1.6); letter-spacing: .3em; } } @keyframes vSpin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .victory, .victory .vcard, .victory .vtitle { animation: none; } .victory .vrays { animation: none; } }
+
+/* ---- Battle stats */
+.modal:has(.statsbox) { width: min(1180px, 96vw); max-width: none; }
+.statsbox { display: grid; gap: 14px; min-width: 0; } .statsbox > * { min-width: 0; }
+.stteam h4 { font-family: var(--f-display, inherit); font-size: 1.1rem; margin: 0 0 6px; display: flex; gap: 8px; align-items: center; }
+.stteam.p0 h4 { color: var(--p0); } .stteam.p1 h4 { color: var(--p1); }
+.wtag { font: 700 .62rem/1 var(--f-body); letter-spacing: .08em; text-transform: uppercase; padding: 3px 7px; border-radius: 999px; background: var(--gold); color: var(--gold-ink); }
+.sttable { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
+.sttable table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+.sttable th, .sttable td { padding: 6px 8px; text-align: right; white-space: nowrap; border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent); font-family: var(--f-mono); }
+.sttable th { position: sticky; top: 0; background: var(--panel2); font-family: var(--f-body); }
+.sttable .sname { text-align: left; font-family: var(--f-body); position: sticky; left: 0; background: var(--panel); z-index: 1; }
+.sttable th.sname { background: var(--panel2); z-index: 2; }
+.sttable td.sname { display: flex; align-items: center; gap: 6px; max-width: 220px; } .sttable td.sname span { overflow: hidden; text-overflow: ellipsis; }
+.sttable td.sname .clsico { width: 18px; height: 18px; flex: none; } .sttable td.sname small { color: var(--neg); font-size: .6rem; font-weight: 700; }
+.sttable tr.ko td:not(.sname) { opacity: .75; }
+.sth { background: none; border: 0; padding: 0; font: 600 .74rem var(--f-body); color: var(--muted); cursor: pointer; } .sth.on { color: var(--gold); text-decoration: underline; text-underline-offset: 3px; }
+.sttable td.lead { color: var(--gold); font-weight: 700; background: color-mix(in srgb, var(--gold) 9%, transparent); }
+.sttable td .z { color: color-mix(in srgb, var(--muted) 50%, transparent); }
+.sttable tfoot td { font-weight: 700; color: var(--muted); border-bottom: 0; background: rgba(255,255,255,.02); }
 </style>
 <script>// Original inline-SVG icon set: class icons and effect icons. Drawn for this prototype, not taken from the game.
 (function (root) {
@@ -1984,7 +2024,7 @@ function mkRng(seed) {
 // that changes during play is copied, and the copy gets its own random numbers so it can't peek at real rolls.
 function cloneGame(g, seed) {
   const cp = v => Array.isArray(v) ? v.map(x => (x && typeof x === 'object' && !Array.isArray(x) && !x.uid ? { ...x } : Array.isArray(x) ? x.slice() : x)) : v && typeof v === 'object' ? { ...v } : v;
-  const c = { ...g, rng: mkRng(seed == null ? Math.floor(Math.random() * 2 ** 31) : seed), fx: null, log: g.log.slice(-20), units: {}, players: [] };
+  const c = { ...g, stats: null, _seenBuffs: null, rng: mkRng(seed == null ? Math.floor(Math.random() * 2 ** 31) : seed), fx: null, log: g.log.slice(-20), units: {}, players: [] };
   for (const [uid, u] of Object.entries(g.units)) {
     const x = { ...u, g: c };
     for (const k of Object.keys(u)) if (k !== 'g' && k !== 'd' && k !== 'kit' && u[k] && typeof u[k] === 'object') x[k] = cp(u[k]);
@@ -2034,6 +2074,40 @@ function canPick(team, id, taken, R) {
 }
 
 // ---------------------------------------------------------------- Battle setup
+// ---- Battle stats: damage dealt and taken, healing, NP gained and lost, best hit, attacks, NPs, buffs, KOs.
+// HP and NP changes are caught where they happen (a watched property on each servant), and credited to whoever is
+// acting at that moment. Look-ahead copies of a battle (the CPU's) don't track anything.
+function newStat() { return { dealt: 0, taken: 0, healed: 0, healGiven: 0, npGain: 0, npLost: 0, best: 0, bestWhat: '', attacks: 0, nps: 0, crits: 0, buffs: 0, debuffs: 0, kills: 0, evaded: 0, turns: 0 }; }
+// Objects built on top of a servant (the UI's animation views use Object.create) get their own copy instead of
+// writing through to the real servant.
+function own(obj, k, v) { Object.defineProperty(obj, k, { value: v, writable: true, enumerable: true, configurable: true }); }
+function watchUnit(g, u) {
+  let hp = u.hp, np = u.np;
+  Object.defineProperty(u, 'hp', { enumerable: true, configurable: true, get: () => hp, set(v) { if (this !== u) return own(this, 'hp', v); const old = hp, d = v - hp; hp = v; if (d && g.stats) statHp(g, u, d < 0 ? -Math.min(-d, Math.max(0, old)) : d); } }); // overkill doesn't count
+  Object.defineProperty(u, 'np', { enumerable: true, configurable: true, get: () => np, set(v) { if (this !== u) return own(this, 'np', v); const d = v - np; np = v; if (d && g.stats && !u.dead && !g._spending) statNp(g, u, d); } });
+}
+function statHp(g, u, d) {
+  const S = g.stats, me = S[u.uid]; if (!me) return;
+  const by = g._actor != null ? S[g._actor] : null; const actor = g._actor != null ? g.units[g._actor] : null;
+  if (d < 0) {
+    me.taken += -d;
+    if (actor && actor.side !== u.side) { by.dealt += -d; g._atkDmg = (g._atkDmg || 0) + -d; }
+  } else if (!g._reviving) {
+    me.healed += d;
+    if (actor && actor.side === u.side && actor !== u) by.healGiven += d;
+  }
+}
+function statNp(g, u, d) { const me = g.stats[u.uid]; if (!me) return; if (d > 0) me.npGain += d; else me.npLost += -d; }
+// New buffs and debuffs since the last look are counted once each (passives don't count).
+function scanBuffs(g) {
+  if (!g.stats) return;
+  const seen = g._seenBuffs || (g._seenBuffs = new WeakSet());
+  for (const u of Object.values(g.units)) for (const b of u.buffs) {
+    if (seen.has(b)) continue; seen.add(b);
+    if (b.passive || b.s === 'ctrlImmune') continue;
+    const me = g.stats[u.uid]; if (b.debuff) me.debuffs++; else me.buffs++;
+  }
+}
 function makeUnit(R, KITS, sid, side, uidSeq) {
   const d = R[sid];
   // Class, attribute and alignment words count as traits too, so skill conditions like 'Lawful' or 'Saber' work.
@@ -2049,7 +2123,7 @@ function newBattle(R, KITS, teams, opts = {}) {
   const g = { R, KITS, rng, seals: opts.seals !== false, turn: 0, phase: 'skills', initiative: opts.initiative ?? 0, log: [], units: {}, players: [], winner: null, over: false };
   let seq = 1;
   for (let p = 0; p < 2; p++) {
-    const order = teams[p].map(sid => { const u = makeUnit(R, KITS, sid, p, seq++); u.g = g; g.units[u.uid] = u; return u.uid; });
+    const order = teams[p].map(sid => { const u = makeUnit(R, KITS, sid, p, seq++); u.g = g; g.units[u.uid] = u; watchUnit(g, u); return u.uid; });
     g.players.push({ order, front: order.slice(0, 3), reserve: order.slice(3), bag: [], hand: [], stars: 0, skillQueue: [], masterQueue: [], mcds: [0, 0, 0], sealUsed: false, sealQueue: null, cardSel: [] });
   }
   // Battlefield: one field from each player's picks, alternating every 2 turns.
@@ -2057,6 +2131,8 @@ function newBattle(R, KITS, teams, opts = {}) {
   g.fieldOverride = null;
   // Space Ereshkigal's Affection gauge: +5 for bond, +5 if she starts on the field
   for (let p = 0; p < 2; p++) if (g.players[p].order.some(id => U(g, id).kit.fullness)) for (const id of g.players[p].order) U(g, id).full = 0;
+  g.stats = {}; for (const u of Object.values(g.units)) g.stats[u.uid] = newStat();
+  g._seenBuffs = new WeakSet(); for (const u of Object.values(g.units)) for (const b of u.buffs) g._seenBuffs.add(b); // starting passives
   for (const u of Object.values(g.units)) if (u.kit.affection) { u.aff = 0; addAffection(g, u, 5, 'bond'); if (g.players[u.side].front.includes(u.uid)) addAffection(g, u, 5, 'starting member'); }
   startTurn(g);
   return g;
@@ -2736,7 +2812,7 @@ function killOrGuts(g, t, by) {
     const kb = knight && knight.buffs.find(b => b.s === 'knighthood');
     guts.n -= 1;
     if (guts.n <= 0) t.buffs.splice(t.buffs.indexOf(guts), 1);
-    t.hp = guts.hp + (kb ? kb.gutsHp : 0);
+    g._reviving = true; t.hp = guts.hp + (kb ? kb.gutsHp : 0); g._reviving = false;
     log(g, `${t.name}'s Guts activates! Back at ${t.hp} HP.`, 'buff');
     if (kb) { t.buffs.push({ s: 'atk', v: kb.atkUp, t: 3, from: 'Knighthood Conferment' }); log(g, `${knight.name}'s Knighthood Conferment: ${t.name} +${kb.gutsHp} HP on revival, ATK +${kb.atkUp}% 3T.`, 'buff'); }
     fx(g, { t: 'guts', uid: t.uid, label: `Guts! ${guts.hp} HP` });
@@ -2745,6 +2821,7 @@ function killOrGuts(g, t, by) {
     return false;
   }
   t.hp = 0; t.dead = true; t.np = 0;
+  if (g.stats && by && by.side !== t.side && g.stats[by.uid]) g.stats[by.uid].kills++;
   fireTriggers(g, t, 'death', { target: by && by !== t && !by.dead ? by : null });
   log(g, `${t.name} is defeated.`, 'ko');
   fx(g, { t: 'ko', uid: t.uid });
@@ -3014,6 +3091,12 @@ function resolveSkills(g) {
   g.phase = 'cards';
 }
 function resolveItem(g, p, item) {
+  if (!g.stats || item.kind !== 'skill') { resolveItem0(g, p, item); scanBuffs(g); return; }
+  const prev = g._actor; g._actor = item.q.uid; g._atkDmg = 0;
+  resolveItem0(g, p, item);
+  g._actor = prev; scanBuffs(g);
+}
+function resolveItem0(g, p, item) {
   if (item.kind === 'seal') { useSeal(g, p); return; }
   if (item.kind === 'master') {
     const m = item.m; const M = MASTER[m.i];
@@ -3218,6 +3301,15 @@ function pickTarget(g, attacker, wanted) {
 
 function execAction(g, a) {
   const u = U(g, a.card.uid);
+  if (!g.stats || !u) return execAction0(g, a);
+  const prev = g._actor; g._actor = u.uid; g._atkDmg = 0;
+  execAction0(g, a);
+  const st = g.stats[u.uid];
+  if (g._atkDmg > st.best) { st.best = Math.round(g._atkDmg); st.bestWhat = a.card.type === 'NP' ? (u.kit.np && u.kit.np.n) || 'NP' : `${COLOR[a.slot === 3 ? 'EX' : cardColor(g, a.card)]} card`; }
+  g._actor = prev; scanBuffs(g);
+}
+function execAction0(g, a) {
+  const u = U(g, a.card.uid);
   const tag = `P${a.p + 1} slot ${a.slot + 1}`;
   if (!u || u.dead || !g.players[u.side].front.includes(u.uid)) { log(g, `${tag}: ${u ? u.name : 'Card'} is down, card fizzles.`, 'miss'); return; }
   if (a.card.inactive && cardSealed(g, a.card) && canAct(u)) { log(g, `${tag}: ${u.name}'s ${COLOR[cardColor(g, a.card)]} card is sealed and doesn't activate.`, 'miss'); fx(g, { t: 'eff', uid: u.uid, key: 'skillSeal', label: `${COLOR[cardColor(g, a.card)]} sealed`, miss: true }); return; }
@@ -3266,6 +3358,7 @@ function attackCard(g, u, t, color, a, tag) {
     t.buffs.push({ s: 'curse', v: b.v, t: 5, debuff: true, from: b.from });
   }
   const blocked = hitBlocked(g, u, t);
+  if (g.stats && !a.aoeRest) { if (blocked) g.stats[t.uid].evaded++; else g.stats[u.uid].attacks++; } else if (g.stats && blocked) g.stats[t.uid].evaded++;
   if (blocked) { log(g, `${tag}: ${u.name}'s ${COLOR[color]} is blocked by ${t.name}'s ${blocked}.`, 'miss'); fx(g, { t: 'eff', uid: t.uid, key: blocked === 'Evade' ? 'evade' : 'invincible', label: blocked, miss: true }); return; }
   if (!a.aoeRest) fireTriggers(g, u, 'cardBefore', { color, target: t });
   let cardVal = color === 'EX' ? (pl.chain ? CFG.extraBrave : CFG.extraVal) : CFG.cardVal[color][slot];
@@ -3402,7 +3495,7 @@ function execNP(g, u, a, tag) {
   const color = npColor(u);
   const ocUp = sumStat(u, 'ocUp'); if (ocUp) consumeAllUses(u, 'ocUp');
   const oc = Math.min(5, Math.floor(u.np / 100) + (a.card.ocBonus || 0) + ocUp);
-  const spent = u.np; u.np = 0;
+  const spent = u.np; g._spending = true; u.np = 0; g._spending = false; if (g.stats) g.stats[u.uid].nps++;
   for (const x of front(g, u.side)) if (x !== u) for (const b of x.buffs.filter(b => b.s === 'npEcho')) { // Solomon: NP back when a Caster ally uses theirs
     if (b.cls && b.cls.length && !b.cls.includes(effCls(u))) continue;
     const gain = Math.round(spent * b.v) / 100; x.np = Math.min(npCap(x), x.np + gain); log(g, `${x.name}: NP +${gain}% (${u.name} used their NP).`, 'buff');
@@ -3469,6 +3562,7 @@ function execNP(g, u, a, tag) {
 
 // ---- End of turn
 function endTurn(g) {
+  if (g.stats) { g._actor = null; for (let p = 0; p < 2; p++) for (const u of front(g, p)) if (!u.dead && g.stats[u.uid]) g.stats[u.uid].turns++; }
   if (g.over) return;
   fx(g, { t: 'phase', name: 'end' });
   g.inEndTurn = true;
@@ -3938,7 +4032,7 @@ function startBattle(teams, o = {}) {
   if (!app.fields) app.fields = randomFields();
   const N = NET();
   app.g = E.newBattle(R, KITS, teams, N ? { seed: N.seed, initiative: o.initiative, seals: N.seals, fields: app.fields } : { initiative: Math.random() < 0.5 ? 0 : 1, seals: app.opts.seals, fields: app.fields });
-  app.screen = 'battle';
+  app.screen = 'battle'; app.statsOpen = false;
   app.ui = { stage: 'skills', actor: N ? SEAT() : 0, cover: null, targeting: null, target: [null, null], sel: [], focus: null, revealFrom: 0 };
   if (o.instant) return;
   return startTurnUI();
@@ -4089,7 +4183,7 @@ function renderField() {
     const token = ini === p ? `<span class="token" tabindex="0" data-tip="Tie-breaker token: when both players' cards in a slot have the same priority, ${PN(p)}'s card resolves first this turn. It also decides who activates the first skill each turn. The token passes to the other player after all attacks resolve.">${I.svg('star')}<span>Tie-breaker</span></span>` : '';
     return `<div class="siderow p${p}"><div class="sidelabel"><b>${esc(PN(p))}${NET() && SEAT() === p ? ' <small class="you">You</small>' : ''}</b>${token}${g.seals ? `<span class="sealmark${sealUsed ? ' used' : ''}" tabindex="0" data-tip="${sealUsed ? `${PN(p)} has used their Command Seal.` : `${PN(p)}'s Command Seal is ready: once per game, fully heal a servant or give one +100% NP.`}">${I.svg('seal')}<span>${sealUsed ? 'Seal used' : 'Seal'}</span></span>` : ''}<span class="sidemeta">${sideMeta(p)}</span></div><div class="units">${tiles}</div>${reserveStrip(p)}</div>`;
   };
-  return { left: row(0), right: row(1), mid: `<div class="midline"><span>Turn ${g.turn}/${E.CFG.turnLimit}</span><button class="chartbtn" data-act="aff-chart">Class chart</button>${fieldNow()}</div>` };
+  return { left: row(0), right: row(1), mid: `<div class="midline"><span>Turn ${g.turn}/${E.CFG.turnLimit}</span><button class="chartbtn" data-act="aff-chart">Class chart</button><button class="chartbtn" data-act="open-stats" ${app.play ? 'disabled' : ''}>Stats</button>${fieldNow()}</div>` };
 }
 // Reserves: your own (and everyone's, for spectators) are listed under the team; an opponent's stay hidden.
 function canSeeReserves(p) { return NET() ? (SEAT() == null || SEAT() === p) : false; }
@@ -4115,7 +4209,7 @@ function turnBar() {
   if (u.stage === 'cards-reveal') return `<div class="turnbar"><p><b>Turn resolved.</b> Each slot went Quick, Arts, then Buster; NPs move at their card type's speed.</p><button class="primary" data-act="next-turn">Start turn ${g.turn}</button></div>`;
   if (u.stage === 'over') {
     const w = g.winner;
-    return `<div class="turnbar over"><p><b>${w === 'draw' ? 'Draw' : `${PN(w)} wins`}</b> on turn ${g.turn}. Servants left: P1 ${E.aliveCount(g, 0)}, P2 ${E.aliveCount(g, 1)}.${g.limitBy === 'hp' ? ` Average HP left: P1 ${Math.round(E.hpPct(g, 0) * 100)}%, P2 ${Math.round(E.hpPct(g, 1) * 100)}%.` : ''}</p><div class="row"><button class="primary" data-act="rematch">Rematch, same teams</button><button data-act="new-draft">New draft</button></div></div>`;
+    return `<div class="turnbar over"><p><b>${w === 'draw' ? 'Draw' : `${PN(w)} wins`}</b> on turn ${g.turn}. Servants left: P1 ${E.aliveCount(g, 0)}, P2 ${E.aliveCount(g, 1)}.${g.limitBy === 'hp' ? ` Average HP left: P1 ${Math.round(E.hpPct(g, 0) * 100)}%, P2 ${Math.round(E.hpPct(g, 1) * 100)}%.` : ''}</p><div class="row"><button class="primary" data-act="rematch">Rematch, same teams</button><button data-act="new-draft">New draft</button><button data-act="open-stats">Battle stats</button></div></div>`;
   }
   if (u.stage === 'skills' || u.stage === 'cards') return `<div class="turnbar"><p>${PN(u.actor)} is choosing ${u.stage === 'skills' ? 'skills' : 'cards'}. Their panel is under their team.</p></div>`;
   return '';
@@ -4237,7 +4331,7 @@ function renderBattle() {
   const spyHand = p => isSpec() && live && !app.play ? handPreview(p, `${PN(p)}'s hand`) : '';
   const side = p => `${p === 0 ? f.left : f.right}${!u.cover && u.actor === p && (u.stage === 'skills' || u.stage === 'cards') && (!NET() || SEAT() === p) ? renderDock() : ''}${spyHand(p)}`;
   const L = leftSide();
-  return `${netBar()}<div class="battle"><div class="col left">${side(L)}</div><div class="col center">${f.mid}<div class="stage" id="stage" aria-hidden="true"></div>${turnBar()}${renderLog()}</div><div class="col right">${side(1 - L)}</div></div>${u.focus && !u.cover ? renderFocus() : ''}${app.affChart ? affChart() : ''}${cover}`;
+  return `${netBar()}<div class="battle"><div class="col left">${side(L)}</div><div class="col center">${f.mid}<div class="stage" id="stage" aria-hidden="true"></div>${turnBar()}${renderLog()}</div><div class="col right">${side(1 - L)}</div></div>${u.focus && !u.cover ? renderFocus() : ''}${app.affChart ? affChart() : ''}${app.statsOpen ? statsModal() : ''}${u.stage === 'over' && !app.play && !u.victoryClosed && !app.statsOpen ? victoryOverlay() : ''}${cover}`;
 }
 
 // ---------------------------------------------------------------- Playback
@@ -4728,7 +4822,7 @@ function netSend(ev, data) {
 }
 function toast(msg, ms = 3500) { if (!app.net) return; app.net.toast = msg; clearTimeout(app.net.toastT); app.net.toastT = setTimeout(() => { app.net.toast = null; const t = document.querySelector('.nettoast'); if (t) t.remove(); }, ms); const old = document.querySelector('.nettoast'); if (old) old.remove(); $('#app').insertAdjacentHTML('beforeend', netToast()); }
 function netToast() { return app.net && app.net.toast ? `<div class="nettoast" role="status">${esc(app.net.toast)}</div>` : ''; }
-function resetBattleView() { app.browse = null; if (app.play) app.play.skip = true; app.play = null; app.view = null; app.turnIntro = null; clearArena(); document.querySelectorAll('.tbannounce').forEach(e => e.remove()); app.g = null; app.draft = null; app.fieldPick = null; app.lineup = null; app.fields = null; app.affChart = false; }
+function resetBattleView() { app.browse = null; if (app.play) app.play.skip = true; app.play = null; app.view = null; app.turnIntro = null; clearArena(); document.querySelectorAll('.tbannounce').forEach(e => e.remove()); app.g = null; app.draft = null; app.fieldPick = null; app.lineup = null; app.fields = null; app.affChart = false; app.statsOpen = false; }
 // A new match (or joining one in progress): rebuild it by replaying every public move instantly.
 function loadMatch(m) {
   const n = app.net; resetBattleView();
@@ -4846,9 +4940,9 @@ function netTurnBar() {
     const w = g.winner; const iWon = M.cpu != null ? me != null : w === 'draw' ? me != null : me === w; // vs the CPU the human always gets the buttons
     const head = `<p><b>${w === 'draw' ? 'Draw' : `${esc(PN(w))} wins`}</b> on turn ${g.turn}. Servants left: ${esc(PN(0))} ${E.aliveCount(g, 0)}, ${esc(PN(1))} ${E.aliveCount(g, 1)}.${g.limitBy === 'hp' ? ` Average HP left: ${Math.round(E.hpPct(g, 0) * 100)}% vs ${Math.round(E.hpPct(g, 1) * 100)}%.` : ''}</p>`;
     if (!M.over) return `<div class="turnbar over">${head}<p class="hint">Wrapping up…</p></div>`;
-    const btns = (iWon ? `<button class="primary" data-act="net-go">${M.next === 'next' ? 'Play Next Matchup' : 'Play Again'}</button>` : '') + (iWon || amHost() ? '<button data-act="net-lobby">Return to Lobby</button>' : '');
+    const btns = postGameButtons();
     const who = w === 'draw' ? 'either player' : PN(w);
-    return `<div class="turnbar over">${head}<div class="row">${btns || `<p class="hint">Waiting for ${esc(who)} to start the next battle or return everyone to the lobby.</p>`}</div></div>`;
+    return `<div class="turnbar over">${head}<div class="row">${btns || `<p class="hint">Waiting for ${esc(who)} to start the next battle or return everyone to the lobby.</p>`}<button data-act="open-stats">Battle stats</button></div></div>`;
   }
   if (u.stage === 'skills' || u.stage === 'cards' || u.stage === 'wait') {
     if (me == null) return `<div class="turnbar"><p><b>Players are choosing ${what}.</b> ${status(0)} ${status(1)}</p></div>`;
@@ -4931,6 +5025,56 @@ async function netClick(a, el) {
 }
 document.addEventListener('keydown', e => { if (e.key === 'Enter' && app.screen === 'landing' && e.target.id) { e.preventDefault(); netClick(e.target.id === 'codeIn' ? 'net-join' : 'net-create', e.target); } });
 
+// ---- Battle stats and the victory announcement
+const STAT_COLS = [
+  ['dealt', 'Damage dealt', 'Dealt'], ['taken', 'Damage taken', 'Taken'], ['healed', 'HP restored to them', 'Healed'], ['healGiven', 'HP they restored to allies', 'Heal given'],
+  ['npGain', 'NP gauge gained (%)', 'NP +'], ['npLost', 'NP gauge lost to enemy drain or effects (%)', 'NP −'], ['best', 'Highest damage from a single attack or NP', 'Best hit'],
+  ['attacks', 'Attacks that landed (an AoE card counts once)', 'Hits'], ['nps', 'Noble Phantasms fired', 'NPs'], ['buffs', 'Buffs received', 'Buffs'], ['debuffs', 'Debuffs received', 'Debuffs'],
+  ['kills', 'Enemies defeated', 'KOs'], ['evaded', 'Attacks evaded or blocked', 'Dodged'], ['turns', 'Turns spent on the field', 'Turns'],
+];
+const fmtStat = (k, v) => (k === 'npGain' || k === 'npLost' ? `${Math.round(v)}%` : Math.round(v).toLocaleString());
+function statsTable(g, p, lead) {
+  const S = g.stats || {}; const sort = app.statsSort || 'dealt';
+  const rows = g.players[p].order.map(id => ({ u: g.units[id], s: S[id] || {} })).sort((a, b) => (b.s[sort] || 0) - (a.s[sort] || 0));
+  const tot = k => rows.reduce((a, r) => a + (r.s[k] || 0), 0);
+  return `<section class="stteam p${p}"><h4>${esc(PN(p))}${g.winner === p ? ' <span class="wtag">Winner</span>' : ''}</h4><div class="sttable"><table>
+    <thead><tr><th class="sname">Servant</th>${STAT_COLS.map(([k, tip, lbl]) => `<th><button class="sth${sort === k ? ' on' : ''}" data-act="stats-sort" data-k="${k}" data-tip="${esc(tip)}">${lbl}</button></th>`).join('')}</tr></thead>
+    <tbody>${rows.map(({ u, s }) => `<tr class="${u.dead ? 'ko' : ''}"><td class="sname">${CI(u.cls)}<span>${esc(u.name)}</span>${u.dead ? '<small>KO</small>' : ''}</td>${STAT_COLS.map(([k]) => `<td class="${(s[k] || 0) > 0 && lead[k] === u.uid ? 'lead' : ''}"${k === 'best' && s.bestWhat ? ` data-tip="${esc(s.bestWhat)}"` : ''}>${(s[k] || 0) ? fmtStat(k, s[k]) : '<span class="z">–</span>'}</td>`).join('')}</tr>`).join('')}</tbody>
+    <tfoot><tr><td class="sname">Team</td>${STAT_COLS.map(([k]) => `<td>${k === 'best' ? fmtStat(k, Math.max(0, ...rows.map(r => r.s.best || 0))) : fmtStat(k, tot(k))}</td>`).join('')}</tr></tfoot></table></div></section>`;
+}
+function statsLeaders(g) { const lead = {}; for (const [k] of STAT_COLS) { let best = 0; for (const [id, s] of Object.entries(g.stats || {})) if ((s[k] || 0) > best) { best = s[k]; lead[k] = +id; } } return lead; }
+function mvp(g) {
+  if (!g.stats) return null; let best = null, sc = -1;
+  for (const [id, s] of Object.entries(g.stats)) { const v = s.dealt + s.healGiven * 0.8 + s.kills * 600 + s.buffs * 10; if (v > sc) { sc = v; best = +id; } }
+  return best != null ? g.units[best] : null;
+}
+function statsModal() {
+  const g = app.g; const lead = statsLeaders(g); const L = leftSide();
+  return modal(`<div class="statsbox"><p class="eyebrow">Turn ${g.turn}${g.over ? ' · final' : ' · so far'}</p><h3>Battle stats</h3><p class="hint">Gold marks the top servant in each column. Tap a column to sort; tap or hover a Best hit to see what it was.</p>${statsTable(g, L, lead)}${statsTable(g, 1 - L, lead)}</div>`, '', 'close-stats', 'Battle stats');
+}
+// What can be done once a battle ends: online, the winner (or the human vs the CPU) moves on and the host can
+// always return everyone to the lobby; on one device, a rematch or a new draft.
+function postGameButtons() {
+  const g = app.g; const M = NET();
+  if (!M) return '<button class="primary" data-act="rematch">Rematch, same teams</button><button data-act="new-draft">New draft</button>';
+  if (!M.over) return '';
+  const w = g.winner, me = SEAT(); const iWon = M.cpu != null ? me != null : w === 'draw' ? me != null : me === w;
+  return (iWon ? `<button class="primary" data-act="net-go">${M.next === 'next' ? 'Play Next Matchup' : 'Play Again'}</button>` : '') + (iWon || amHost() ? '<button data-act="net-lobby">Return to Lobby</button>' : '');
+}
+function victoryOverlay() {
+  const g = app.g; const w = g.winner; const M = NET(); const me = M ? SEAT() : null;
+  const title = w === 'draw' ? 'Draw' : me != null ? (me === w ? 'Victory!' : 'Defeat') : `${PN(w)} wins!`;
+  const sub = w === 'draw' ? 'Neither side could finish the other.' : me != null ? (me === w ? `You beat ${PN(1 - w)}` : `${PN(w)} wins`) : `over ${PN(1 - w)}`;
+  const why = `${g.limitBy ? (g.limitBy === 'hp' ? `Turn ${E.CFG.turnLimit} reached · decided on average HP left` : `Turn ${E.CFG.turnLimit} reached · more servants standing`) : `Turn ${g.turn} · ${w === 'draw' ? '' : `${E.aliveCount(g, w)} servant${E.aliveCount(g, w) === 1 ? '' : 's'} left standing`}`}`;
+  const star = mvp(g); const s = star && g.stats[star.uid];
+  const side = w === 'draw' ? '' : ` p${w}`;
+  return `<div class="victory${me != null && me !== w && w !== 'draw' ? ' lost' : ''}${side}" role="dialog" aria-label="${esc(title)}"><div class="vcard">
+    <div class="vrays" aria-hidden="true"></div>
+    <p class="eyebrow">Battle over</p><h2 class="vtitle">${esc(title)}</h2><p class="vsub">${esc(sub)}</p><p class="vwhy">${esc(why)}</p>
+    ${star ? `<div class="vmvp"><span class="eyebrow">MVP</span><b>${CI(star.cls)}${esc(star.name)}</b><span>${s.dealt.toLocaleString()} damage · ${s.kills} KO${s.kills === 1 ? '' : 's'}${s.healGiven ? ` · ${Math.round(s.healGiven).toLocaleString()} healed` : ''}</span></div>` : ''}
+    <div class="row vbtns">${postGameButtons()}</div>
+    <div class="row vbtns"><button data-act="open-stats">See battle stats</button><button data-act="victory-close">Back to the field</button></div></div></div>`;
+}
 // ---- Tooltips: hover or focus on desktop, tap on touch screens
 const tip = document.createElement('div'); tip.id = 'tip'; tip.hidden = true; tip.setAttribute('role', 'tooltip'); document.body.appendChild(tip);
 let tipFor = null;
@@ -5064,6 +5208,10 @@ document.addEventListener('click', ev => {
     case 'close-focus': u.focus = null; return render();
     case 'aff-chart': app.affChart = true; return render();
     case 'close-aff-chart': app.affChart = false; return render();
+    case 'open-stats': app.statsOpen = true; return render();
+    case 'close-stats': app.statsOpen = false; if (app.ui) app.ui.victoryClosed = true; return render();
+    case 'stats-sort': app.statsSort = el.dataset.k; return render();
+    case 'victory-close': app.ui.victoryClosed = true; return render();
     case 'rematch': return startBattle(app.lastTeams);
     case 'new-draft': app.fields = null; return startDraft();
     default: if (a.startsWith('net-')) return netClick(a, el);

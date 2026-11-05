@@ -306,7 +306,7 @@ function startBattle(teams, o = {}) {
   if (!app.fields) app.fields = randomFields();
   const N = NET();
   app.g = E.newBattle(R, KITS, teams, N ? { seed: N.seed, initiative: o.initiative, seals: N.seals, fields: app.fields } : { initiative: Math.random() < 0.5 ? 0 : 1, seals: app.opts.seals, fields: app.fields });
-  app.screen = 'battle';
+  app.screen = 'battle'; app.statsOpen = false;
   app.ui = { stage: 'skills', actor: N ? SEAT() : 0, cover: null, targeting: null, target: [null, null], sel: [], focus: null, revealFrom: 0 };
   if (o.instant) return;
   return startTurnUI();
@@ -457,7 +457,7 @@ function renderField() {
     const token = ini === p ? `<span class="token" tabindex="0" data-tip="Tie-breaker token: when both players' cards in a slot have the same priority, ${PN(p)}'s card resolves first this turn. It also decides who activates the first skill each turn. The token passes to the other player after all attacks resolve.">${I.svg('star')}<span>Tie-breaker</span></span>` : '';
     return `<div class="siderow p${p}"><div class="sidelabel"><b>${esc(PN(p))}${NET() && SEAT() === p ? ' <small class="you">You</small>' : ''}</b>${token}${g.seals ? `<span class="sealmark${sealUsed ? ' used' : ''}" tabindex="0" data-tip="${sealUsed ? `${PN(p)} has used their Command Seal.` : `${PN(p)}'s Command Seal is ready: once per game, fully heal a servant or give one +100% NP.`}">${I.svg('seal')}<span>${sealUsed ? 'Seal used' : 'Seal'}</span></span>` : ''}<span class="sidemeta">${sideMeta(p)}</span></div><div class="units">${tiles}</div>${reserveStrip(p)}</div>`;
   };
-  return { left: row(0), right: row(1), mid: `<div class="midline"><span>Turn ${g.turn}/${E.CFG.turnLimit}</span><button class="chartbtn" data-act="aff-chart">Class chart</button>${fieldNow()}</div>` };
+  return { left: row(0), right: row(1), mid: `<div class="midline"><span>Turn ${g.turn}/${E.CFG.turnLimit}</span><button class="chartbtn" data-act="aff-chart">Class chart</button><button class="chartbtn" data-act="open-stats" ${app.play ? 'disabled' : ''}>Stats</button>${fieldNow()}</div>` };
 }
 // Reserves: your own (and everyone's, for spectators) are listed under the team; an opponent's stay hidden.
 function canSeeReserves(p) { return NET() ? (SEAT() == null || SEAT() === p) : false; }
@@ -483,7 +483,7 @@ function turnBar() {
   if (u.stage === 'cards-reveal') return `<div class="turnbar"><p><b>Turn resolved.</b> Each slot went Quick, Arts, then Buster; NPs move at their card type's speed.</p><button class="primary" data-act="next-turn">Start turn ${g.turn}</button></div>`;
   if (u.stage === 'over') {
     const w = g.winner;
-    return `<div class="turnbar over"><p><b>${w === 'draw' ? 'Draw' : `${PN(w)} wins`}</b> on turn ${g.turn}. Servants left: P1 ${E.aliveCount(g, 0)}, P2 ${E.aliveCount(g, 1)}.${g.limitBy === 'hp' ? ` Average HP left: P1 ${Math.round(E.hpPct(g, 0) * 100)}%, P2 ${Math.round(E.hpPct(g, 1) * 100)}%.` : ''}</p><div class="row"><button class="primary" data-act="rematch">Rematch, same teams</button><button data-act="new-draft">New draft</button></div></div>`;
+    return `<div class="turnbar over"><p><b>${w === 'draw' ? 'Draw' : `${PN(w)} wins`}</b> on turn ${g.turn}. Servants left: P1 ${E.aliveCount(g, 0)}, P2 ${E.aliveCount(g, 1)}.${g.limitBy === 'hp' ? ` Average HP left: P1 ${Math.round(E.hpPct(g, 0) * 100)}%, P2 ${Math.round(E.hpPct(g, 1) * 100)}%.` : ''}</p><div class="row"><button class="primary" data-act="rematch">Rematch, same teams</button><button data-act="new-draft">New draft</button><button data-act="open-stats">Battle stats</button></div></div>`;
   }
   if (u.stage === 'skills' || u.stage === 'cards') return `<div class="turnbar"><p>${PN(u.actor)} is choosing ${u.stage === 'skills' ? 'skills' : 'cards'}. Their panel is under their team.</p></div>`;
   return '';
@@ -605,7 +605,7 @@ function renderBattle() {
   const spyHand = p => isSpec() && live && !app.play ? handPreview(p, `${PN(p)}'s hand`) : '';
   const side = p => `${p === 0 ? f.left : f.right}${!u.cover && u.actor === p && (u.stage === 'skills' || u.stage === 'cards') && (!NET() || SEAT() === p) ? renderDock() : ''}${spyHand(p)}`;
   const L = leftSide();
-  return `${netBar()}<div class="battle"><div class="col left">${side(L)}</div><div class="col center">${f.mid}<div class="stage" id="stage" aria-hidden="true"></div>${turnBar()}${renderLog()}</div><div class="col right">${side(1 - L)}</div></div>${u.focus && !u.cover ? renderFocus() : ''}${app.affChart ? affChart() : ''}${cover}`;
+  return `${netBar()}<div class="battle"><div class="col left">${side(L)}</div><div class="col center">${f.mid}<div class="stage" id="stage" aria-hidden="true"></div>${turnBar()}${renderLog()}</div><div class="col right">${side(1 - L)}</div></div>${u.focus && !u.cover ? renderFocus() : ''}${app.affChart ? affChart() : ''}${app.statsOpen ? statsModal() : ''}${u.stage === 'over' && !app.play && !u.victoryClosed && !app.statsOpen ? victoryOverlay() : ''}${cover}`;
 }
 
 // ---------------------------------------------------------------- Playback
@@ -1096,7 +1096,7 @@ function netSend(ev, data) {
 }
 function toast(msg, ms = 3500) { if (!app.net) return; app.net.toast = msg; clearTimeout(app.net.toastT); app.net.toastT = setTimeout(() => { app.net.toast = null; const t = document.querySelector('.nettoast'); if (t) t.remove(); }, ms); const old = document.querySelector('.nettoast'); if (old) old.remove(); $('#app').insertAdjacentHTML('beforeend', netToast()); }
 function netToast() { return app.net && app.net.toast ? `<div class="nettoast" role="status">${esc(app.net.toast)}</div>` : ''; }
-function resetBattleView() { app.browse = null; if (app.play) app.play.skip = true; app.play = null; app.view = null; app.turnIntro = null; clearArena(); document.querySelectorAll('.tbannounce').forEach(e => e.remove()); app.g = null; app.draft = null; app.fieldPick = null; app.lineup = null; app.fields = null; app.affChart = false; }
+function resetBattleView() { app.browse = null; if (app.play) app.play.skip = true; app.play = null; app.view = null; app.turnIntro = null; clearArena(); document.querySelectorAll('.tbannounce').forEach(e => e.remove()); app.g = null; app.draft = null; app.fieldPick = null; app.lineup = null; app.fields = null; app.affChart = false; app.statsOpen = false; }
 // A new match (or joining one in progress): rebuild it by replaying every public move instantly.
 function loadMatch(m) {
   const n = app.net; resetBattleView();
@@ -1214,9 +1214,9 @@ function netTurnBar() {
     const w = g.winner; const iWon = M.cpu != null ? me != null : w === 'draw' ? me != null : me === w; // vs the CPU the human always gets the buttons
     const head = `<p><b>${w === 'draw' ? 'Draw' : `${esc(PN(w))} wins`}</b> on turn ${g.turn}. Servants left: ${esc(PN(0))} ${E.aliveCount(g, 0)}, ${esc(PN(1))} ${E.aliveCount(g, 1)}.${g.limitBy === 'hp' ? ` Average HP left: ${Math.round(E.hpPct(g, 0) * 100)}% vs ${Math.round(E.hpPct(g, 1) * 100)}%.` : ''}</p>`;
     if (!M.over) return `<div class="turnbar over">${head}<p class="hint">Wrapping up…</p></div>`;
-    const btns = (iWon ? `<button class="primary" data-act="net-go">${M.next === 'next' ? 'Play Next Matchup' : 'Play Again'}</button>` : '') + (iWon || amHost() ? '<button data-act="net-lobby">Return to Lobby</button>' : '');
+    const btns = postGameButtons();
     const who = w === 'draw' ? 'either player' : PN(w);
-    return `<div class="turnbar over">${head}<div class="row">${btns || `<p class="hint">Waiting for ${esc(who)} to start the next battle or return everyone to the lobby.</p>`}</div></div>`;
+    return `<div class="turnbar over">${head}<div class="row">${btns || `<p class="hint">Waiting for ${esc(who)} to start the next battle or return everyone to the lobby.</p>`}<button data-act="open-stats">Battle stats</button></div></div>`;
   }
   if (u.stage === 'skills' || u.stage === 'cards' || u.stage === 'wait') {
     if (me == null) return `<div class="turnbar"><p><b>Players are choosing ${what}.</b> ${status(0)} ${status(1)}</p></div>`;
@@ -1299,6 +1299,56 @@ async function netClick(a, el) {
 }
 document.addEventListener('keydown', e => { if (e.key === 'Enter' && app.screen === 'landing' && e.target.id) { e.preventDefault(); netClick(e.target.id === 'codeIn' ? 'net-join' : 'net-create', e.target); } });
 
+// ---- Battle stats and the victory announcement
+const STAT_COLS = [
+  ['dealt', 'Damage dealt', 'Dealt'], ['taken', 'Damage taken', 'Taken'], ['healed', 'HP restored to them', 'Healed'], ['healGiven', 'HP they restored to allies', 'Heal given'],
+  ['npGain', 'NP gauge gained (%)', 'NP +'], ['npLost', 'NP gauge lost to enemy drain or effects (%)', 'NP −'], ['best', 'Highest damage from a single attack or NP', 'Best hit'],
+  ['attacks', 'Attacks that landed (an AoE card counts once)', 'Hits'], ['nps', 'Noble Phantasms fired', 'NPs'], ['buffs', 'Buffs received', 'Buffs'], ['debuffs', 'Debuffs received', 'Debuffs'],
+  ['kills', 'Enemies defeated', 'KOs'], ['evaded', 'Attacks evaded or blocked', 'Dodged'], ['turns', 'Turns spent on the field', 'Turns'],
+];
+const fmtStat = (k, v) => (k === 'npGain' || k === 'npLost' ? `${Math.round(v)}%` : Math.round(v).toLocaleString());
+function statsTable(g, p, lead) {
+  const S = g.stats || {}; const sort = app.statsSort || 'dealt';
+  const rows = g.players[p].order.map(id => ({ u: g.units[id], s: S[id] || {} })).sort((a, b) => (b.s[sort] || 0) - (a.s[sort] || 0));
+  const tot = k => rows.reduce((a, r) => a + (r.s[k] || 0), 0);
+  return `<section class="stteam p${p}"><h4>${esc(PN(p))}${g.winner === p ? ' <span class="wtag">Winner</span>' : ''}</h4><div class="sttable"><table>
+    <thead><tr><th class="sname">Servant</th>${STAT_COLS.map(([k, tip, lbl]) => `<th><button class="sth${sort === k ? ' on' : ''}" data-act="stats-sort" data-k="${k}" data-tip="${esc(tip)}">${lbl}</button></th>`).join('')}</tr></thead>
+    <tbody>${rows.map(({ u, s }) => `<tr class="${u.dead ? 'ko' : ''}"><td class="sname">${CI(u.cls)}<span>${esc(u.name)}</span>${u.dead ? '<small>KO</small>' : ''}</td>${STAT_COLS.map(([k]) => `<td class="${(s[k] || 0) > 0 && lead[k] === u.uid ? 'lead' : ''}"${k === 'best' && s.bestWhat ? ` data-tip="${esc(s.bestWhat)}"` : ''}>${(s[k] || 0) ? fmtStat(k, s[k]) : '<span class="z">–</span>'}</td>`).join('')}</tr>`).join('')}</tbody>
+    <tfoot><tr><td class="sname">Team</td>${STAT_COLS.map(([k]) => `<td>${k === 'best' ? fmtStat(k, Math.max(0, ...rows.map(r => r.s.best || 0))) : fmtStat(k, tot(k))}</td>`).join('')}</tr></tfoot></table></div></section>`;
+}
+function statsLeaders(g) { const lead = {}; for (const [k] of STAT_COLS) { let best = 0; for (const [id, s] of Object.entries(g.stats || {})) if ((s[k] || 0) > best) { best = s[k]; lead[k] = +id; } } return lead; }
+function mvp(g) {
+  if (!g.stats) return null; let best = null, sc = -1;
+  for (const [id, s] of Object.entries(g.stats)) { const v = s.dealt + s.healGiven * 0.8 + s.kills * 600 + s.buffs * 10; if (v > sc) { sc = v; best = +id; } }
+  return best != null ? g.units[best] : null;
+}
+function statsModal() {
+  const g = app.g; const lead = statsLeaders(g); const L = leftSide();
+  return modal(`<div class="statsbox"><p class="eyebrow">Turn ${g.turn}${g.over ? ' · final' : ' · so far'}</p><h3>Battle stats</h3><p class="hint">Gold marks the top servant in each column. Tap a column to sort; tap or hover a Best hit to see what it was.</p>${statsTable(g, L, lead)}${statsTable(g, 1 - L, lead)}</div>`, '', 'close-stats', 'Battle stats');
+}
+// What can be done once a battle ends: online, the winner (or the human vs the CPU) moves on and the host can
+// always return everyone to the lobby; on one device, a rematch or a new draft.
+function postGameButtons() {
+  const g = app.g; const M = NET();
+  if (!M) return '<button class="primary" data-act="rematch">Rematch, same teams</button><button data-act="new-draft">New draft</button>';
+  if (!M.over) return '';
+  const w = g.winner, me = SEAT(); const iWon = M.cpu != null ? me != null : w === 'draw' ? me != null : me === w;
+  return (iWon ? `<button class="primary" data-act="net-go">${M.next === 'next' ? 'Play Next Matchup' : 'Play Again'}</button>` : '') + (iWon || amHost() ? '<button data-act="net-lobby">Return to Lobby</button>' : '');
+}
+function victoryOverlay() {
+  const g = app.g; const w = g.winner; const M = NET(); const me = M ? SEAT() : null;
+  const title = w === 'draw' ? 'Draw' : me != null ? (me === w ? 'Victory!' : 'Defeat') : `${PN(w)} wins!`;
+  const sub = w === 'draw' ? 'Neither side could finish the other.' : me != null ? (me === w ? `You beat ${PN(1 - w)}` : `${PN(w)} wins`) : `over ${PN(1 - w)}`;
+  const why = `${g.limitBy ? (g.limitBy === 'hp' ? `Turn ${E.CFG.turnLimit} reached · decided on average HP left` : `Turn ${E.CFG.turnLimit} reached · more servants standing`) : `Turn ${g.turn} · ${w === 'draw' ? '' : `${E.aliveCount(g, w)} servant${E.aliveCount(g, w) === 1 ? '' : 's'} left standing`}`}`;
+  const star = mvp(g); const s = star && g.stats[star.uid];
+  const side = w === 'draw' ? '' : ` p${w}`;
+  return `<div class="victory${me != null && me !== w && w !== 'draw' ? ' lost' : ''}${side}" role="dialog" aria-label="${esc(title)}"><div class="vcard">
+    <div class="vrays" aria-hidden="true"></div>
+    <p class="eyebrow">Battle over</p><h2 class="vtitle">${esc(title)}</h2><p class="vsub">${esc(sub)}</p><p class="vwhy">${esc(why)}</p>
+    ${star ? `<div class="vmvp"><span class="eyebrow">MVP</span><b>${CI(star.cls)}${esc(star.name)}</b><span>${s.dealt.toLocaleString()} damage · ${s.kills} KO${s.kills === 1 ? '' : 's'}${s.healGiven ? ` · ${Math.round(s.healGiven).toLocaleString()} healed` : ''}</span></div>` : ''}
+    <div class="row vbtns">${postGameButtons()}</div>
+    <div class="row vbtns"><button data-act="open-stats">See battle stats</button><button data-act="victory-close">Back to the field</button></div></div></div>`;
+}
 // ---- Tooltips: hover or focus on desktop, tap on touch screens
 const tip = document.createElement('div'); tip.id = 'tip'; tip.hidden = true; tip.setAttribute('role', 'tooltip'); document.body.appendChild(tip);
 let tipFor = null;
@@ -1432,6 +1482,10 @@ document.addEventListener('click', ev => {
     case 'close-focus': u.focus = null; return render();
     case 'aff-chart': app.affChart = true; return render();
     case 'close-aff-chart': app.affChart = false; return render();
+    case 'open-stats': app.statsOpen = true; return render();
+    case 'close-stats': app.statsOpen = false; if (app.ui) app.ui.victoryClosed = true; return render();
+    case 'stats-sort': app.statsSort = el.dataset.k; return render();
+    case 'victory-close': app.ui.victoryClosed = true; return render();
     case 'rematch': return startBattle(app.lastTeams);
     case 'new-draft': app.fields = null; return startDraft();
     default: if (a.startsWith('net-')) return netClick(a, el);

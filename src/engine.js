@@ -105,7 +105,7 @@ function mkRng(seed) {
 // that changes during play is copied, and the copy gets its own random numbers so it can't peek at real rolls.
 function cloneGame(g, seed) {
   const cp = v => Array.isArray(v) ? v.map(x => (x && typeof x === 'object' && !Array.isArray(x) && !x.uid ? { ...x } : Array.isArray(x) ? x.slice() : x)) : v && typeof v === 'object' ? { ...v } : v;
-  const c = { ...g, rng: mkRng(seed == null ? Math.floor(Math.random() * 2 ** 31) : seed), fx: null, log: g.log.slice(-20), units: {}, players: [] };
+  const c = { ...g, stats: null, _seenBuffs: null, rng: mkRng(seed == null ? Math.floor(Math.random() * 2 ** 31) : seed), fx: null, log: g.log.slice(-20), units: {}, players: [] };
   for (const [uid, u] of Object.entries(g.units)) {
     const x = { ...u, g: c };
     for (const k of Object.keys(u)) if (k !== 'g' && k !== 'd' && k !== 'kit' && u[k] && typeof u[k] === 'object') x[k] = cp(u[k]);
@@ -155,6 +155,40 @@ function canPick(team, id, taken, R) {
 }
 
 // ---------------------------------------------------------------- Battle setup
+// ---- Battle stats: damage dealt and taken, healing, NP gained and lost, best hit, attacks, NPs, buffs, KOs.
+// HP and NP changes are caught where they happen (a watched property on each servant), and credited to whoever is
+// acting at that moment. Look-ahead copies of a battle (the CPU's) don't track anything.
+function newStat() { return { dealt: 0, taken: 0, healed: 0, healGiven: 0, npGain: 0, npLost: 0, best: 0, bestWhat: '', attacks: 0, nps: 0, crits: 0, buffs: 0, debuffs: 0, kills: 0, evaded: 0, turns: 0 }; }
+// Objects built on top of a servant (the UI's animation views use Object.create) get their own copy instead of
+// writing through to the real servant.
+function own(obj, k, v) { Object.defineProperty(obj, k, { value: v, writable: true, enumerable: true, configurable: true }); }
+function watchUnit(g, u) {
+  let hp = u.hp, np = u.np;
+  Object.defineProperty(u, 'hp', { enumerable: true, configurable: true, get: () => hp, set(v) { if (this !== u) return own(this, 'hp', v); const old = hp, d = v - hp; hp = v; if (d && g.stats) statHp(g, u, d < 0 ? -Math.min(-d, Math.max(0, old)) : d); } }); // overkill doesn't count
+  Object.defineProperty(u, 'np', { enumerable: true, configurable: true, get: () => np, set(v) { if (this !== u) return own(this, 'np', v); const d = v - np; np = v; if (d && g.stats && !u.dead && !g._spending) statNp(g, u, d); } });
+}
+function statHp(g, u, d) {
+  const S = g.stats, me = S[u.uid]; if (!me) return;
+  const by = g._actor != null ? S[g._actor] : null; const actor = g._actor != null ? g.units[g._actor] : null;
+  if (d < 0) {
+    me.taken += -d;
+    if (actor && actor.side !== u.side) { by.dealt += -d; g._atkDmg = (g._atkDmg || 0) + -d; }
+  } else if (!g._reviving) {
+    me.healed += d;
+    if (actor && actor.side === u.side && actor !== u) by.healGiven += d;
+  }
+}
+function statNp(g, u, d) { const me = g.stats[u.uid]; if (!me) return; if (d > 0) me.npGain += d; else me.npLost += -d; }
+// New buffs and debuffs since the last look are counted once each (passives don't count).
+function scanBuffs(g) {
+  if (!g.stats) return;
+  const seen = g._seenBuffs || (g._seenBuffs = new WeakSet());
+  for (const u of Object.values(g.units)) for (const b of u.buffs) {
+    if (seen.has(b)) continue; seen.add(b);
+    if (b.passive || b.s === 'ctrlImmune') continue;
+    const me = g.stats[u.uid]; if (b.debuff) me.debuffs++; else me.buffs++;
+  }
+}
 function makeUnit(R, KITS, sid, side, uidSeq) {
   const d = R[sid];
   // Class, attribute and alignment words count as traits too, so skill conditions like 'Lawful' or 'Saber' work.
@@ -170,7 +204,7 @@ function newBattle(R, KITS, teams, opts = {}) {
   const g = { R, KITS, rng, seals: opts.seals !== false, turn: 0, phase: 'skills', initiative: opts.initiative ?? 0, log: [], units: {}, players: [], winner: null, over: false };
   let seq = 1;
   for (let p = 0; p < 2; p++) {
-    const order = teams[p].map(sid => { const u = makeUnit(R, KITS, sid, p, seq++); u.g = g; g.units[u.uid] = u; return u.uid; });
+    const order = teams[p].map(sid => { const u = makeUnit(R, KITS, sid, p, seq++); u.g = g; g.units[u.uid] = u; watchUnit(g, u); return u.uid; });
     g.players.push({ order, front: order.slice(0, 3), reserve: order.slice(3), bag: [], hand: [], stars: 0, skillQueue: [], masterQueue: [], mcds: [0, 0, 0], sealUsed: false, sealQueue: null, cardSel: [] });
   }
   // Battlefield: one field from each player's picks, alternating every 2 turns.
@@ -178,6 +212,8 @@ function newBattle(R, KITS, teams, opts = {}) {
   g.fieldOverride = null;
   // Space Ereshkigal's Affection gauge: +5 for bond, +5 if she starts on the field
   for (let p = 0; p < 2; p++) if (g.players[p].order.some(id => U(g, id).kit.fullness)) for (const id of g.players[p].order) U(g, id).full = 0;
+  g.stats = {}; for (const u of Object.values(g.units)) g.stats[u.uid] = newStat();
+  g._seenBuffs = new WeakSet(); for (const u of Object.values(g.units)) for (const b of u.buffs) g._seenBuffs.add(b); // starting passives
   for (const u of Object.values(g.units)) if (u.kit.affection) { u.aff = 0; addAffection(g, u, 5, 'bond'); if (g.players[u.side].front.includes(u.uid)) addAffection(g, u, 5, 'starting member'); }
   startTurn(g);
   return g;
@@ -857,7 +893,7 @@ function killOrGuts(g, t, by) {
     const kb = knight && knight.buffs.find(b => b.s === 'knighthood');
     guts.n -= 1;
     if (guts.n <= 0) t.buffs.splice(t.buffs.indexOf(guts), 1);
-    t.hp = guts.hp + (kb ? kb.gutsHp : 0);
+    g._reviving = true; t.hp = guts.hp + (kb ? kb.gutsHp : 0); g._reviving = false;
     log(g, `${t.name}'s Guts activates! Back at ${t.hp} HP.`, 'buff');
     if (kb) { t.buffs.push({ s: 'atk', v: kb.atkUp, t: 3, from: 'Knighthood Conferment' }); log(g, `${knight.name}'s Knighthood Conferment: ${t.name} +${kb.gutsHp} HP on revival, ATK +${kb.atkUp}% 3T.`, 'buff'); }
     fx(g, { t: 'guts', uid: t.uid, label: `Guts! ${guts.hp} HP` });
@@ -866,6 +902,7 @@ function killOrGuts(g, t, by) {
     return false;
   }
   t.hp = 0; t.dead = true; t.np = 0;
+  if (g.stats && by && by.side !== t.side && g.stats[by.uid]) g.stats[by.uid].kills++;
   fireTriggers(g, t, 'death', { target: by && by !== t && !by.dead ? by : null });
   log(g, `${t.name} is defeated.`, 'ko');
   fx(g, { t: 'ko', uid: t.uid });
@@ -1135,6 +1172,12 @@ function resolveSkills(g) {
   g.phase = 'cards';
 }
 function resolveItem(g, p, item) {
+  if (!g.stats || item.kind !== 'skill') { resolveItem0(g, p, item); scanBuffs(g); return; }
+  const prev = g._actor; g._actor = item.q.uid; g._atkDmg = 0;
+  resolveItem0(g, p, item);
+  g._actor = prev; scanBuffs(g);
+}
+function resolveItem0(g, p, item) {
   if (item.kind === 'seal') { useSeal(g, p); return; }
   if (item.kind === 'master') {
     const m = item.m; const M = MASTER[m.i];
@@ -1339,6 +1382,15 @@ function pickTarget(g, attacker, wanted) {
 
 function execAction(g, a) {
   const u = U(g, a.card.uid);
+  if (!g.stats || !u) return execAction0(g, a);
+  const prev = g._actor; g._actor = u.uid; g._atkDmg = 0;
+  execAction0(g, a);
+  const st = g.stats[u.uid];
+  if (g._atkDmg > st.best) { st.best = Math.round(g._atkDmg); st.bestWhat = a.card.type === 'NP' ? (u.kit.np && u.kit.np.n) || 'NP' : `${COLOR[a.slot === 3 ? 'EX' : cardColor(g, a.card)]} card`; }
+  g._actor = prev; scanBuffs(g);
+}
+function execAction0(g, a) {
+  const u = U(g, a.card.uid);
   const tag = `P${a.p + 1} slot ${a.slot + 1}`;
   if (!u || u.dead || !g.players[u.side].front.includes(u.uid)) { log(g, `${tag}: ${u ? u.name : 'Card'} is down, card fizzles.`, 'miss'); return; }
   if (a.card.inactive && cardSealed(g, a.card) && canAct(u)) { log(g, `${tag}: ${u.name}'s ${COLOR[cardColor(g, a.card)]} card is sealed and doesn't activate.`, 'miss'); fx(g, { t: 'eff', uid: u.uid, key: 'skillSeal', label: `${COLOR[cardColor(g, a.card)]} sealed`, miss: true }); return; }
@@ -1387,6 +1439,7 @@ function attackCard(g, u, t, color, a, tag) {
     t.buffs.push({ s: 'curse', v: b.v, t: 5, debuff: true, from: b.from });
   }
   const blocked = hitBlocked(g, u, t);
+  if (g.stats && !a.aoeRest) { if (blocked) g.stats[t.uid].evaded++; else g.stats[u.uid].attacks++; } else if (g.stats && blocked) g.stats[t.uid].evaded++;
   if (blocked) { log(g, `${tag}: ${u.name}'s ${COLOR[color]} is blocked by ${t.name}'s ${blocked}.`, 'miss'); fx(g, { t: 'eff', uid: t.uid, key: blocked === 'Evade' ? 'evade' : 'invincible', label: blocked, miss: true }); return; }
   if (!a.aoeRest) fireTriggers(g, u, 'cardBefore', { color, target: t });
   let cardVal = color === 'EX' ? (pl.chain ? CFG.extraBrave : CFG.extraVal) : CFG.cardVal[color][slot];
@@ -1523,7 +1576,7 @@ function execNP(g, u, a, tag) {
   const color = npColor(u);
   const ocUp = sumStat(u, 'ocUp'); if (ocUp) consumeAllUses(u, 'ocUp');
   const oc = Math.min(5, Math.floor(u.np / 100) + (a.card.ocBonus || 0) + ocUp);
-  const spent = u.np; u.np = 0;
+  const spent = u.np; g._spending = true; u.np = 0; g._spending = false; if (g.stats) g.stats[u.uid].nps++;
   for (const x of front(g, u.side)) if (x !== u) for (const b of x.buffs.filter(b => b.s === 'npEcho')) { // Solomon: NP back when a Caster ally uses theirs
     if (b.cls && b.cls.length && !b.cls.includes(effCls(u))) continue;
     const gain = Math.round(spent * b.v) / 100; x.np = Math.min(npCap(x), x.np + gain); log(g, `${x.name}: NP +${gain}% (${u.name} used their NP).`, 'buff');
@@ -1590,6 +1643,7 @@ function execNP(g, u, a, tag) {
 
 // ---- End of turn
 function endTurn(g) {
+  if (g.stats) { g._actor = null; for (let p = 0; p < 2; p++) for (const u of front(g, p)) if (!u.dead && g.stats[u.uid]) g.stats[u.uid].turns++; }
   if (g.over) return;
   fx(g, { t: 'phase', name: 'end' });
   g.inEndTurn = true;
