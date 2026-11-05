@@ -252,6 +252,7 @@ function renderLineup() {
   return `<div class="lineup"><p class="eyebrow">Lineup</p><h2>${PN(p)}: set your order</h2>
     <p class="hint">Tap servants in the order you want them. The first three start on the field; the rest come in, in order, when someone falls.</p>
     <div class="lineup-grid">${team.map(id => { const k = ord.indexOf(id); return `<button class="lslot${k >= 0 ? ' set' : ''}" data-act="order" data-id="${id}"><span class="lnum">${k >= 0 ? (k < 3 ? 'Start ' + (k + 1) : 'Reserve ' + (k - 2)) : '–'}</span><span class="tname">${esc(R[id].name)}</span><span class="tmeta">${CI(R[id].cls)}${'★'.repeat(R[id].rar)}</span></button>`; }).join('')}</div>
+    ${mcPicker(L, p)}
     <div class="row"><button data-act="order-reset">Reset</button><button data-act="order-random">Random order</button><button class="primary" data-act="order-done" ${ord.length === 6 ? '' : 'disabled'}>${NET() ? 'Lock in lineup' : p === 0 ? 'Done, Player 2 next' : 'Start the battle'}</button></div></div>`;
 }
 
@@ -302,10 +303,10 @@ function finishFields() {
   render();
 }
 function startBattle(teams, o = {}) {
-  app.lastTeams = teams.map(t => t.slice());
+  app.lastTeams = teams.map(t => t.slice()); app.lastMcs = o.mcs || app.lastMcs || ['chaldea', 'chaldea'];
   if (!app.fields) app.fields = randomFields();
   const N = NET();
-  app.g = E.newBattle(R, KITS, teams, N ? { seed: N.seed, initiative: o.initiative, seals: N.seals, fields: app.fields } : { initiative: Math.random() < 0.5 ? 0 : 1, seals: app.opts.seals, fields: app.fields });
+  app.g = E.newBattle(R, KITS, teams, N ? { seed: N.seed, initiative: o.initiative, seals: N.seals, fields: app.fields, mcs: o.mcs } : { initiative: Math.random() < 0.5 ? 0 : 1, seals: app.opts.seals, fields: app.fields, mcs: app.lastMcs });
   app.screen = 'battle'; app.statsOpen = false;
   app.ui = { stage: 'skills', actor: N ? SEAT() : 0, cover: null, targeting: null, target: [null, null], sel: [], focus: null, revealFrom: 0 };
   if (o.instant) return;
@@ -455,7 +456,7 @@ function renderField() {
     const ini = app.view ? app.view.initiative : g.initiative;
     const sealUsed = app.view && app.view.sealUsed ? app.view.sealUsed[p] : P.sealUsed;
     const token = ini === p ? `<span class="token" tabindex="0" data-tip="Tie-breaker token: when both players' cards in a slot have the same priority, ${PN(p)}'s card resolves first this turn. It also decides who activates the first skill each turn. The token passes to the other player after all attacks resolve.">${I.svg('star')}<span>Tie-breaker</span></span>` : '';
-    return `<div class="siderow p${p}"><div class="sidelabel"><b>${esc(PN(p))}${NET() && SEAT() === p ? ' <small class="you">You</small>' : ''}</b>${token}${g.seals ? `<span class="sealmark${sealUsed ? ' used' : ''}" tabindex="0" data-tip="${sealUsed ? `${PN(p)} has used their Command Seal.` : `${PN(p)}'s Command Seal is ready: once per game, fully heal a servant or give one +100% NP.`}">${I.svg('seal')}<span>${sealUsed ? 'Seal used' : 'Seal'}</span></span>` : ''}<span class="sidemeta">${sideMeta(p)}</span></div><div class="units">${tiles}</div>${reserveStrip(p)}</div>`;
+    return `<div class="siderow p${p}"><div class="sidelabel"><b>${esc(PN(p))}${mcBadge(g.players[p].mc)}${NET() && SEAT() === p ? ' <small class="you">You</small>' : ''}</b>${token}${g.seals ? `<span class="sealmark${sealUsed ? ' used' : ''}" tabindex="0" data-tip="${sealUsed ? `${PN(p)} has used their Command Seal.` : `${PN(p)}'s Command Seal is ready: once per game, fully heal a servant or give one +100% NP.`}">${I.svg('seal')}<span>${sealUsed ? 'Seal used' : 'Seal'}</span></span>` : ''}<span class="sidemeta">${sideMeta(p)}</span></div><div class="units">${tiles}</div>${reserveStrip(p)}</div>`;
   };
   return { left: row(0), right: row(1), mid: `<div class="midline"><span>Turn ${g.turn}/${E.CFG.turnLimit}</span><button class="chartbtn" data-act="aff-chart">Class chart</button><button class="chartbtn" data-act="open-stats" ${app.play ? 'disabled' : ''}>Stats</button>${fieldNow()}</div>` };
 }
@@ -521,10 +522,10 @@ function skillDock() {
   const queued = q.map((x, k) => { const su = g.units[x.uid]; const t = x.target ? g.units[x.target] : null; return `<li class="qchip" data-seq="${x.seq}" data-tip="${esc(su.name + ': ' + su.kit.sk[x.i].n + (t ? ' → ' + t.name : '') + (x.opt != null ? ' (' + optLabel(su, x) + ')' : ''))}">${I.skillIcon(su.kit.sk[x.i], 'sm')}<span>${esc(su.kit.sk[x.i].n)}${t ? ` → ${esc(t.name.split(' ')[0])}` : ''}${x.opt != null ? ` · ${esc(optLabel(su, x))}` : ''}</span><button class="x" data-act="unqueue" data-k="${k}" aria-label="Remove">✕</button></li>`; }).join('');
   const P = g.players[p]; const T = u.targeting;
   const mIcon = M => I.badge(M.icon, { plain: true, dir: M.icon === 'atk' ? 'up' : null });
-  const master = `<div class="skrow master"><span class="skname">Master</span><div class="skbtns">${E.MASTER.map((M, i) => { const ok = E.masterUsable(g, p, i);
-    return `<button class="skill${T && T.master && T.i === i ? ' arming' : ''}" data-act="mskill" data-i="${i}" ${ok.ok ? '' : 'disabled'} data-tip="${esc(M.n + ' (CD ' + M.cd + '): ' + M.text)}">${mIcon(M)}<span class="sktxt"><b>${esc(M.n)}</b><small>${ok.ok ? `CD ${M.cd} · ${i === 2 ? 'swap' : 'ally'}` : esc(ok.why)}</small></span></button>`; }).join('')}</div></div>`;
+  const master = `<div class="skrow master"><span class="skname">Master</span><div class="skbtns">${E.masterSkills(g, p).map((M, i) => { const ok = E.masterUsable(g, p, i);
+    return `<button class="skill${T && T.master && T.i === i ? ' arming' : ''}" data-act="mskill" data-i="${i}" ${ok.ok ? '' : 'disabled'} data-tip="${esc(M.n + ' (CD ' + M.cd + '): ' + M.text)}">${mIcon(M)}<span class="sktxt"><b>${esc(M.n)}</b><small>${ok.ok ? `CD ${M.cd} · ${M.kind === 'swap' ? 'swap' : 'ally'}` : esc(ok.why)}</small></span></button>`; }).join('')}</div></div>`;
   const reservePick = T && T.kind === 'swapIn' ? `<div class="reserves"><span class="hint">Bring in for ${esc(g.units[T.out].name)}:</span>${P.reserve.filter(id => !g.units[id].dead && !E.has(g.units[id], 'noSwap')).map(id => { const r = g.units[id]; return `<button class="resbtn" data-act="swap-in" data-uid="${id}">${CI(r.cls)}<span>${esc(r.name)}</span><small>HP ${Math.round(r.hp)}${E.hasNoNP(r) ? " · No NP" : ` · NP ${Math.floor(r.np)}%`}</small></button>`; }).join('')}</div>` : '';
-  const mq = P.masterQueue.map((m, k) => { const M = E.MASTER[m.i]; const txt = m.i === 2 ? `${g.units[m.out].name} ⇄ ${g.units[m.in].name}` : g.units[m.target].name; return `<li class="qchip master" data-seq="${m.seq}" data-tip="${esc('Master: ' + M.n + ' → ' + txt)}">${mIcon(M)}<span>${esc(M.n)} → ${esc(txt)}${m.applied ? ' · activated' : ''}</span>${m.applied ? '' : `<button class="x" data-act="unmaster" data-k="${k}" aria-label="Remove ${esc(M.n)}">✕</button>`}</li>`; }).join('');
+  const mq = P.masterQueue.map((m, k) => { const M = E.masterSkills(g, p)[m.i]; const txt = M.kind === 'swap' ? `${g.units[m.out].name} ⇄ ${g.units[m.in].name}` : g.units[m.target].name; return `<li class="qchip master" data-seq="${m.seq}" data-tip="${esc('Master: ' + M.n + ' → ' + txt)}">${mIcon(M)}<span>${esc(M.n)} → ${esc(txt)}${m.applied ? ' · activated' : ''}</span>${m.applied ? '' : `<button class="x" data-act="unmaster" data-k="${k}" aria-label="Remove ${esc(M.n)}">✕</button>`}</li>`; }).join('');
   const sealOk = E.sealUsable(g, p);
   const sealRow = g.seals ? `<span class="sealbtns"><span class="seallbl">${I.svg('seal')}Seal</span>${[['heal', 'Full heal', 'heal'], ['np', 'NP +100%', 'np']].map(([k, label, ic]) => `<button class="sealbtn${T && T.seal && T.kind === k ? ' arming' : ''}" data-act="seal" data-k="${k}" ${sealOk.ok ? '' : 'disabled'} data-tip="${esc((k === 'heal' ? 'Command Seal: fully heal one injured servant, on the field or in reserve.' : 'Command Seal: charge one servant\'s NP gauge by 100%, on the field or in reserve.') + (sealOk.ok ? ' Once per game.' : ' (' + sealOk.why + ')'))}">${I.badge(ic, { plain: true, size: 'sm' })}${label}</button>`).join('')}</span>` : '';
   const sealPick = T && T.seal ? `<div class="reserves"><span class="hint">${T.kind === 'heal' ? 'Fully heal' : 'NP +100% for'}:</span>${P.order.filter(id => !g.units[id].dead).map(id => { const r = g.units[id]; const ok = E.sealTargetOk(g, p, T.kind, id); return `<button class="resbtn" data-act="seal-pick" data-uid="${id}" ${ok ? '' : 'disabled'}>${CI(r.cls)}<span>${esc(r.name)}${P.front.includes(id) ? '' : ' (reserve)'}</span><small>HP ${Math.round(r.hp)}/${Math.round(E.maxHp(r))}${E.hasNoNP(r) ? " · No NP" : ` · NP ${Math.floor(r.np)}%`}</small></button>`; }).join('')}</div>` : '';
@@ -577,7 +578,7 @@ function chainPreview() {
 function renderLog() {
   const g = app.g; const end = app.view ? app.view.log : g.log.length; const from = Math.max(0, end - 160);
   const rows = g.log.slice(from, end).map((l, i) => {
-    const ic = l.master != null ? `<span class="logic" data-tip="${esc(E.MASTER[l.master].text)}" tabindex="0">${I.badge(E.MASTER[l.master].icon, { plain: true, size: 'sm' })}</span>` : l.skill ? (() => { const su = g.units[l.skill.uid]; return `<span class="logic" data-tip="${esc(skillTip(su, l.skill.i))}" tabindex="0">${I.skillIcon(su.kit.sk[l.skill.i], 'sm')}</span>`; })() : '';
+    const ic = l.master != null ? (() => { const M = E.masterSkills(g, l.p || 0)[l.master]; return `<span class="logic" data-tip="${esc(M.text)}" tabindex="0">${I.badge(M.icon, { plain: true, size: 'sm' })}</span>`; })() : l.skill ? (() => { const su = g.units[l.skill.uid]; return `<span class="logic" data-tip="${esc(skillTip(su, l.skill.i))}" tabindex="0">${I.skillIcon(su.kit.sk[l.skill.i], 'sm')}</span>`; })() : '';
     const cause = l.cause ? `<span class="cause">${esc(l.cause.from)}${l.cause.by && !l.cause.from.startsWith('Control') ? ` <i>(${esc(l.cause.by)})</i>` : ''} ›</span> ` : '';
     const msg = NET() ? l.msg.replace(/\bP([12])\b/g, (_, d) => PN(+d - 1)) : l.msg; // online: player names instead of P1/P2
     return `<li class="${l.cls || ''}${l.cause ? ' caused' : ''}${from + i >= app.ui.revealFrom ? ' fresh' : ''}">${ic}${cause}${l.dmgNum != null ? esc(msg).replace(`for ${l.dmgNum}`, `for <b class="dnum ${l.aff}" title="${{ up: 'Class advantage', down: 'Class disadvantage', even: 'Neutral class matchup' }[l.aff]}">${l.dmgNum}</b>`) : esc(msg)}</li>`;
@@ -664,7 +665,7 @@ async function step(ev, tok) {
     if (ev.t === 'tiebreak-pass') { app.view = ev.snap; render(); }
     await announceTiebreak(ev.p, ev.t === 'tiebreak-pass' ? 'pass' : ev.stage, tok);
   } else if (ev.t === 'master') {
-    const M = E.MASTER[ev.i];
+    const M = E.masterSkills(g, ev.p)[ev.i];
     flash(ev.uid, 'casting', 700);
     floater(ev.uid, `${I.badge(M.icon, { plain: true })}<span>Master · ${esc(M.n)}</span>`, 'skillname');
     patchView(ev.snap); await wait(T.skill, tok);
@@ -1146,7 +1147,7 @@ async function applyAction(a, instant) {
   }
   if (a.t === 'lineup') {
     n.locked = [false, false];
-    return startBattle(a.orders, { initiative: a.initiative, instant });
+    return startBattle(a.orders, { initiative: a.initiative, instant, mcs: a.mcs });
   }
   const g = app.g; const u = app.ui;
   if (a.t === 'orderChange') {
@@ -1299,6 +1300,16 @@ async function netClick(a, el) {
 }
 document.addEventListener('keydown', e => { if (e.key === 'Enter' && app.screen === 'landing' && e.target.id) { e.preventDefault(); netClick(e.target.id === 'codeIn' ? 'net-join' : 'net-create', e.target); } });
 
+// ---- Mystic Codes: a shirt next to each player's name (white: Normal Chaldean Uniform, purple: Atlas Academy Uniform)
+const MC_ICON = { chaldea: 'mcChaldea', atlas: 'mcAtlas' };
+function mcBadge(mc, size = 'sm') {
+  const M = E.MYSTIC[mc] || E.MYSTIC.chaldea;
+  return `<span class="mcbadge" data-tip="${esc(`Mystic Code: ${M.n}\n${M.skills.map(s => `${s.n} (CD ${s.cd}): ${s.text}`).join('\n')}`)}" tabindex="0">${I.badge(MC_ICON[mc] || 'mcChaldea', { plain: true, size })}</span>`;
+}
+function mcPicker(L, p) {
+  const cur = (L.mc && L.mc[p]) || 'chaldea';
+  return `<div class="mcpick"><p class="eyebrow">Mystic Code</p><div class="mcopts">${Object.entries(E.MYSTIC).map(([k, M]) => `<button class="mcopt${cur === k ? ' on' : ''}" data-act="mc-pick" data-mc="${k}" aria-pressed="${cur === k}">${I.badge(MC_ICON[k], { plain: true, size: 'lg' })}<span class="mctxt"><b>${esc(M.n)}</b><small>${M.skills.map(s => `${esc(s.n)} <i>CD ${s.cd}</i>`).join(' · ')}</small></span></button>`).join('')}</div></div>`;
+}
 // ---- Battle stats and the victory announcement
 const STAT_COLS = [
   ['dealt', 'Damage dealt', 'Dealt'], ['taken', 'Damage taken', 'Taken'], ['healed', 'HP restored to them', 'Healed'], ['healGiven', 'HP they restored to allies', 'Heal given'],
@@ -1309,17 +1320,20 @@ const STAT_COLS = [
 const fmtStat = (k, v) => (k === 'npGain' || k === 'npLost' ? `${Math.round(v)}%` : Math.round(v).toLocaleString());
 function statsTable(g, p, lead) {
   const S = g.stats || {}; const sort = app.statsSort || 'dealt';
+  const star = mvp(g, p); const won = g.over && g.winner === p; const lost = g.over && g.winner !== p && g.winner !== 'draw';
+  const mvpTag = `<span class="mvptag${won ? ' win' : lost ? ' lose' : ''}" data-tip="${esc(won ? 'MVP of the winning team' : lost ? 'MVP of the losing team' : 'Team MVP so far')}">MVP</span>`;
   const rows = g.players[p].order.map(id => ({ u: g.units[id], s: S[id] || {} })).sort((a, b) => (b.s[sort] || 0) - (a.s[sort] || 0));
   const tot = k => rows.reduce((a, r) => a + (r.s[k] || 0), 0);
-  return `<section class="stteam p${p}"><h4>${esc(PN(p))}${g.winner === p ? ' <span class="wtag">Winner</span>' : ''}</h4><div class="sttable"><table>
+  return `<section class="stteam p${p}"><h4>${esc(PN(p))}${mcBadge(g.players[p].mc)}${g.winner === p ? ' <span class="wtag">Winner</span>' : ''}</h4><div class="sttable"><table>
     <thead><tr><th class="sname">Servant</th>${STAT_COLS.map(([k, tip, lbl]) => `<th><button class="sth${sort === k ? ' on' : ''}" data-act="stats-sort" data-k="${k}" data-tip="${esc(tip)}">${lbl}</button></th>`).join('')}</tr></thead>
-    <tbody>${rows.map(({ u, s }) => `<tr class="${u.dead ? 'ko' : ''}"><td class="sname">${CI(u.cls)}<span>${esc(u.name)}</span>${u.dead ? '<small>KO</small>' : ''}</td>${STAT_COLS.map(([k]) => `<td class="${(s[k] || 0) > 0 && lead[k] === u.uid ? 'lead' : ''}"${k === 'best' && s.bestWhat ? ` data-tip="${esc(s.bestWhat)}"` : ''}>${(s[k] || 0) ? fmtStat(k, s[k]) : '<span class="z">–</span>'}</td>`).join('')}</tr>`).join('')}</tbody>
+    <tbody>${rows.map(({ u, s }) => `<tr class="${u.dead ? 'ko' : ''}${star && star.uid === u.uid ? ' mvprow' : ''}"><td class="sname">${CI(u.cls)}<span>${esc(u.name)}</span>${star && star.uid === u.uid ? mvpTag : ''}${u.dead ? '<small>KO</small>' : ''}</td>${STAT_COLS.map(([k]) => `<td class="${(s[k] || 0) > 0 && lead[k] === u.uid ? 'lead' : ''}"${k === 'best' && s.bestWhat ? ` data-tip="${esc(s.bestWhat)}"` : ''}>${(s[k] || 0) ? fmtStat(k, s[k]) : '<span class="z">–</span>'}</td>`).join('')}</tr>`).join('')}</tbody>
     <tfoot><tr><td class="sname">Team</td>${STAT_COLS.map(([k]) => `<td>${k === 'best' ? fmtStat(k, Math.max(0, ...rows.map(r => r.s.best || 0))) : fmtStat(k, tot(k))}</td>`).join('')}</tr></tfoot></table></div></section>`;
 }
 function statsLeaders(g) { const lead = {}; for (const [k] of STAT_COLS) { let best = 0; for (const [id, s] of Object.entries(g.stats || {})) if ((s[k] || 0) > best) { best = s[k]; lead[k] = +id; } } return lead; }
-function mvp(g) {
+// MVP score: damage (Burn/Curse/Poison included), KOs and healing given, with a little for buffs received.
+function mvp(g, side) {
   if (!g.stats) return null; let best = null, sc = -1;
-  for (const [id, s] of Object.entries(g.stats)) { const v = s.dealt + s.healGiven * 0.8 + s.kills * 600 + s.buffs * 10; if (v > sc) { sc = v; best = +id; } }
+  for (const [id, s] of Object.entries(g.stats)) { if (side != null && g.units[id].side !== side) continue; const v = s.dealt + s.healGiven * 0.8 + s.kills * 600 + s.buffs * 10; if (v > sc) { sc = v; best = +id; } }
   return best != null ? g.units[best] : null;
 }
 function statsModal() {
@@ -1340,12 +1354,14 @@ function victoryOverlay() {
   const title = w === 'draw' ? 'Draw' : me != null ? (me === w ? 'Victory!' : 'Defeat') : `${PN(w)} wins!`;
   const sub = w === 'draw' ? 'Neither side could finish the other.' : me != null ? (me === w ? `You beat ${PN(1 - w)}` : `${PN(w)} wins`) : `over ${PN(1 - w)}`;
   const why = `${g.limitBy ? (g.limitBy === 'hp' ? `Turn ${E.CFG.turnLimit} reached · decided on average HP left` : `Turn ${E.CFG.turnLimit} reached · more servants standing`) : `Turn ${g.turn} · ${w === 'draw' ? '' : `${E.aliveCount(g, w)} servant${E.aliveCount(g, w) === 1 ? '' : 's'} left standing`}`}`;
-  const star = mvp(g); const s = star && g.stats[star.uid];
+  const star = mvp(g, w === 'draw' ? null : w); const s = star && g.stats[star.uid];
+  const other = w === 'draw' ? null : mvp(g, 1 - w); const so = other && g.stats[other.uid];
   const side = w === 'draw' ? '' : ` p${w}`;
   return `<div class="victory${me != null && me !== w && w !== 'draw' ? ' lost' : ''}${side}" role="dialog" aria-label="${esc(title)}"><div class="vcard">
     <div class="vrays" aria-hidden="true"></div>
     <p class="eyebrow">Battle over</p><h2 class="vtitle">${esc(title)}</h2><p class="vsub">${esc(sub)}</p><p class="vwhy">${esc(why)}</p>
-    ${star ? `<div class="vmvp"><span class="eyebrow">MVP</span><b>${CI(star.cls)}${esc(star.name)}</b><span>${s.dealt.toLocaleString()} damage · ${s.kills} KO${s.kills === 1 ? '' : 's'}${s.healGiven ? ` · ${Math.round(s.healGiven).toLocaleString()} healed` : ''}</span></div>` : ''}
+    ${other && so ? `<p class="vmvp2"><span class="mvptag lose">MVP</span> ${esc(PN(1 - w))}: <b>${esc(other.name)}</b> · ${so.dealt.toLocaleString()} damage · ${so.kills} KO${so.kills === 1 ? '' : 's'}</p>` : ''}
+    ${star ? `<div class="vmvp"><span class="eyebrow">${w === 'draw' ? 'MVP' : `MVP · ${esc(PN(w))}`}</span><b>${CI(star.cls)}${esc(star.name)}</b><span>${s.dealt.toLocaleString()} damage · ${s.kills} KO${s.kills === 1 ? '' : 's'}${s.healGiven ? ` · ${Math.round(s.healGiven).toLocaleString()} healed` : ''}</span></div>` : ''}
     <div class="row vbtns">${postGameButtons()}</div>
     <div class="row vbtns"><button data-act="open-stats">See battle stats</button><button data-act="victory-close">Back to the field</button></div></div></div>`;
 }
@@ -1416,7 +1432,8 @@ document.addEventListener('click', ev => {
     case 'order-random': { const L = app.lineup; const o = L.teams[L.p].slice(); for (let i = o.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [o[i], o[j]] = [o[j], o[i]]; } L.orders[L.p] = o; return render(); }
     case 'random-pick': return randomPick();
     case 'random-rest': return randomizeRest();
-    case 'order-done': { const L = app.lineup; if (NET()) { if (L.orders[L.p].length !== 6) return; netSend('act', { t: 'lineup', order: L.orders[L.p] }); L.sent = true; return render(); } if (L.p === 0) { L.p = 1; return render(); } return startBattle(L.orders); }
+    case 'order-done': { const L = app.lineup; L.mc = L.mc || ['chaldea', 'chaldea']; if (NET()) { if (L.orders[L.p].length !== 6) return; netSend('act', { t: 'lineup', order: L.orders[L.p], mc: L.mc[L.p] }); L.sent = true; return render(); } if (L.p === 0) { L.p = 1; return render(); } return startBattle(L.orders, { mcs: L.mc.slice() }); }
+    case 'mc-pick': { const L = app.lineup; L.mc = L.mc || ['chaldea', 'chaldea']; L.mc[L.p] = el.dataset.mc; return render(); }
     case 'uncover': u.cover = null; return render();
     case 'skill': {
       const x = g.units[+el.dataset.uid]; const i = +el.dataset.i; const kind = E.skillTargetKind(x, i);
@@ -1432,7 +1449,7 @@ document.addEventListener('click', ev => {
       if (tk) { u.targeting = { uid: T.uid, i: T.i, kind: tk, chosen: el.dataset.v }; return render(); }
       E.queueSkill(g, u.actor, T.uid, T.i, null, el.dataset.v); u.targeting = null; return render();
     }
-    case 'mskill': { const i = +el.dataset.i; u.targeting = { master: true, i, kind: i === 2 ? 'swapOut' : 'ally' }; return render(); }
+    case 'mskill': { const i = +el.dataset.i; u.targeting = { master: true, i, kind: E.isSwap(g, u.actor, i) ? 'swapOut' : 'ally' }; return render(); }
     case 'swap-in': { if (u.targeting && u.targeting.kind === 'swapIn') selectOrderChange(u.targeting.out, +el.dataset.uid); return; }
     case 'toggle-seals': app.opts.seals = !app.opts.seals; return render();
     case 'seal': u.targeting = { seal: true, kind: el.dataset.k }; return render();
@@ -1486,7 +1503,7 @@ document.addEventListener('click', ev => {
     case 'close-stats': app.statsOpen = false; if (app.ui) app.ui.victoryClosed = true; return render();
     case 'stats-sort': app.statsSort = el.dataset.k; return render();
     case 'victory-close': app.ui.victoryClosed = true; return render();
-    case 'rematch': return startBattle(app.lastTeams);
+    case 'rematch': return startBattle(app.lastTeams, { mcs: app.lastMcs });
     case 'new-draft': app.fields = null; return startDraft();
     default: if (a.startsWith('net-')) return netClick(a, el);
   }

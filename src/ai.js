@@ -233,6 +233,18 @@ function planSkills(g, p, rng) {
   // Master skills
   const ms = i => E.masterUsable(c, p, i).ok;
   const hurt = mine.slice().sort((a, b) => hpFrac(a) - hpFrac(b))[0];
+  if (P.mc === 'atlas') {
+    // Dust of Osiris: shield whoever is in the most danger when an enemy NP is ready
+    const foeNp = foes.some(f => f.np >= 100 && E.canAct(f));
+    const fragile = mine.filter(u => !E.has(u, 'invincible')).sort((a, b) => hpFrac(a) - hpFrac(b) || attackPower(b) - attackPower(a))[0];
+    if (ms(0) && fragile && (foeNp || hpFrac(fragile) < 0.3)) E.queueMaster(c, p, 0, (foeNp && carry && hpFrac(carry) < 0.6 ? carry : fragile).uid);
+    // Rain of Isis: clear a servant held down by debuffs (stun, charm, seals, DoTs)
+    const debuffed = mine.map(u => ({ u, n: u.buffs.filter(b => b.debuff).length + (E.canAct(u) ? 0 : 3) })).filter(x => x.n >= 2).sort((a, b) => b.n - a.n)[0];
+    if (ms(1) && debuffed) E.queueMaster(c, p, 1, debuffed.u.uid);
+    // Eye of Medjed: refresh the servant with the most cooldown waiting
+    const cds = mine.map(u => ({ u, w: u.cds.reduce((a, b) => a + Math.min(2, b), 0) * (isDps(u) ? 1.3 : 1) })).sort((a, b) => b.w - a.w)[0];
+    if (ms(2) && cds && cds.w >= 3) E.queueMaster(c, p, 2, cds.u.uid);
+  } else {
   if (ms(0) && hurt && E.maxHp(hurt) - hurt.hp > 220) E.queueMaster(c, p, 0, hurt.uid);
   const npNow = mine.filter(u => u.np >= 100 && E.canAct(u)).sort((a, b) => attackPower(b) - attackPower(a))[0];
   if (ms(1) && (npNow || c.turn >= 4)) E.queueMaster(c, p, 1, (npNow || carry).uid);
@@ -240,6 +252,7 @@ function planSkills(g, p, rng) {
     const weak = mine.filter(u => hpFrac(u) < 0.2 && !E.has(u, 'noSwap')).sort((a, b) => hpFrac(a) - hpFrac(b))[0];
     const fresh = P.reserve.map(id => c.units[id]).filter(u => !u.dead && hpFrac(u) > 0.7 && !E.has(u, 'noSwap')).sort((a, b) => attackPower(b) - attackPower(a))[0];
     if (weak && fresh) E.queueMaster(c, p, 2, weak.uid, fresh.uid);
+  }
   }
   // Command Seal: push the carry into an NP when it's close, or save a carry about to fall
   if (E.sealUsable(c, p).ok) {
@@ -304,6 +317,8 @@ function planCards(g, p) {
   return best || pool.slice(0, n).map(card => ({ id: card.id, target: targets[0] }));
 }
 
-const API = { draftPick, pickFields, lineup, planSkills, planCards, servantValue };
+// The CPU wears either uniform, about half the time each.
+function pickMystic(rng) { return (rng || Math.random)() < 0.5 ? 'atlas' : 'chaldea'; }
+const API = { pickMystic, draftPick, pickFields, lineup, planSkills, planCards, servantValue };
 if (isNode) module.exports = API; else root.CPU = API;
 })(typeof window !== 'undefined' ? window : globalThis);

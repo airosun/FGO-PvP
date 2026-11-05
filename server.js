@@ -136,11 +136,11 @@ function act(room, person, a, reply) {
     const team = m.draft.teams[p]; const order = Array.isArray(a.order) ? a.order.map(Number) : [];
     if (order.length !== team.length || [...order].sort().join() !== [...team].sort().join()) return reply('Order all six servants.');
     if (m.pending[p]) return reply('Already locked in.');
-    m.pending[p] = order; locked(room, 'lineup', p);
+    m.pending[p] = order; m.mcs = m.mcs || ['chaldea', 'chaldea']; m.mcs[p] = E.MYSTIC[a.mc] ? a.mc : 'chaldea'; locked(room, 'lineup', p);
     if (m.pending[0] && m.pending[1]) {
       const orders = m.pending.slice(); const initiative = Math.random() < 0.5 ? 0 : 1;
-      m.g = E.newBattle(R, KITS, orders, { seed: m.seed, initiative, seals: m.seals, fields: m.fields });
-      push(room, { t: 'lineup', orders, initiative });
+      m.g = E.newBattle(R, KITS, orders, { seed: m.seed, initiative, seals: m.seals, fields: m.fields, mcs: m.mcs });
+      push(room, { t: 'lineup', orders, initiative, mcs: m.mcs.slice() });
       m.phase = 'battle'; m.stage = 'skills'; m.pending = [null, null];
     }
     return reply(null);
@@ -193,14 +193,14 @@ function cpuStep(room) {
   if (m.phase === 'draft') { const D = m.draft; if (D.order[D.i] !== c) return; const i = D.i; later(700, () => { if (D.i !== i) return; const d = AI.draftPick(D.teams[c], D.taken, R, KITS); if (d) go({ t: 'pick', id: d.id }); }); return; }
   if (m.pending[c]) return;
   if (m.phase === 'fields') return later(900, () => !m.pending[c] && m.phase === 'fields' && go({ t: 'fields', picks: AI.pickFields(m.draft.teams[c], KITS) }));
-  if (m.phase === 'lineup') return later(900, () => !m.pending[c] && m.phase === 'lineup' && go({ t: 'lineup', order: AI.lineup(m.draft.teams[c], R, KITS) }));
+  if (m.phase === 'lineup') return later(900, () => !m.pending[c] && m.phase === 'lineup' && go({ t: 'lineup', order: AI.lineup(m.draft.teams[c], R, KITS), mc: AI.pickMystic ? AI.pickMystic() : 'chaldea' }));
   if (m.phase === 'battle') {
     const st = m.stage, turn = m.g.turn;
     return later(1200, () => {
       if (m.pending[c] || m.stage !== st || m.g.turn !== turn || m.phase !== 'battle') return;
       if (st === 'skills') {
         const plan = AI.planSkills(m.g, c);
-        const swap = plan.masterQueue.find(x => x.i === 2);
+        const swap = plan.masterQueue.find(x => E.isSwap(m.g, c, x.i));
         if (swap) go({ t: 'orderChange', out: swap.out, in: swap.in });
         else go({ t: 'skills', ...plan });
       }
@@ -212,8 +212,8 @@ const arr = x => Array.isArray(x) ? x.slice(0, 40) : [];
 // Re-queue a player's picks through the engine so only legal skills go through, in the order they were picked.
 function applySkillPicks(g, p, s) {
   const P = g.players[p];
-  const applied = P.masterQueue.filter(m => m.i === 2 && m.applied);
-  for (const queued of s.masterQueue.filter(m => m && m.i === 2 && m.applied)) {
+  const applied = P.masterQueue.filter(m => E.isSwap(g, p, m.i) && m.applied);
+  for (const queued of s.masterQueue.filter(m => m && E.isSwap(g, p, m.i) && m.applied)) {
     const saved = applied.find(m => m.out === +queued.out && m.in === +queued.in);
     if (saved) saved.outSkills = (queued.outSkills || []).map(x => ({ i: +x.i, seq: +x.seq }));
   }
@@ -233,11 +233,11 @@ function applySkillPicks(g, p, s) {
           allowance.seq = queued.seq;
         }
       }
-      else if (k === 'master' && +x.i === 2 && x.applied) {
+      else if (k === 'master' && E.isSwap(g, p, +x.i) && x.applied) {
         const queued = applied.find(m => m.out === +x.out && m.in === +x.in);
         if (queued) { g.qseq = (g.qseq || 0) + 1; queued.seq = g.qseq; }
       }
-      else if (k === 'master') { if (+x.i === 2) E.queueMaster(g, p, 2, +x.out, +x.in); else E.queueMaster(g, p, +x.i, +x.target); }
+      else if (k === 'master') { if (E.isSwap(g, p, +x.i)) E.queueMaster(g, p, +x.i, +x.out, +x.in); else E.queueMaster(g, p, +x.i, +x.target); }
       else if (k === 'seal') E.queueSeal(g, p, x.kind, +x.uid);
     } catch (e) { /* an illegal pick is simply dropped */ }
   }

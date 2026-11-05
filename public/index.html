@@ -828,6 +828,22 @@ h1, h2 { letter-spacing: .01em; }
 .sttable td.lead { color: var(--gold); font-weight: 700; background: color-mix(in srgb, var(--gold) 9%, transparent); }
 .sttable td .z { color: color-mix(in srgb, var(--muted) 50%, transparent); }
 .sttable tfoot td { font-weight: 700; color: var(--muted); border-bottom: 0; background: rgba(255,255,255,.02); }
+
+/* MVPs, Mystic Code shirts and picker */
+.mvptag { flex: none; font: 800 .58rem/1 var(--f-body); letter-spacing: .08em; padding: 3px 6px; border-radius: 999px; background: #c9ced8; color: #111; }
+.mvptag.win { background: linear-gradient(180deg, #ffe9a6, var(--gold)); color: var(--gold-ink); box-shadow: 0 0 10px color-mix(in srgb, var(--gold) 50%, transparent); }
+.sttable tr.mvprow td.sname { box-shadow: inset 3px 0 0 var(--gold); }
+.victory .vmvp2 { color: var(--muted); font-size: .82rem; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: center; }
+.victory .vmvp { order: 0; }
+.mcbadge { display: inline-flex; vertical-align: middle; margin-left: 6px; cursor: help; }
+.sidelabel b { display: inline-flex; align-items: center; gap: 2px; }
+.mcbadge .badge { width: 22px !important; height: 22px !important; padding: 2px !important; }
+.mcpick { display: grid; gap: 8px; margin: 6px 0 10px; }
+.mcopts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+.mcopt { display: flex; align-items: center; gap: 12px; text-align: left; padding: 12px 14px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); }
+.mcopt.on { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold), 0 0 18px color-mix(in srgb, var(--gold) 20%, transparent); }
+.mcopt .badge { flex: none; }
+.mctxt { display: grid; gap: 3px; } .mctxt small { color: var(--muted); font-size: .74rem; line-height: 1.35; } .mctxt i { font-style: normal; font-family: var(--f-mono); opacity: .8; }
 </style>
 <script>// Original inline-SVG icon set: class icons and effect icons. Drawn for this prototype, not taken from the game.
 (function (root) {
@@ -928,6 +944,7 @@ Object.assign(P, {
   cwDrop: `${CW}${IN('drop', .5, 'color:var(--t-dpurple)')}`,
   ringDots: [0, 45, 90, 135, 180, 225, 270, 315].map(a => { const r = a * Math.PI / 180; return `<circle cx="${(12 + 7.2 * Math.cos(r)).toFixed(2)}" cy="${(12 + 7.2 * Math.sin(r)).toFixed(2)}" r="2" fill="currentColor" stroke="none"/>`; }).join(''),
   swordPlus: `${SWORD}${CP}`,
+  shirt: '<path d="M8.6 3.4 3.2 6.2l1.9 4.4 2.3-1v10.8h9.2V9.6l2.3 1 1.9-4.4-5.4-2.8c-.5 1.5-1.9 2.5-3.4 2.5s-2.9-1-3.4-2.5z" fill="currentColor" stroke="#000" stroke-width=".9" stroke-linejoin="round"/>',
   chalice: '<path d="M5.8 3.6h12.4v3.8c0 3.8-2.8 6.6-6.2 6.6s-6.2-2.8-6.2-6.6z" fill="currentColor"/><path d="M10.9 13.6h2.2v3.8h-2.2z" fill="currentColor" stroke="none"/><path d="M7.4 20.4c0-1.8 2-2.9 4.6-2.9s4.6 1.1 4.6 2.9z" fill="currentColor"/><path d="M8.4 6.6h7.2" stroke="var(--icon-bg)" stroke-width="1.3"/>',
   cardsBAQ: CARDS(['B', 'A', 'Q']), cardsBA: CARDS(['B', 'A']), cardsBQ: CARDS(['B', 'Q']), cardsAQ: CARDS(['A', 'Q']),
   atkDef: `<path d="M12 2.6 19.8 5.7v5.8c0 5.1-3.6 8.9-7.8 10.7-4.2-1.8-7.8-5.6-7.8-10.7V5.7z" fill="color-mix(in srgb, var(--t-orange) 25%, transparent)" stroke="var(--t-orange)" stroke-width="2"/><g transform="translate(12 12) scale(.8) translate(-12 -12)"><g stroke="var(--icon-bg)" stroke-width="4.4" fill="var(--icon-bg)">${SWORD}</g><g style="color:var(--t-atk)" stroke-width="2.2">${SWORD}</g></g>`,
@@ -979,7 +996,7 @@ const EFFECT = {
   stun: ['lock', 'yellow'], charm: ['heart', 'charm'], terror: ['stopwatch', 'blue'], skillSeal: ['lock', 'red'], npSeal: ['lock', 'orange'],
   swap: ['swap', 'util'], seal: ['seal', 'charm'], ocUp: ['burstPlusC', 'np'], quickHitDebuff: ['card', 'Q'], npOnBurnHit: ['gauge', 'np'],
   cardsBAQ: ['cardsBAQ', 'EX'], cardsBA: ['cardsBA', 'EX'], cardsBQ: ['cardsBQ', 'EX'], cardsAQ: ['cardsAQ', 'EX'], atkDef: ['atkDef', 'atk'],
-  kurFlower: ['flower', 'red'], livingFlame: ['ringFlame', 'blue'], holyGrail: ['chalice', 'gold'], romanShield: ['scutum', 'red'], facelessMoon: ['moonFull', 'purple'], like: ['thumbUp', 'heal'], grudge: ['kanjiEn', 'red'], pastAlt: ['wheel', 'white'], timedBad: ['stopwatch', 'blue'], eternalSleep: ['cloudZ', 'peri'], sinBrand: ['pBrand', 'red'], poisonHeal: ['cwDrop', 'heal'], rankUp: ['ringDots', 'yellow'], atkPlus: ['swordPlus', 'atk'], doom: ['skullDark', 'blue'],
+  kurFlower: ['flower', 'red'], livingFlame: ['ringFlame', 'blue'], holyGrail: ['chalice', 'gold'], romanShield: ['scutum', 'red'], facelessMoon: ['moonFull', 'purple'], like: ['thumbUp', 'heal'], grudge: ['kanjiEn', 'red'], pastAlt: ['wheel', 'white'], timedBad: ['stopwatch', 'blue'], eternalSleep: ['cloudZ', 'peri'], sinBrand: ['pBrand', 'red'], poisonHeal: ['cwDrop', 'heal'], rankUp: ['ringDots', 'yellow'], atkPlus: ['swordPlus', 'atk'], mcChaldea: ['shirt', 'white'], mcAtlas: ['shirt', 'purple'], doom: ['skullDark', 'blue'],
   buffBlock: ['noEntry', 'blue'], trait: ['tag', 'util'], delayed: ['stopwatch', 'orange'], cdReduce: ['hourglassDark', 'gold'],
 };
 const CLASS = { Saber: 'sword', Archer: 'bow', Lancer: 'spear', Rider: 'horse', Caster: 'wand', Assassin: 'mask', Berserker: 'bull', Shielder: 'shield', Ruler: 'flag', Avenger: 'avenge', 'Moon Cancer': 'moon', 'Alter Ego': 'halves', Foreigner: 'outer', Pretender: 'crown', 'Beast I': 'claws', 'Beast II': 'horns', Unbeast: 'planet' };
@@ -2124,7 +2141,7 @@ function newBattle(R, KITS, teams, opts = {}) {
   let seq = 1;
   for (let p = 0; p < 2; p++) {
     const order = teams[p].map(sid => { const u = makeUnit(R, KITS, sid, p, seq++); u.g = g; g.units[u.uid] = u; watchUnit(g, u); return u.uid; });
-    g.players.push({ order, front: order.slice(0, 3), reserve: order.slice(3), bag: [], hand: [], stars: 0, skillQueue: [], masterQueue: [], mcds: [0, 0, 0], sealUsed: false, sealQueue: null, cardSel: [] });
+    g.players.push({ mc: (opts.mcs && MYSTIC[opts.mcs[p]]) ? opts.mcs[p] : 'chaldea', order, front: order.slice(0, 3), reserve: order.slice(3), bag: [], hand: [], stars: 0, skillQueue: [], masterQueue: [], mcds: [0, 0, 0], sealUsed: false, sealQueue: null, cardSel: [] });
   }
   // Battlefield: one field from each player's picks, alternating every 2 turns.
   g.fields = (opts.fields && opts.fields.length) ? opts.fields.slice() : [FIELDS[Math.floor(rng() * FIELDS.length)], FIELDS[Math.floor(rng() * FIELDS.length)]];
@@ -2632,7 +2649,7 @@ function applyEffectTargets(g, e, src, choice, ctx) {
       }
       case 'dot': {
         if (!debuffLands(g, src, t, e)) break;
-        t.buffs.push({ s: e.kind, v: e.v, t: e.t, debuff: true, from: ctx.from });
+        t.buffs.push({ s: e.kind, v: e.v, t: e.t, debuff: true, from: ctx.from, src: src.uid }); // src: credited with the damage
         log(g, `${t.name}: ${STAT_LABEL[e.kind]} ${e.v}/turn (${e.t}T).`, 'debuff');
         fx(g, { t: 'eff', uid: t.uid, key: e.kind, neg: true, label: `${STAT_LABEL[e.kind]} ${e.v}/turn` });
         break;
@@ -2913,19 +2930,35 @@ const MASTER = [
     e: [{ k: 'buff', to: 'ally', s: 'atk', v: 40, t: 1, p: 500 }, { k: 'np', to: 'ally', v: 10 }] },
   { n: 'Order Change', cd: 7, kind: 'swap', icon: 'swap', text: 'Immediately swap one servant on the field with one in reserve during skill selection. The incoming servant can use skills this phase and takes over the outgoing servant\'s Command Cards this turn.', e: [] },
 ];
+const ATLAS = [
+  { n: 'Dust of Osiris', cd: 8, kind: 'ally', icon: 'invincible', text: '500% chance to grant one servant Invincible (1T).',
+    e: [{ k: 'buff', to: 'ally', s: 'invincible', v: 1, t: 1, p: 500 }] },
+  { n: 'Rain of Isis', cd: 6, kind: 'ally', icon: 'cleanse', text: "Remove one servant's debuffs.",
+    e: [{ k: 'cleanse', to: 'ally', cats: ['debuff'] }] },
+  { n: 'Eye of Medjed', cd: 7, kind: 'ally', icon: 'cdReduce', text: "Reduce one servant's skill cooldowns by 2.",
+    e: [{ k: 'cdReduce', to: 'ally', v: 2 }] },
+];
+// Mystic Codes: each player picks one while ordering their team; it decides their three Master skills.
+const MYSTIC = {
+  chaldea: { n: 'Normal Chaldean Uniform', skills: MASTER },
+  atlas: { n: 'Atlas Academy Uniform', skills: ATLAS },
+};
+function masterSkills(g, p) { const P = g && g.players[p]; return (MYSTIC[P && P.mc] || MYSTIC.chaldea).skills; }
+const isSwap = (g, p, i) => !!(masterSkills(g, p)[i] && masterSkills(g, p)[i].kind === 'swap');
 function masterUsable(g, p, i) {
   const P = g.players[p];
+  if (!masterSkills(g, p)[i]) return { ok: false, why: 'None' };
   if (P.mcds[i] > 0) return { ok: false, why: `Cooldown ${P.mcds[i]}` };
   if (P.masterQueue.some(m => m.i === i)) return { ok: false, why: 'Queued' };
-  if (i === 2 && !P.reserve.some(id => !U(g, id).dead)) return { ok: false, why: 'No reserves' };
+  if (isSwap(g, p, i) && !P.reserve.some(id => !U(g, id).dead)) return { ok: false, why: 'No reserves' };
   return { ok: true };
 }
 function nextSeq(g) { g.qseq = (g.qseq || 0) + 1; return g.qseq; }
-function swappingOut(g, p) { const m = g.players[p].masterQueue.find(x => x.i === 2 && !x.applied); return m ? m.out : null; }
+function swappingOut(g, p) { const m = g.players[p].masterQueue.find(x => isSwap(g, p, x.i) && !x.applied); return m ? m.out : null; }
 function queueMaster(g, p, i, target, inUid) {
   const ok = masterUsable(g, p, i); if (!ok.ok) return ok;
   const P = g.players[p];
-  if (i === 2) {
+  if (isSwap(g, p, i)) {
     P.masterQueue.push({ i, out: target, in: inUid, seq: nextSeq(g) });
     P.skillQueue = P.skillQueue.filter(q => q.uid !== target); // the outgoing servant leaves before acting
   } else P.masterQueue.push({ i, target, seq: nextSeq(g) });
@@ -2951,7 +2984,7 @@ function chargesAllyNp(list) { return (list || []).some(e => e.k === 'np' && e.t
 function allyTargetOk(g, T, uid) {
   const x = U(g, uid); if (!x || x.dead) return false;
   if (!hasNoNP(x)) return true;
-  const list = T.master ? MASTER[T.i].e : U(g, T.uid).kit.sk[T.i].e;
+  const list = T.master ? masterSkills(g, x.side)[T.i].e : U(g, T.uid).kit.sk[T.i].e;
   return !chargesAllyNp(list);
 }
 function queueSeal(g, p, kind, uid) {
@@ -2986,6 +3019,7 @@ function doOrderChange(g, p, outUid, inUid, reveal = true) {
   return true;
 }
 function activateOrderChange(g, p, outUid, inUid) {
+  if (!isSwap(g, p, 2)) return { ok: false, why: 'This Mystic Code has no Order Change.' };
   const ready = masterUsable(g, p, 2);
   if (!ready.ok) return ready;
   const P = g.players[p], out = U(g, outUid), inn = U(g, inUid);
@@ -2996,7 +3030,7 @@ function activateOrderChange(g, p, outUid, inUid) {
     visualBefore: { front: P.front.slice(), reserve: P.reserve.slice() }, revealed: false,
     outSkills: P.skillQueue.filter(q => q.uid === outUid).map(q => ({ i: q.i, seq: q.seq })) });
   P.mcds[2] = MASTER[2].cd;
-  log(g, `P${p + 1} Master activates ${MASTER[2].n}!`, 'activate', { master: 2 });
+  log(g, `P${p + 1} Master activates ${MASTER[2].n}!`, 'activate', { master: 2, p });
   fx(g, { t: 'swapNotice', p, out: outUid, in: inUid });
   doOrderChange(g, p, outUid, inUid, false);
   return { ok: true };
@@ -3065,7 +3099,7 @@ function resolveSkills(g) {
   // was (Mash's party DEF reaches her fellow starters, not the servant still waiting in reserve).
   for (let p = 0; p < 2; p++) {
     const P = g.players[p];
-    for (const m of P.masterQueue.filter(x => x.i === 2 && x.applied && !x.revealed).reverse()) {
+    for (const m of P.masterQueue.filter(x => isSwap(g, p, x.i) && x.applied && !x.revealed).reverse()) {
       const k = P.front.indexOf(m.in), r = P.reserve.indexOf(m.out);
       if (k < 0 || r < 0) continue;
       P.front[k] = m.out; P.reserve[r] = m.in;
@@ -3099,8 +3133,8 @@ function resolveItem(g, p, item) {
 function resolveItem0(g, p, item) {
   if (item.kind === 'seal') { useSeal(g, p); return; }
   if (item.kind === 'master') {
-    const m = item.m; const M = MASTER[m.i];
-    if (m.i === 2 && m.applied) {
+    const m = item.m; const M = masterSkills(g, p)[m.i];
+    if (M.kind === 'swap' && m.applied) {
       m.revealed = true;
       fx(g, { t: 'master', p, i: 2, uid: m.out });
       if (m.pendingSwap) { m.pendingSwap = false; doOrderChange(g, p, m.out, m.in); } // the swap itself happens now
@@ -3108,8 +3142,8 @@ function resolveItem0(g, p, item) {
       return;
     }
     g.players[p].mcds[m.i] = M.cd;
-    log(g, `P${p + 1} Master activates ${M.n}!`, 'activate', { master: m.i });
-    if (m.i === 2) { fx(g, { t: 'master', p, i: 2, uid: m.out }); doOrderChange(g, p, m.out, m.in); return; }
+    log(g, `P${p + 1} Master activates ${M.n}!`, 'activate', { master: m.i, p });
+    if (M.kind === 'swap') { fx(g, { t: 'master', p, i: 2, uid: m.out }); doOrderChange(g, p, m.out, m.in); return; }
     const t = U(g, standIn(g, m.target));
     if (!t || t.dead || !g.players[p].front.includes(t.uid)) { log(g, `P${p + 1}'s ${M.n} fizzles.`, 'miss'); return; }
     fx(g, { t: 'master', p, i: m.i, uid: t.uid });
@@ -3355,7 +3389,7 @@ function attackCard(g, u, t, color, a, tag) {
   const slot = Math.min(a.slot, 2);
   if (has(u, 'curseOnAttack')) {
     const b = u.buffs.find(x => x.s === 'curseOnAttack');
-    t.buffs.push({ s: 'curse', v: b.v, t: 5, debuff: true, from: b.from });
+    t.buffs.push({ s: 'curse', v: b.v, t: 5, debuff: true, from: b.from, src: u.uid });
   }
   const blocked = hitBlocked(g, u, t);
   if (g.stats && !a.aoeRest) { if (blocked) g.stats[t.uid].evaded++; else g.stats[u.uid].attacks++; } else if (g.stats && blocked) g.stats[t.uid].evaded++;
@@ -3584,9 +3618,14 @@ function endTurn(g) {
         if (!has(u, 'noHeal')) { u.hp = Math.min(maxHp(u), u.hp + v); log(g, `${u.name}'s ${b.s} heals them for ${v} HP.`, 'buff'); fx(g, { t: 'eff', uid: u.uid, key: 'heal', label: `+${v} HP` }); }
         continue;
       }
+      // Burn, Curse and Poison count as damage (and a KO) for whoever applied them
+      const by = b.src != null && g.units[b.src] && g.units[b.src].side !== u.side ? g.units[b.src] : null;
+      g._actor = by ? by.uid : null;
       u.hp -= v; log(g, `${u.name} takes ${v} ${b.s} damage.`, 'dmg'); fx(g, { t: 'hit', uid: u.uid, dmg: v, aff: 'even', dot: b.s });
+      g._actor = null;
+      if (u.hp <= 0 && by) u._dotBy = by.uid;
     }
-    if (u.hp <= 0) killOrGuts(g, u, u);
+    if (u.hp <= 0) { const by = u._dotBy != null ? g.units[u._dotBy] : u; delete u._dotBy; killOrGuts(g, u, by); }
     if (u.dead) continue;
     const hr = sumStat(u, 'hpRegen'); if (hr && !has(u, 'noHeal')) u.hp = Math.min(maxHp(u), u.hp + hr);
     const nr = sumStat(u, 'npRegen'); if (nr) u.np = Math.min(npCap(u), u.np + nr);
@@ -3668,7 +3707,7 @@ function decideByLimit(g) {
 }
 
 const API = {
-  CFG, STAT_LABEL, cardWillChange, fullCap, cardSealed, fieldActive, effCls, affLevel, AFF_NAME, CLASS_LIST, FIELDS, fieldName, currentField, fieldTurnsLeft, actBlocker, rawAffinity, snap, sealUsable, sealTargetOk, queueSeal, unqueueSeal, MASTER, masterUsable, queueMaster, unqueueMaster, swappingOut, npCap, npLevel, hasNoNP, allyTargetOk, COLOR, costOf, teamCost, snakeOrder, canPick, EXCLUSIVE, META, starRate, npPerHit, skillRank, skillOption, newBattle, front, maxHp, has, sumStat,
+  CFG, MYSTIC, masterSkills, isSwap, STAT_LABEL, cardWillChange, fullCap, cardSealed, fieldActive, effCls, affLevel, AFF_NAME, CLASS_LIST, FIELDS, fieldName, currentField, fieldTurnsLeft, actBlocker, rawAffinity, snap, sealUsable, sealTargetOk, queueSeal, unqueueSeal, MASTER, masterUsable, queueMaster, unqueueMaster, swappingOut, npCap, npLevel, hasNoNP, allyTargetOk, COLOR, costOf, teamCost, snakeOrder, canPick, EXCLUSIVE, META, starRate, npPerHit, skillRank, skillOption, newBattle, front, maxHp, has, sumStat,
   skillUsable, skillTargetKind, queueSkill, unqueueSkill, activateOrderChange, resolveSkills, availableNPs, cardColor, npColor, canAct,
   setCards, resolveCards, describeBuff, cloneGame, classMult, attrMult, aliveCount, hpPct, mkRng,
 };
@@ -3978,6 +4017,7 @@ function renderLineup() {
   return `<div class="lineup"><p class="eyebrow">Lineup</p><h2>${PN(p)}: set your order</h2>
     <p class="hint">Tap servants in the order you want them. The first three start on the field; the rest come in, in order, when someone falls.</p>
     <div class="lineup-grid">${team.map(id => { const k = ord.indexOf(id); return `<button class="lslot${k >= 0 ? ' set' : ''}" data-act="order" data-id="${id}"><span class="lnum">${k >= 0 ? (k < 3 ? 'Start ' + (k + 1) : 'Reserve ' + (k - 2)) : '–'}</span><span class="tname">${esc(R[id].name)}</span><span class="tmeta">${CI(R[id].cls)}${'★'.repeat(R[id].rar)}</span></button>`; }).join('')}</div>
+    ${mcPicker(L, p)}
     <div class="row"><button data-act="order-reset">Reset</button><button data-act="order-random">Random order</button><button class="primary" data-act="order-done" ${ord.length === 6 ? '' : 'disabled'}>${NET() ? 'Lock in lineup' : p === 0 ? 'Done, Player 2 next' : 'Start the battle'}</button></div></div>`;
 }
 
@@ -4028,10 +4068,10 @@ function finishFields() {
   render();
 }
 function startBattle(teams, o = {}) {
-  app.lastTeams = teams.map(t => t.slice());
+  app.lastTeams = teams.map(t => t.slice()); app.lastMcs = o.mcs || app.lastMcs || ['chaldea', 'chaldea'];
   if (!app.fields) app.fields = randomFields();
   const N = NET();
-  app.g = E.newBattle(R, KITS, teams, N ? { seed: N.seed, initiative: o.initiative, seals: N.seals, fields: app.fields } : { initiative: Math.random() < 0.5 ? 0 : 1, seals: app.opts.seals, fields: app.fields });
+  app.g = E.newBattle(R, KITS, teams, N ? { seed: N.seed, initiative: o.initiative, seals: N.seals, fields: app.fields, mcs: o.mcs } : { initiative: Math.random() < 0.5 ? 0 : 1, seals: app.opts.seals, fields: app.fields, mcs: app.lastMcs });
   app.screen = 'battle'; app.statsOpen = false;
   app.ui = { stage: 'skills', actor: N ? SEAT() : 0, cover: null, targeting: null, target: [null, null], sel: [], focus: null, revealFrom: 0 };
   if (o.instant) return;
@@ -4181,7 +4221,7 @@ function renderField() {
     const ini = app.view ? app.view.initiative : g.initiative;
     const sealUsed = app.view && app.view.sealUsed ? app.view.sealUsed[p] : P.sealUsed;
     const token = ini === p ? `<span class="token" tabindex="0" data-tip="Tie-breaker token: when both players' cards in a slot have the same priority, ${PN(p)}'s card resolves first this turn. It also decides who activates the first skill each turn. The token passes to the other player after all attacks resolve.">${I.svg('star')}<span>Tie-breaker</span></span>` : '';
-    return `<div class="siderow p${p}"><div class="sidelabel"><b>${esc(PN(p))}${NET() && SEAT() === p ? ' <small class="you">You</small>' : ''}</b>${token}${g.seals ? `<span class="sealmark${sealUsed ? ' used' : ''}" tabindex="0" data-tip="${sealUsed ? `${PN(p)} has used their Command Seal.` : `${PN(p)}'s Command Seal is ready: once per game, fully heal a servant or give one +100% NP.`}">${I.svg('seal')}<span>${sealUsed ? 'Seal used' : 'Seal'}</span></span>` : ''}<span class="sidemeta">${sideMeta(p)}</span></div><div class="units">${tiles}</div>${reserveStrip(p)}</div>`;
+    return `<div class="siderow p${p}"><div class="sidelabel"><b>${esc(PN(p))}${mcBadge(g.players[p].mc)}${NET() && SEAT() === p ? ' <small class="you">You</small>' : ''}</b>${token}${g.seals ? `<span class="sealmark${sealUsed ? ' used' : ''}" tabindex="0" data-tip="${sealUsed ? `${PN(p)} has used their Command Seal.` : `${PN(p)}'s Command Seal is ready: once per game, fully heal a servant or give one +100% NP.`}">${I.svg('seal')}<span>${sealUsed ? 'Seal used' : 'Seal'}</span></span>` : ''}<span class="sidemeta">${sideMeta(p)}</span></div><div class="units">${tiles}</div>${reserveStrip(p)}</div>`;
   };
   return { left: row(0), right: row(1), mid: `<div class="midline"><span>Turn ${g.turn}/${E.CFG.turnLimit}</span><button class="chartbtn" data-act="aff-chart">Class chart</button><button class="chartbtn" data-act="open-stats" ${app.play ? 'disabled' : ''}>Stats</button>${fieldNow()}</div>` };
 }
@@ -4247,10 +4287,10 @@ function skillDock() {
   const queued = q.map((x, k) => { const su = g.units[x.uid]; const t = x.target ? g.units[x.target] : null; return `<li class="qchip" data-seq="${x.seq}" data-tip="${esc(su.name + ': ' + su.kit.sk[x.i].n + (t ? ' → ' + t.name : '') + (x.opt != null ? ' (' + optLabel(su, x) + ')' : ''))}">${I.skillIcon(su.kit.sk[x.i], 'sm')}<span>${esc(su.kit.sk[x.i].n)}${t ? ` → ${esc(t.name.split(' ')[0])}` : ''}${x.opt != null ? ` · ${esc(optLabel(su, x))}` : ''}</span><button class="x" data-act="unqueue" data-k="${k}" aria-label="Remove">✕</button></li>`; }).join('');
   const P = g.players[p]; const T = u.targeting;
   const mIcon = M => I.badge(M.icon, { plain: true, dir: M.icon === 'atk' ? 'up' : null });
-  const master = `<div class="skrow master"><span class="skname">Master</span><div class="skbtns">${E.MASTER.map((M, i) => { const ok = E.masterUsable(g, p, i);
-    return `<button class="skill${T && T.master && T.i === i ? ' arming' : ''}" data-act="mskill" data-i="${i}" ${ok.ok ? '' : 'disabled'} data-tip="${esc(M.n + ' (CD ' + M.cd + '): ' + M.text)}">${mIcon(M)}<span class="sktxt"><b>${esc(M.n)}</b><small>${ok.ok ? `CD ${M.cd} · ${i === 2 ? 'swap' : 'ally'}` : esc(ok.why)}</small></span></button>`; }).join('')}</div></div>`;
+  const master = `<div class="skrow master"><span class="skname">Master</span><div class="skbtns">${E.masterSkills(g, p).map((M, i) => { const ok = E.masterUsable(g, p, i);
+    return `<button class="skill${T && T.master && T.i === i ? ' arming' : ''}" data-act="mskill" data-i="${i}" ${ok.ok ? '' : 'disabled'} data-tip="${esc(M.n + ' (CD ' + M.cd + '): ' + M.text)}">${mIcon(M)}<span class="sktxt"><b>${esc(M.n)}</b><small>${ok.ok ? `CD ${M.cd} · ${M.kind === 'swap' ? 'swap' : 'ally'}` : esc(ok.why)}</small></span></button>`; }).join('')}</div></div>`;
   const reservePick = T && T.kind === 'swapIn' ? `<div class="reserves"><span class="hint">Bring in for ${esc(g.units[T.out].name)}:</span>${P.reserve.filter(id => !g.units[id].dead && !E.has(g.units[id], 'noSwap')).map(id => { const r = g.units[id]; return `<button class="resbtn" data-act="swap-in" data-uid="${id}">${CI(r.cls)}<span>${esc(r.name)}</span><small>HP ${Math.round(r.hp)}${E.hasNoNP(r) ? " · No NP" : ` · NP ${Math.floor(r.np)}%`}</small></button>`; }).join('')}</div>` : '';
-  const mq = P.masterQueue.map((m, k) => { const M = E.MASTER[m.i]; const txt = m.i === 2 ? `${g.units[m.out].name} ⇄ ${g.units[m.in].name}` : g.units[m.target].name; return `<li class="qchip master" data-seq="${m.seq}" data-tip="${esc('Master: ' + M.n + ' → ' + txt)}">${mIcon(M)}<span>${esc(M.n)} → ${esc(txt)}${m.applied ? ' · activated' : ''}</span>${m.applied ? '' : `<button class="x" data-act="unmaster" data-k="${k}" aria-label="Remove ${esc(M.n)}">✕</button>`}</li>`; }).join('');
+  const mq = P.masterQueue.map((m, k) => { const M = E.masterSkills(g, p)[m.i]; const txt = M.kind === 'swap' ? `${g.units[m.out].name} ⇄ ${g.units[m.in].name}` : g.units[m.target].name; return `<li class="qchip master" data-seq="${m.seq}" data-tip="${esc('Master: ' + M.n + ' → ' + txt)}">${mIcon(M)}<span>${esc(M.n)} → ${esc(txt)}${m.applied ? ' · activated' : ''}</span>${m.applied ? '' : `<button class="x" data-act="unmaster" data-k="${k}" aria-label="Remove ${esc(M.n)}">✕</button>`}</li>`; }).join('');
   const sealOk = E.sealUsable(g, p);
   const sealRow = g.seals ? `<span class="sealbtns"><span class="seallbl">${I.svg('seal')}Seal</span>${[['heal', 'Full heal', 'heal'], ['np', 'NP +100%', 'np']].map(([k, label, ic]) => `<button class="sealbtn${T && T.seal && T.kind === k ? ' arming' : ''}" data-act="seal" data-k="${k}" ${sealOk.ok ? '' : 'disabled'} data-tip="${esc((k === 'heal' ? 'Command Seal: fully heal one injured servant, on the field or in reserve.' : 'Command Seal: charge one servant\'s NP gauge by 100%, on the field or in reserve.') + (sealOk.ok ? ' Once per game.' : ' (' + sealOk.why + ')'))}">${I.badge(ic, { plain: true, size: 'sm' })}${label}</button>`).join('')}</span>` : '';
   const sealPick = T && T.seal ? `<div class="reserves"><span class="hint">${T.kind === 'heal' ? 'Fully heal' : 'NP +100% for'}:</span>${P.order.filter(id => !g.units[id].dead).map(id => { const r = g.units[id]; const ok = E.sealTargetOk(g, p, T.kind, id); return `<button class="resbtn" data-act="seal-pick" data-uid="${id}" ${ok ? '' : 'disabled'}>${CI(r.cls)}<span>${esc(r.name)}${P.front.includes(id) ? '' : ' (reserve)'}</span><small>HP ${Math.round(r.hp)}/${Math.round(E.maxHp(r))}${E.hasNoNP(r) ? " · No NP" : ` · NP ${Math.floor(r.np)}%`}</small></button>`; }).join('')}</div>` : '';
@@ -4303,7 +4343,7 @@ function chainPreview() {
 function renderLog() {
   const g = app.g; const end = app.view ? app.view.log : g.log.length; const from = Math.max(0, end - 160);
   const rows = g.log.slice(from, end).map((l, i) => {
-    const ic = l.master != null ? `<span class="logic" data-tip="${esc(E.MASTER[l.master].text)}" tabindex="0">${I.badge(E.MASTER[l.master].icon, { plain: true, size: 'sm' })}</span>` : l.skill ? (() => { const su = g.units[l.skill.uid]; return `<span class="logic" data-tip="${esc(skillTip(su, l.skill.i))}" tabindex="0">${I.skillIcon(su.kit.sk[l.skill.i], 'sm')}</span>`; })() : '';
+    const ic = l.master != null ? (() => { const M = E.masterSkills(g, l.p || 0)[l.master]; return `<span class="logic" data-tip="${esc(M.text)}" tabindex="0">${I.badge(M.icon, { plain: true, size: 'sm' })}</span>`; })() : l.skill ? (() => { const su = g.units[l.skill.uid]; return `<span class="logic" data-tip="${esc(skillTip(su, l.skill.i))}" tabindex="0">${I.skillIcon(su.kit.sk[l.skill.i], 'sm')}</span>`; })() : '';
     const cause = l.cause ? `<span class="cause">${esc(l.cause.from)}${l.cause.by && !l.cause.from.startsWith('Control') ? ` <i>(${esc(l.cause.by)})</i>` : ''} ›</span> ` : '';
     const msg = NET() ? l.msg.replace(/\bP([12])\b/g, (_, d) => PN(+d - 1)) : l.msg; // online: player names instead of P1/P2
     return `<li class="${l.cls || ''}${l.cause ? ' caused' : ''}${from + i >= app.ui.revealFrom ? ' fresh' : ''}">${ic}${cause}${l.dmgNum != null ? esc(msg).replace(`for ${l.dmgNum}`, `for <b class="dnum ${l.aff}" title="${{ up: 'Class advantage', down: 'Class disadvantage', even: 'Neutral class matchup' }[l.aff]}">${l.dmgNum}</b>`) : esc(msg)}</li>`;
@@ -4390,7 +4430,7 @@ async function step(ev, tok) {
     if (ev.t === 'tiebreak-pass') { app.view = ev.snap; render(); }
     await announceTiebreak(ev.p, ev.t === 'tiebreak-pass' ? 'pass' : ev.stage, tok);
   } else if (ev.t === 'master') {
-    const M = E.MASTER[ev.i];
+    const M = E.masterSkills(g, ev.p)[ev.i];
     flash(ev.uid, 'casting', 700);
     floater(ev.uid, `${I.badge(M.icon, { plain: true })}<span>Master · ${esc(M.n)}</span>`, 'skillname');
     patchView(ev.snap); await wait(T.skill, tok);
@@ -4872,7 +4912,7 @@ async function applyAction(a, instant) {
   }
   if (a.t === 'lineup') {
     n.locked = [false, false];
-    return startBattle(a.orders, { initiative: a.initiative, instant });
+    return startBattle(a.orders, { initiative: a.initiative, instant, mcs: a.mcs });
   }
   const g = app.g; const u = app.ui;
   if (a.t === 'orderChange') {
@@ -5025,6 +5065,16 @@ async function netClick(a, el) {
 }
 document.addEventListener('keydown', e => { if (e.key === 'Enter' && app.screen === 'landing' && e.target.id) { e.preventDefault(); netClick(e.target.id === 'codeIn' ? 'net-join' : 'net-create', e.target); } });
 
+// ---- Mystic Codes: a shirt next to each player's name (white: Normal Chaldean Uniform, purple: Atlas Academy Uniform)
+const MC_ICON = { chaldea: 'mcChaldea', atlas: 'mcAtlas' };
+function mcBadge(mc, size = 'sm') {
+  const M = E.MYSTIC[mc] || E.MYSTIC.chaldea;
+  return `<span class="mcbadge" data-tip="${esc(`Mystic Code: ${M.n}\n${M.skills.map(s => `${s.n} (CD ${s.cd}): ${s.text}`).join('\n')}`)}" tabindex="0">${I.badge(MC_ICON[mc] || 'mcChaldea', { plain: true, size })}</span>`;
+}
+function mcPicker(L, p) {
+  const cur = (L.mc && L.mc[p]) || 'chaldea';
+  return `<div class="mcpick"><p class="eyebrow">Mystic Code</p><div class="mcopts">${Object.entries(E.MYSTIC).map(([k, M]) => `<button class="mcopt${cur === k ? ' on' : ''}" data-act="mc-pick" data-mc="${k}" aria-pressed="${cur === k}">${I.badge(MC_ICON[k], { plain: true, size: 'lg' })}<span class="mctxt"><b>${esc(M.n)}</b><small>${M.skills.map(s => `${esc(s.n)} <i>CD ${s.cd}</i>`).join(' · ')}</small></span></button>`).join('')}</div></div>`;
+}
 // ---- Battle stats and the victory announcement
 const STAT_COLS = [
   ['dealt', 'Damage dealt', 'Dealt'], ['taken', 'Damage taken', 'Taken'], ['healed', 'HP restored to them', 'Healed'], ['healGiven', 'HP they restored to allies', 'Heal given'],
@@ -5035,17 +5085,20 @@ const STAT_COLS = [
 const fmtStat = (k, v) => (k === 'npGain' || k === 'npLost' ? `${Math.round(v)}%` : Math.round(v).toLocaleString());
 function statsTable(g, p, lead) {
   const S = g.stats || {}; const sort = app.statsSort || 'dealt';
+  const star = mvp(g, p); const won = g.over && g.winner === p; const lost = g.over && g.winner !== p && g.winner !== 'draw';
+  const mvpTag = `<span class="mvptag${won ? ' win' : lost ? ' lose' : ''}" data-tip="${esc(won ? 'MVP of the winning team' : lost ? 'MVP of the losing team' : 'Team MVP so far')}">MVP</span>`;
   const rows = g.players[p].order.map(id => ({ u: g.units[id], s: S[id] || {} })).sort((a, b) => (b.s[sort] || 0) - (a.s[sort] || 0));
   const tot = k => rows.reduce((a, r) => a + (r.s[k] || 0), 0);
-  return `<section class="stteam p${p}"><h4>${esc(PN(p))}${g.winner === p ? ' <span class="wtag">Winner</span>' : ''}</h4><div class="sttable"><table>
+  return `<section class="stteam p${p}"><h4>${esc(PN(p))}${mcBadge(g.players[p].mc)}${g.winner === p ? ' <span class="wtag">Winner</span>' : ''}</h4><div class="sttable"><table>
     <thead><tr><th class="sname">Servant</th>${STAT_COLS.map(([k, tip, lbl]) => `<th><button class="sth${sort === k ? ' on' : ''}" data-act="stats-sort" data-k="${k}" data-tip="${esc(tip)}">${lbl}</button></th>`).join('')}</tr></thead>
-    <tbody>${rows.map(({ u, s }) => `<tr class="${u.dead ? 'ko' : ''}"><td class="sname">${CI(u.cls)}<span>${esc(u.name)}</span>${u.dead ? '<small>KO</small>' : ''}</td>${STAT_COLS.map(([k]) => `<td class="${(s[k] || 0) > 0 && lead[k] === u.uid ? 'lead' : ''}"${k === 'best' && s.bestWhat ? ` data-tip="${esc(s.bestWhat)}"` : ''}>${(s[k] || 0) ? fmtStat(k, s[k]) : '<span class="z">–</span>'}</td>`).join('')}</tr>`).join('')}</tbody>
+    <tbody>${rows.map(({ u, s }) => `<tr class="${u.dead ? 'ko' : ''}${star && star.uid === u.uid ? ' mvprow' : ''}"><td class="sname">${CI(u.cls)}<span>${esc(u.name)}</span>${star && star.uid === u.uid ? mvpTag : ''}${u.dead ? '<small>KO</small>' : ''}</td>${STAT_COLS.map(([k]) => `<td class="${(s[k] || 0) > 0 && lead[k] === u.uid ? 'lead' : ''}"${k === 'best' && s.bestWhat ? ` data-tip="${esc(s.bestWhat)}"` : ''}>${(s[k] || 0) ? fmtStat(k, s[k]) : '<span class="z">–</span>'}</td>`).join('')}</tr>`).join('')}</tbody>
     <tfoot><tr><td class="sname">Team</td>${STAT_COLS.map(([k]) => `<td>${k === 'best' ? fmtStat(k, Math.max(0, ...rows.map(r => r.s.best || 0))) : fmtStat(k, tot(k))}</td>`).join('')}</tr></tfoot></table></div></section>`;
 }
 function statsLeaders(g) { const lead = {}; for (const [k] of STAT_COLS) { let best = 0; for (const [id, s] of Object.entries(g.stats || {})) if ((s[k] || 0) > best) { best = s[k]; lead[k] = +id; } } return lead; }
-function mvp(g) {
+// MVP score: damage (Burn/Curse/Poison included), KOs and healing given, with a little for buffs received.
+function mvp(g, side) {
   if (!g.stats) return null; let best = null, sc = -1;
-  for (const [id, s] of Object.entries(g.stats)) { const v = s.dealt + s.healGiven * 0.8 + s.kills * 600 + s.buffs * 10; if (v > sc) { sc = v; best = +id; } }
+  for (const [id, s] of Object.entries(g.stats)) { if (side != null && g.units[id].side !== side) continue; const v = s.dealt + s.healGiven * 0.8 + s.kills * 600 + s.buffs * 10; if (v > sc) { sc = v; best = +id; } }
   return best != null ? g.units[best] : null;
 }
 function statsModal() {
@@ -5066,12 +5119,14 @@ function victoryOverlay() {
   const title = w === 'draw' ? 'Draw' : me != null ? (me === w ? 'Victory!' : 'Defeat') : `${PN(w)} wins!`;
   const sub = w === 'draw' ? 'Neither side could finish the other.' : me != null ? (me === w ? `You beat ${PN(1 - w)}` : `${PN(w)} wins`) : `over ${PN(1 - w)}`;
   const why = `${g.limitBy ? (g.limitBy === 'hp' ? `Turn ${E.CFG.turnLimit} reached · decided on average HP left` : `Turn ${E.CFG.turnLimit} reached · more servants standing`) : `Turn ${g.turn} · ${w === 'draw' ? '' : `${E.aliveCount(g, w)} servant${E.aliveCount(g, w) === 1 ? '' : 's'} left standing`}`}`;
-  const star = mvp(g); const s = star && g.stats[star.uid];
+  const star = mvp(g, w === 'draw' ? null : w); const s = star && g.stats[star.uid];
+  const other = w === 'draw' ? null : mvp(g, 1 - w); const so = other && g.stats[other.uid];
   const side = w === 'draw' ? '' : ` p${w}`;
   return `<div class="victory${me != null && me !== w && w !== 'draw' ? ' lost' : ''}${side}" role="dialog" aria-label="${esc(title)}"><div class="vcard">
     <div class="vrays" aria-hidden="true"></div>
     <p class="eyebrow">Battle over</p><h2 class="vtitle">${esc(title)}</h2><p class="vsub">${esc(sub)}</p><p class="vwhy">${esc(why)}</p>
-    ${star ? `<div class="vmvp"><span class="eyebrow">MVP</span><b>${CI(star.cls)}${esc(star.name)}</b><span>${s.dealt.toLocaleString()} damage · ${s.kills} KO${s.kills === 1 ? '' : 's'}${s.healGiven ? ` · ${Math.round(s.healGiven).toLocaleString()} healed` : ''}</span></div>` : ''}
+    ${other && so ? `<p class="vmvp2"><span class="mvptag lose">MVP</span> ${esc(PN(1 - w))}: <b>${esc(other.name)}</b> · ${so.dealt.toLocaleString()} damage · ${so.kills} KO${so.kills === 1 ? '' : 's'}</p>` : ''}
+    ${star ? `<div class="vmvp"><span class="eyebrow">${w === 'draw' ? 'MVP' : `MVP · ${esc(PN(w))}`}</span><b>${CI(star.cls)}${esc(star.name)}</b><span>${s.dealt.toLocaleString()} damage · ${s.kills} KO${s.kills === 1 ? '' : 's'}${s.healGiven ? ` · ${Math.round(s.healGiven).toLocaleString()} healed` : ''}</span></div>` : ''}
     <div class="row vbtns">${postGameButtons()}</div>
     <div class="row vbtns"><button data-act="open-stats">See battle stats</button><button data-act="victory-close">Back to the field</button></div></div></div>`;
 }
@@ -5142,7 +5197,8 @@ document.addEventListener('click', ev => {
     case 'order-random': { const L = app.lineup; const o = L.teams[L.p].slice(); for (let i = o.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [o[i], o[j]] = [o[j], o[i]]; } L.orders[L.p] = o; return render(); }
     case 'random-pick': return randomPick();
     case 'random-rest': return randomizeRest();
-    case 'order-done': { const L = app.lineup; if (NET()) { if (L.orders[L.p].length !== 6) return; netSend('act', { t: 'lineup', order: L.orders[L.p] }); L.sent = true; return render(); } if (L.p === 0) { L.p = 1; return render(); } return startBattle(L.orders); }
+    case 'order-done': { const L = app.lineup; L.mc = L.mc || ['chaldea', 'chaldea']; if (NET()) { if (L.orders[L.p].length !== 6) return; netSend('act', { t: 'lineup', order: L.orders[L.p], mc: L.mc[L.p] }); L.sent = true; return render(); } if (L.p === 0) { L.p = 1; return render(); } return startBattle(L.orders, { mcs: L.mc.slice() }); }
+    case 'mc-pick': { const L = app.lineup; L.mc = L.mc || ['chaldea', 'chaldea']; L.mc[L.p] = el.dataset.mc; return render(); }
     case 'uncover': u.cover = null; return render();
     case 'skill': {
       const x = g.units[+el.dataset.uid]; const i = +el.dataset.i; const kind = E.skillTargetKind(x, i);
@@ -5158,7 +5214,7 @@ document.addEventListener('click', ev => {
       if (tk) { u.targeting = { uid: T.uid, i: T.i, kind: tk, chosen: el.dataset.v }; return render(); }
       E.queueSkill(g, u.actor, T.uid, T.i, null, el.dataset.v); u.targeting = null; return render();
     }
-    case 'mskill': { const i = +el.dataset.i; u.targeting = { master: true, i, kind: i === 2 ? 'swapOut' : 'ally' }; return render(); }
+    case 'mskill': { const i = +el.dataset.i; u.targeting = { master: true, i, kind: E.isSwap(g, u.actor, i) ? 'swapOut' : 'ally' }; return render(); }
     case 'swap-in': { if (u.targeting && u.targeting.kind === 'swapIn') selectOrderChange(u.targeting.out, +el.dataset.uid); return; }
     case 'toggle-seals': app.opts.seals = !app.opts.seals; return render();
     case 'seal': u.targeting = { seal: true, kind: el.dataset.k }; return render();
@@ -5212,7 +5268,7 @@ document.addEventListener('click', ev => {
     case 'close-stats': app.statsOpen = false; if (app.ui) app.ui.victoryClosed = true; return render();
     case 'stats-sort': app.statsSort = el.dataset.k; return render();
     case 'victory-close': app.ui.victoryClosed = true; return render();
-    case 'rematch': return startBattle(app.lastTeams);
+    case 'rematch': return startBattle(app.lastTeams, { mcs: app.lastMcs });
     case 'new-draft': app.fields = null; return startDraft();
     default: if (a.startsWith('net-')) return netClick(a, el);
   }

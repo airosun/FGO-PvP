@@ -205,7 +205,7 @@ function newBattle(R, KITS, teams, opts = {}) {
   let seq = 1;
   for (let p = 0; p < 2; p++) {
     const order = teams[p].map(sid => { const u = makeUnit(R, KITS, sid, p, seq++); u.g = g; g.units[u.uid] = u; watchUnit(g, u); return u.uid; });
-    g.players.push({ order, front: order.slice(0, 3), reserve: order.slice(3), bag: [], hand: [], stars: 0, skillQueue: [], masterQueue: [], mcds: [0, 0, 0], sealUsed: false, sealQueue: null, cardSel: [] });
+    g.players.push({ mc: (opts.mcs && MYSTIC[opts.mcs[p]]) ? opts.mcs[p] : 'chaldea', order, front: order.slice(0, 3), reserve: order.slice(3), bag: [], hand: [], stars: 0, skillQueue: [], masterQueue: [], mcds: [0, 0, 0], sealUsed: false, sealQueue: null, cardSel: [] });
   }
   // Battlefield: one field from each player's picks, alternating every 2 turns.
   g.fields = (opts.fields && opts.fields.length) ? opts.fields.slice() : [FIELDS[Math.floor(rng() * FIELDS.length)], FIELDS[Math.floor(rng() * FIELDS.length)]];
@@ -713,7 +713,7 @@ function applyEffectTargets(g, e, src, choice, ctx) {
       }
       case 'dot': {
         if (!debuffLands(g, src, t, e)) break;
-        t.buffs.push({ s: e.kind, v: e.v, t: e.t, debuff: true, from: ctx.from });
+        t.buffs.push({ s: e.kind, v: e.v, t: e.t, debuff: true, from: ctx.from, src: src.uid }); // src: credited with the damage
         log(g, `${t.name}: ${STAT_LABEL[e.kind]} ${e.v}/turn (${e.t}T).`, 'debuff');
         fx(g, { t: 'eff', uid: t.uid, key: e.kind, neg: true, label: `${STAT_LABEL[e.kind]} ${e.v}/turn` });
         break;
@@ -994,19 +994,35 @@ const MASTER = [
     e: [{ k: 'buff', to: 'ally', s: 'atk', v: 40, t: 1, p: 500 }, { k: 'np', to: 'ally', v: 10 }] },
   { n: 'Order Change', cd: 7, kind: 'swap', icon: 'swap', text: 'Immediately swap one servant on the field with one in reserve during skill selection. The incoming servant can use skills this phase and takes over the outgoing servant\'s Command Cards this turn.', e: [] },
 ];
+const ATLAS = [
+  { n: 'Dust of Osiris', cd: 8, kind: 'ally', icon: 'invincible', text: '500% chance to grant one servant Invincible (1T).',
+    e: [{ k: 'buff', to: 'ally', s: 'invincible', v: 1, t: 1, p: 500 }] },
+  { n: 'Rain of Isis', cd: 6, kind: 'ally', icon: 'cleanse', text: "Remove one servant's debuffs.",
+    e: [{ k: 'cleanse', to: 'ally', cats: ['debuff'] }] },
+  { n: 'Eye of Medjed', cd: 7, kind: 'ally', icon: 'cdReduce', text: "Reduce one servant's skill cooldowns by 2.",
+    e: [{ k: 'cdReduce', to: 'ally', v: 2 }] },
+];
+// Mystic Codes: each player picks one while ordering their team; it decides their three Master skills.
+const MYSTIC = {
+  chaldea: { n: 'Normal Chaldean Uniform', skills: MASTER },
+  atlas: { n: 'Atlas Academy Uniform', skills: ATLAS },
+};
+function masterSkills(g, p) { const P = g && g.players[p]; return (MYSTIC[P && P.mc] || MYSTIC.chaldea).skills; }
+const isSwap = (g, p, i) => !!(masterSkills(g, p)[i] && masterSkills(g, p)[i].kind === 'swap');
 function masterUsable(g, p, i) {
   const P = g.players[p];
+  if (!masterSkills(g, p)[i]) return { ok: false, why: 'None' };
   if (P.mcds[i] > 0) return { ok: false, why: `Cooldown ${P.mcds[i]}` };
   if (P.masterQueue.some(m => m.i === i)) return { ok: false, why: 'Queued' };
-  if (i === 2 && !P.reserve.some(id => !U(g, id).dead)) return { ok: false, why: 'No reserves' };
+  if (isSwap(g, p, i) && !P.reserve.some(id => !U(g, id).dead)) return { ok: false, why: 'No reserves' };
   return { ok: true };
 }
 function nextSeq(g) { g.qseq = (g.qseq || 0) + 1; return g.qseq; }
-function swappingOut(g, p) { const m = g.players[p].masterQueue.find(x => x.i === 2 && !x.applied); return m ? m.out : null; }
+function swappingOut(g, p) { const m = g.players[p].masterQueue.find(x => isSwap(g, p, x.i) && !x.applied); return m ? m.out : null; }
 function queueMaster(g, p, i, target, inUid) {
   const ok = masterUsable(g, p, i); if (!ok.ok) return ok;
   const P = g.players[p];
-  if (i === 2) {
+  if (isSwap(g, p, i)) {
     P.masterQueue.push({ i, out: target, in: inUid, seq: nextSeq(g) });
     P.skillQueue = P.skillQueue.filter(q => q.uid !== target); // the outgoing servant leaves before acting
   } else P.masterQueue.push({ i, target, seq: nextSeq(g) });
@@ -1032,7 +1048,7 @@ function chargesAllyNp(list) { return (list || []).some(e => e.k === 'np' && e.t
 function allyTargetOk(g, T, uid) {
   const x = U(g, uid); if (!x || x.dead) return false;
   if (!hasNoNP(x)) return true;
-  const list = T.master ? MASTER[T.i].e : U(g, T.uid).kit.sk[T.i].e;
+  const list = T.master ? masterSkills(g, x.side)[T.i].e : U(g, T.uid).kit.sk[T.i].e;
   return !chargesAllyNp(list);
 }
 function queueSeal(g, p, kind, uid) {
@@ -1067,6 +1083,7 @@ function doOrderChange(g, p, outUid, inUid, reveal = true) {
   return true;
 }
 function activateOrderChange(g, p, outUid, inUid) {
+  if (!isSwap(g, p, 2)) return { ok: false, why: 'This Mystic Code has no Order Change.' };
   const ready = masterUsable(g, p, 2);
   if (!ready.ok) return ready;
   const P = g.players[p], out = U(g, outUid), inn = U(g, inUid);
@@ -1077,7 +1094,7 @@ function activateOrderChange(g, p, outUid, inUid) {
     visualBefore: { front: P.front.slice(), reserve: P.reserve.slice() }, revealed: false,
     outSkills: P.skillQueue.filter(q => q.uid === outUid).map(q => ({ i: q.i, seq: q.seq })) });
   P.mcds[2] = MASTER[2].cd;
-  log(g, `P${p + 1} Master activates ${MASTER[2].n}!`, 'activate', { master: 2 });
+  log(g, `P${p + 1} Master activates ${MASTER[2].n}!`, 'activate', { master: 2, p });
   fx(g, { t: 'swapNotice', p, out: outUid, in: inUid });
   doOrderChange(g, p, outUid, inUid, false);
   return { ok: true };
@@ -1146,7 +1163,7 @@ function resolveSkills(g) {
   // was (Mash's party DEF reaches her fellow starters, not the servant still waiting in reserve).
   for (let p = 0; p < 2; p++) {
     const P = g.players[p];
-    for (const m of P.masterQueue.filter(x => x.i === 2 && x.applied && !x.revealed).reverse()) {
+    for (const m of P.masterQueue.filter(x => isSwap(g, p, x.i) && x.applied && !x.revealed).reverse()) {
       const k = P.front.indexOf(m.in), r = P.reserve.indexOf(m.out);
       if (k < 0 || r < 0) continue;
       P.front[k] = m.out; P.reserve[r] = m.in;
@@ -1180,8 +1197,8 @@ function resolveItem(g, p, item) {
 function resolveItem0(g, p, item) {
   if (item.kind === 'seal') { useSeal(g, p); return; }
   if (item.kind === 'master') {
-    const m = item.m; const M = MASTER[m.i];
-    if (m.i === 2 && m.applied) {
+    const m = item.m; const M = masterSkills(g, p)[m.i];
+    if (M.kind === 'swap' && m.applied) {
       m.revealed = true;
       fx(g, { t: 'master', p, i: 2, uid: m.out });
       if (m.pendingSwap) { m.pendingSwap = false; doOrderChange(g, p, m.out, m.in); } // the swap itself happens now
@@ -1189,8 +1206,8 @@ function resolveItem0(g, p, item) {
       return;
     }
     g.players[p].mcds[m.i] = M.cd;
-    log(g, `P${p + 1} Master activates ${M.n}!`, 'activate', { master: m.i });
-    if (m.i === 2) { fx(g, { t: 'master', p, i: 2, uid: m.out }); doOrderChange(g, p, m.out, m.in); return; }
+    log(g, `P${p + 1} Master activates ${M.n}!`, 'activate', { master: m.i, p });
+    if (M.kind === 'swap') { fx(g, { t: 'master', p, i: 2, uid: m.out }); doOrderChange(g, p, m.out, m.in); return; }
     const t = U(g, standIn(g, m.target));
     if (!t || t.dead || !g.players[p].front.includes(t.uid)) { log(g, `P${p + 1}'s ${M.n} fizzles.`, 'miss'); return; }
     fx(g, { t: 'master', p, i: m.i, uid: t.uid });
@@ -1436,7 +1453,7 @@ function attackCard(g, u, t, color, a, tag) {
   const slot = Math.min(a.slot, 2);
   if (has(u, 'curseOnAttack')) {
     const b = u.buffs.find(x => x.s === 'curseOnAttack');
-    t.buffs.push({ s: 'curse', v: b.v, t: 5, debuff: true, from: b.from });
+    t.buffs.push({ s: 'curse', v: b.v, t: 5, debuff: true, from: b.from, src: u.uid });
   }
   const blocked = hitBlocked(g, u, t);
   if (g.stats && !a.aoeRest) { if (blocked) g.stats[t.uid].evaded++; else g.stats[u.uid].attacks++; } else if (g.stats && blocked) g.stats[t.uid].evaded++;
@@ -1665,9 +1682,14 @@ function endTurn(g) {
         if (!has(u, 'noHeal')) { u.hp = Math.min(maxHp(u), u.hp + v); log(g, `${u.name}'s ${b.s} heals them for ${v} HP.`, 'buff'); fx(g, { t: 'eff', uid: u.uid, key: 'heal', label: `+${v} HP` }); }
         continue;
       }
+      // Burn, Curse and Poison count as damage (and a KO) for whoever applied them
+      const by = b.src != null && g.units[b.src] && g.units[b.src].side !== u.side ? g.units[b.src] : null;
+      g._actor = by ? by.uid : null;
       u.hp -= v; log(g, `${u.name} takes ${v} ${b.s} damage.`, 'dmg'); fx(g, { t: 'hit', uid: u.uid, dmg: v, aff: 'even', dot: b.s });
+      g._actor = null;
+      if (u.hp <= 0 && by) u._dotBy = by.uid;
     }
-    if (u.hp <= 0) killOrGuts(g, u, u);
+    if (u.hp <= 0) { const by = u._dotBy != null ? g.units[u._dotBy] : u; delete u._dotBy; killOrGuts(g, u, by); }
     if (u.dead) continue;
     const hr = sumStat(u, 'hpRegen'); if (hr && !has(u, 'noHeal')) u.hp = Math.min(maxHp(u), u.hp + hr);
     const nr = sumStat(u, 'npRegen'); if (nr) u.np = Math.min(npCap(u), u.np + nr);
@@ -1749,7 +1771,7 @@ function decideByLimit(g) {
 }
 
 const API = {
-  CFG, STAT_LABEL, cardWillChange, fullCap, cardSealed, fieldActive, effCls, affLevel, AFF_NAME, CLASS_LIST, FIELDS, fieldName, currentField, fieldTurnsLeft, actBlocker, rawAffinity, snap, sealUsable, sealTargetOk, queueSeal, unqueueSeal, MASTER, masterUsable, queueMaster, unqueueMaster, swappingOut, npCap, npLevel, hasNoNP, allyTargetOk, COLOR, costOf, teamCost, snakeOrder, canPick, EXCLUSIVE, META, starRate, npPerHit, skillRank, skillOption, newBattle, front, maxHp, has, sumStat,
+  CFG, MYSTIC, masterSkills, isSwap, STAT_LABEL, cardWillChange, fullCap, cardSealed, fieldActive, effCls, affLevel, AFF_NAME, CLASS_LIST, FIELDS, fieldName, currentField, fieldTurnsLeft, actBlocker, rawAffinity, snap, sealUsable, sealTargetOk, queueSeal, unqueueSeal, MASTER, masterUsable, queueMaster, unqueueMaster, swappingOut, npCap, npLevel, hasNoNP, allyTargetOk, COLOR, costOf, teamCost, snakeOrder, canPick, EXCLUSIVE, META, starRate, npPerHit, skillRank, skillOption, newBattle, front, maxHp, has, sumStat,
   skillUsable, skillTargetKind, queueSkill, unqueueSkill, activateOrderChange, resolveSkills, availableNPs, cardColor, npColor, canAct,
   setCards, resolveCards, describeBuff, cloneGame, classMult, attrMult, aliveCount, hpPct, mkRng,
 };

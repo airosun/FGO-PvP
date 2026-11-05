@@ -821,6 +821,22 @@ h1, h2 { letter-spacing: .01em; }
 .sttable td.lead { color: var(--gold); font-weight: 700; background: color-mix(in srgb, var(--gold) 9%, transparent); }
 .sttable td .z { color: color-mix(in srgb, var(--muted) 50%, transparent); }
 .sttable tfoot td { font-weight: 700; color: var(--muted); border-bottom: 0; background: rgba(255,255,255,.02); }
+
+/* MVPs, Mystic Code shirts and picker */
+.mvptag { flex: none; font: 800 .58rem/1 var(--f-body); letter-spacing: .08em; padding: 3px 6px; border-radius: 999px; background: #c9ced8; color: #111; }
+.mvptag.win { background: linear-gradient(180deg, #ffe9a6, var(--gold)); color: var(--gold-ink); box-shadow: 0 0 10px color-mix(in srgb, var(--gold) 50%, transparent); }
+.sttable tr.mvprow td.sname { box-shadow: inset 3px 0 0 var(--gold); }
+.victory .vmvp2 { color: var(--muted); font-size: .82rem; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: center; }
+.victory .vmvp { order: 0; }
+.mcbadge { display: inline-flex; vertical-align: middle; margin-left: 6px; cursor: help; }
+.sidelabel b { display: inline-flex; align-items: center; gap: 2px; }
+.mcbadge .badge { width: 22px !important; height: 22px !important; padding: 2px !important; }
+.mcpick { display: grid; gap: 8px; margin: 6px 0 10px; }
+.mcopts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+.mcopt { display: flex; align-items: center; gap: 12px; text-align: left; padding: 12px 14px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); }
+.mcopt.on { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold), 0 0 18px color-mix(in srgb, var(--gold) 20%, transparent); }
+.mcopt .badge { flex: none; }
+.mctxt { display: grid; gap: 3px; } .mctxt small { color: var(--muted); font-size: .74rem; line-height: 1.35; } .mctxt i { font-style: normal; font-family: var(--f-mono); opacity: .8; }
 </style>
 <script>__ICONS__</script>
 <script>__SCENES__</script>
