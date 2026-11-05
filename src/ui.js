@@ -441,7 +441,8 @@ function renderField() {
     const tiles = frontIds.map(id => {
       const x = viewUnit(g.units[id]);
       let targetable = false;
-      if (!u.cover && u.targeting && u.targeting.kind !== 'swapIn' && !u.targeting.seal) targetable = u.targeting.kind === 'ally' ? (x.side === u.actor && !x.dead && E.allyTargetOk(g, u.targeting, x.uid)) : u.targeting.kind === 'swapOut' ? (x.side === u.actor && !x.dead && !E.has(x, 'noSwap')) : (x.side !== u.actor && !x.dead);
+      if (!u.cover && u.targeting && u.targeting.seal) targetable = x.side === u.actor && !x.dead && E.sealTargetOk(g, u.actor, u.targeting.kind, x.uid);
+      else if (!u.cover && u.targeting && u.targeting.kind !== 'swapIn') targetable = u.targeting.kind === 'ally' ? (x.side === u.actor && !x.dead && E.allyTargetOk(g, u.targeting, x.uid)) : u.targeting.kind === 'swapOut' ? (x.side === u.actor && !x.dead && !E.has(x, 'noSwap')) : (x.side !== u.actor && !x.dead);
       let aff = null;
       if (!u.cover && u.stage === 'cards' && viewerEnemy && !x.dead && u.pendingSlot != null) {
         targetable = true;
@@ -830,6 +831,47 @@ async function strikeAll(atk, tks, evs, tok, big = true) { // big: NP; otherwise
   await moveTo(atk, inPos, 'none', big ? 300 : 240);
   atk.classList.remove('npglow');
 }
+// An NP that deals no damage still takes the stage: the user steps out with the allies it helps behind them and/or
+// the enemies it hinders opposite. Allies shake and swell (buffed), enemies shake and shrink (debuffed).
+async function supportNP(act, seq, tok) {
+  const g = app.g; const me = g.units[act.uid]; const st = document.getElementById('stage');
+  const allies = [], enemies = [];
+  for (const ev of seq) {
+    if (ev.uid == null || !g.units[ev.uid] || ev.uid === me.uid) continue;
+    if (!['eff', 'hit', 'guts'].includes(ev.t) || (ev.t === 'hit' && !ev.dot && !ev.self)) continue;
+    const list = g.units[ev.uid].side === me.side ? allies : enemies;
+    if (!list.includes(ev.uid)) list.push(ev.uid);
+  }
+  const selfHit = seq.some(e => e.uid === me.uid && e.t === 'eff' && !e.miss);
+  if (!allies.length && !enemies.length && !selfHit) return false;
+  const s = pageRect(st);
+  const w = Math.max(96, Math.min(140, s.w * 0.32));
+  const dir = me.side === leftSide() ? 1 : -1;
+  const myX = s.x + s.w * (dir > 0 ? 0.3 : 0.7), backX = myX - dir * w * 0.62, foeX = s.x + s.w * (dir > 0 ? 0.78 : 0.22);
+  const team = [me.uid, ...allies];
+  const figs = {};
+  figs[me.uid] = spawnFighter(me.uid, enemies.length ? myX : s.x + s.w / 2 + (allies.length ? dir * w * 0.3 : 0), s.y + s.h / 2, w);
+  allies.forEach((uid, k) => { figs[uid] = spawnFighter(uid, enemies.length ? backX : s.x + s.w / 2 - dir * w * 0.6, s.y + s.h * (k + 1) / (allies.length + 1), w * 0.9); figs[uid].style.zIndex = 1; });
+  figs[me.uid].style.zIndex = 2;
+  enemies.forEach((uid, k) => { figs[uid] = spawnFighter(uid, foeX, s.y + s.h * (k + 1) / (enemies.length + 1), w); });
+  await wait(460, tok); if (tok.skip) return true;
+  figs[me.uid].classList.add('npglow');
+  await step(act, tok); if (tok.skip) return true;
+  const pulse = (ids, cls) => ids.forEach(uid => { const f = figs[uid]; if (!f) return; f.classList.remove(cls); void f.offsetWidth; f.classList.add(cls); });
+  const buffs = seq.some(e => e.t === 'eff' && !e.miss && g.units[e.uid] && g.units[e.uid].side === me.side);
+  if (buffs) { pulse(team, 'buffed'); await wait(780, tok); if (tok.skip) return true; }
+  if (enemies.length) {
+    figs[me.uid].animate([{ transform: 'none' }, { transform: `translateX(${dir * 26}px) scale(1.05)`, offset: .4 }, { transform: 'none' }], { duration: dur(520), easing: 'ease-in-out' });
+    await wait(200, tok); if (tok.skip) return true;
+    pulse(enemies, 'debuffed'); await wait(780, tok); if (tok.skip) return true;
+  }
+  for (const ev of seq) { if (tok.skip) return true; await step(ev, tok); }
+  figs[me.uid].classList.remove('npglow');
+  await wait(200, tok); if (tok.skip) return true;
+  arenaLayer().querySelectorAll('.fighter').forEach(sendHome);
+  await wait(420, tok);
+  return true;
+}
 async function arena(act, seq, tok) {
   const g = app.g; const me = g.units[act.uid];
   const foes = [];
@@ -839,6 +881,7 @@ async function arena(act, seq, tok) {
     if ((isHit || isBlock) && g.units[ev.uid].side !== me.side && !foes.includes(ev.uid)) foes.push(ev.uid);
   }
   const st = document.getElementById('stage');
+  if (!foes.length && act.np && st && !seq.some(e => e.t === 'banner' && e.field)) { if (await supportNP(act, seq, tok)) return; }
   if (!foes.length || !st) { await step(act, tok); for (const ev of seq) { if (tok.skip) return; await step(ev, tok); } return; }
   // An NP that changes the battlefield (Archetype: Earth): announce it and crossfade to the new field first,
   // then bring the fighters out for the attack.
@@ -1356,7 +1399,8 @@ document.addEventListener('click', ev => {
       const x = g.units[+el.dataset.uid];
       if (u.targeting) {
         const T = u.targeting;
-        if (T.kind === 'swapIn' || T.seal) return render();
+        if (T.seal) { if (x.side === u.actor && !x.dead && E.sealTargetOk(g, u.actor, T.kind, x.uid)) { E.queueSeal(g, u.actor, T.kind, x.uid); u.targeting = null; } return render(); }
+        if (T.kind === 'swapIn') return render();
         const ok = T.kind === 'ally' ? x.side === u.actor && E.allyTargetOk(g, T, x.uid) : T.kind === 'swapOut' ? x.side === u.actor && !E.has(x, 'noSwap') : x.side !== u.actor;
         if (ok && !x.dead) {
           if (T.master && T.kind === 'swapOut') { u.targeting = { master: true, i: 2, kind: 'swapIn', out: x.uid }; return render(); }

@@ -58,54 +58,74 @@ function cardSynergy(supportId, dpsId, R, KITS) {
   return (buffs.B * weights.B + buffs.A * weights.A + buffs.Q * weights.Q) / total * 0.42;
 }
 // Picks that keep the team able to finish legally: two 5★ in the end and under the cost cap.
+// (The cheapest way to fill the remaining slots is read off one cost-sorted list, so this stays fast.)
+const SORTED = new WeakMap();
+function byCost(pool) { let s = SORTED.get(pool); if (!s) { s = pool.slice().sort((a, b) => E.costOf(a) - E.costOf(b)); SORTED.set(pool, s); } return s; }
 function fits(team, taken, d, R, pool) {
   const need = Math.max(0, E.CFG.max5 - team.filter(id => R[id].rar === 5).length - (d.rar === 5 ? 1 : 0));
   const left = E.CFG.picks - team.length - 1;
   if (need > left) return false;
-  const free = pool.filter(x => !taken.has(x.id) && x.id !== d.id);
-  const fives = free.filter(x => x.rar === 5).map(E.costOf).sort((a, b) => a - b).slice(0, need);
-  if (fives.length < need) return false;
-  const rest = free.filter(x => x.rar !== 5).map(E.costOf).sort((a, b) => a - b).slice(0, left - need);
-  return E.teamCost(team, R) + E.costOf(d) + [...fives, ...rest].reduce((a, b) => a + b, 0) <= E.CFG.costCap;
+  let cost = E.teamCost(team, R) + E.costOf(d), five = 0, rest = 0;
+  for (const x of byCost(pool)) {
+    if (five >= need && rest >= left - need) break;
+    if (taken.has(x.id) || x.id === d.id) continue;
+    if (x.rar === 5 && five < need) { cost += E.costOf(x); five++; } else if (x.rar !== 5 && rest < left - need) { cost += E.costOf(x); rest++; }
+  }
+  return five >= need && cost <= E.CFG.costCap;
 }
+const POOLS = new WeakMap();
+const isDpsRole = r => r === 'Main DPS' || r === 'Sub DPS';
+const isSupRole = r => r === 'Utility Support' || r === 'Healer';
+// Weighted random choice; weights need not sum to 1.
+function pickWeighted(list, w, rng) {
+  const ws = list.map(w); let roll = (rng || Math.random)() * ws.reduce((a, b) => a + b, 0);
+  for (let i = 0; i < list.length; i++) { roll -= ws[i]; if (roll <= 0) return list[i]; }
+  return list[list.length - 1];
+}
+// Draft: mostly random, so CPU teams vary game to game, with a light plan: one main attacker, a support whose
+// skills buff that attacker's main card type, a second damage dealer, and the rest from whatever is left.
+// Servant strength only nudges the odds (and the weakest picks are skipped).
 function draftPick(team, taken, R, KITS, rng) {
-  const pool = Object.values(R).filter(d => !d.hidden && KITS[d.id]);
-  let opts = pool.filter(d => E.canPick(team, d.id, taken, R).ok && fits(team, taken, d, R, pool));
-  if (!opts.length) opts = pool.filter(d => E.canPick(team, d.id, taken, R).ok);
+  let pool = POOLS.get(R); if (!pool) { pool = Object.values(R).filter(d => !d.hidden && KITS[d.id]); POOLS.set(R, pool); }
+  let opts = pool.filter(d => !taken.has(d.id) && E.canPick(team, d.id, taken, R).ok && fits(team, taken, d, R, pool));
+  if (!opts.length) opts = pool.filter(d => !taken.has(d.id) && E.canPick(team, d.id, taken, R).ok);
   if (!opts.length) return null;
-  const roles = team.map(id => Roles.classify(KITS[id], id));
-  const has = r => roles.filter(x => x === r).length;
-  const left = E.CFG.picks - team.length;
-  const budget = E.CFG.costCap - E.teamCost(team, R);
-  const scored = opts.map(d => {
-    const role = Roles.classify(KITS[d.id], d.id);
-    let v = servantValue(d, KITS);
-    if (role === 'Main DPS' && has('Main DPS') < 2) v += 3;
-    if ((role === 'Utility Support' || role === 'Healer') && has('Utility Support') + has('Healer') < 1) v += 3;
-    const picked = team.concat(d.id);
-    for (const supportId of picked) {
-      if (!['Utility Support', 'Healer'].includes(Roles.classify(KITS[supportId], supportId))) continue;
-      for (const dpsId of picked) {
-        if (dpsId !== supportId && ['Main DPS', 'Sub DPS'].includes(Roles.classify(KITS[dpsId], dpsId))) v += cardSynergy(supportId, dpsId, R, KITS);
+  const role = id => Roles.classify(KITS[id], id);
+  const power = d => (POWER[d.id] != null ? POWER[d.id] : 0);
+  const good = opts.filter(d => power(d) > -0.12); if (good.length >= 8) opts = good; // skip the weakest
+  const roles = team.map(role);
+  const mainDps = team.filter(id => role(id) === 'Main DPS').sort((a, b) => power(R[b]) - power(R[a]))[0] ?? team.find(id => isDpsRole(role(id)));
+  const nDps = roles.filter(isDpsRole).length, nSup = roles.filter(isSupRole).length, left = E.CFG.picks - team.length;
+  // what this pick should be
+  let want = null;
+  if (mainDps == null) want = 'main';
+  else if (!nSup) want = 'support';
+  else if (nDps < 2) want = 'dps';
+  else if (left > 1 && (rng || Math.random)() < 0.35) want = (rng || Math.random)() < 0.5 ? 'dps' : 'support';
+  const nudge = d => Math.max(0.15, 1 + power(d) * 3);
+  if (want === 'main') {
+    const c = opts.filter(d => role(d.id) === 'Main DPS');
+    if (c.length) return pickWeighted(c, nudge, rng);
+  }
+  if (want === 'support') {
+    const c = opts.filter(d => isSupRole(role(d.id)));
+    if (c.length) {
+      if (mainDps != null) {
+        // supports that buff the main attacker's card type, best matches most likely
+        const syn = c.map(d => ({ d, s: cardSynergy(d.id, mainDps, R, KITS) })).filter(x => x.s > 0);
+        if (syn.length) return pickWeighted(syn, x => Math.pow(1 + x.s, 2) * nudge(x.d), rng).d;
       }
+      return pickWeighted(c, nudge, rng);
     }
-    if (['Utility Support', 'Healer'].includes(role)) {
-      const prospects = opts.filter(x => x.id !== d.id && !team.includes(x.id) && ['Main DPS', 'Sub DPS'].includes(Roles.classify(KITS[x.id], x.id)));
-      const projected = prospects.reduce((best, x) => Math.max(best, cardSynergy(d.id, x.id, R, KITS)), 0);
-      v += projected * 0.35;
-    } else if (role === 'Main DPS' || role === 'Sub DPS') {
-      const supports = opts.filter(x => !team.includes(x.id) && x.id !== d.id && ['Utility Support', 'Healer'].includes(Roles.classify(KITS[x.id], x.id)));
-      const projected = supports.reduce((best, x) => Math.max(best, cardSynergy(x.id, d.id, R, KITS)), 0);
-      v += projected * 0.2;
-    }
-    return { d, v };
-  }).sort((a, b) => b.v - a.v);
-  const near = scored.filter(x => x.v >= scored[0].v - 10).slice(0, 5);
-  const weights = near.map(x => Math.max(0.12, 1 - (scored[0].v - x.v) / 12));
-  let roll = (rng || Math.random)() * weights.reduce((sum, weight) => sum + weight, 0);
-  for (let i = 0; i < near.length; i++) { roll -= weights[i]; if (roll <= 0) return near[i].d; }
-  return near[0].d;
+  }
+  if (want === 'dps') {
+    const c = opts.filter(d => isDpsRole(role(d.id)));
+    if (c.length) return pickWeighted(c, d => nudge(d) * (mainDps != null && cardWeights(R[mainDps]) && supportsFit(team, d.id, R, KITS) ? 1.5 : 1), rng);
+  }
+  return pickWeighted(opts, nudge, rng);
 }
+// A second attacker fits better when the team's supports already buff their card type.
+function supportsFit(team, dpsId, R, KITS) { return team.some(id => isSupRole(Roles.classify(KITS[id], id)) && cardSynergy(id, dpsId, R, KITS) > 2); }
 // Battlefields: the ones this team's kits care about, then random.
 function pickFields(team, KITS, rng) {
   const want = new Map();
