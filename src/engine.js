@@ -158,7 +158,7 @@ function canPick(team, id, taken, R) {
 // ---- Battle stats: damage dealt and taken, healing, NP gained and lost, best hit, attacks, NPs, buffs, KOs.
 // HP and NP changes are caught where they happen (a watched property on each servant), and credited to whoever is
 // acting at that moment. Look-ahead copies of a battle (the CPU's) don't track anything.
-function newStat() { return { dealt: 0, taken: 0, healed: 0, healGiven: 0, npGain: 0, npLost: 0, best: 0, bestWhat: '', attacks: 0, nps: 0, crits: 0, buffs: 0, debuffs: 0, kills: 0, evaded: 0, turns: 0 }; }
+function newStat() { return { dealt: 0, taken: 0, healed: 0, healGiven: 0, maxHpGiven: 0, guts: 0, npGain: 0, npLost: 0, best: 0, bestWhat: '', attacks: 0, nps: 0, crits: 0, buffs: 0, debuffs: 0, kills: 0, evaded: 0, turns: 0 }; }
 // Objects built on top of a servant (the UI's animation views use Object.create) get their own copy instead of
 // writing through to the real servant.
 function own(obj, k, v) { Object.defineProperty(obj, k, { value: v, writable: true, enumerable: true, configurable: true }); }
@@ -170,13 +170,17 @@ function watchUnit(g, u) {
 function statHp(g, u, d) {
   const S = g.stats, me = S[u.uid]; if (!me) return;
   const by = g._actor != null ? S[g._actor] : null; const actor = g._actor != null ? g.units[g._actor] : null;
+  if (g._quiet) return; // HP moving because max HP changed, not damage or healing
   if (d < 0) {
     me.taken += -d;
     if (actor && actor.side !== u.side) { by.dealt += -d; g._atkDmg = (g._atkDmg || 0) + -d; }
-  } else if (!g._reviving) {
-    me.healed += d;
-    if (actor && actor.side === u.side && actor !== u) by.healGiven += d;
   }
+  // healing is credited where it happens (creditHeal), at the amount shown, so the giver is always known
+}
+function creditHeal(g, t, giver, amt) {
+  if (!g.stats || !(amt > 0)) return;
+  const me = g.stats[t.uid]; if (me) me.healed += amt;
+  const by = giver && g.stats[giver.uid]; if (by && giver.side === t.side) by.healGiven += amt;
 }
 function statNp(g, u, d) { const me = g.stats[u.uid]; if (!me) return; if (d > 0) me.npGain += d; else me.npLost += -d; }
 // New buffs and debuffs since the last look are counted once each (passives don't count).
@@ -573,7 +577,7 @@ function applyEffectInner(g, e, src, choice, ctx) {
   if (e.k === 'delayed') { src.buffs.push({ s: 'delayed', after: e.after, eff: e.eff, t: e.after + 1, from: ctx.from }); log(g, `${src.name}: delayed effect set.`); fx(g, { t: 'eff', uid: src.uid, key: 'delayed', label: 'Delayed effect' }); return; }
   if (e.k === 'absorbHp' || e.k === 'absorbNp') {
     const sub = { ...ctx }; applyEffectTargets(g, e, src, choice, sub);
-    if (e.k === 'absorbHp' && sub._absorbed) { if (has(src, 'noHeal')) log(g, `${src.name} can't recover HP.`, 'miss'); else { src.hp = Math.min(maxHp(src), src.hp + sub._absorbed); log(g, `${src.name} absorbs ${sub._absorbed} HP.`, 'buff'); fx(g, { t: 'eff', uid: src.uid, key: 'heal', label: `+${sub._absorbed} HP` }); } }
+    if (e.k === 'absorbHp' && sub._absorbed) { if (has(src, 'noHeal')) log(g, `${src.name} can't recover HP.`, 'miss'); else { src.hp = Math.min(maxHp(src), src.hp + sub._absorbed); creditHeal(g, src, src, sub._absorbed); log(g, `${src.name} absorbs ${sub._absorbed} HP.`, 'buff'); fx(g, { t: 'eff', uid: src.uid, key: 'heal', label: `+${sub._absorbed} HP` }); } }
     if (e.k === 'absorbNp' && sub._absorbedNp) { const v = Math.round(sub._absorbedNp); if (!hasNoNP(src)) { src.np = Math.min(npCap(src), src.np + v); log(g, `${src.name} absorbs ${v}% NP (now ${Math.floor(src.np)}%).`, 'buff'); fx(g, { t: 'eff', uid: src.uid, key: 'np', label: `NP +${v}%` }); } }
     return;
   }
@@ -599,7 +603,7 @@ function applyEffectTargets(g, e, src, choice, ctx) {
         const b = { s: e.s, v: Math.round(v * 100) / 100, t: e.carry && !g.inEndTurn ? e.t + 1 : e.t, n: e.n, debuff: harmful, vs: e.vs, vsList: e.vsList, status: e.status, statusAny: e.statusAny, alignVs: e.alignVs, trait: e.trait, tags: e.tags, eff: e.eff, on: e.on, cards: e.cards, crit: e.crit, vsAny: e.vsAny, label: e.label, chance: e.chance, marks: e.marks, hpBelow: e.hpBelow, vLow: e.vLow, atk: e.atk, def: e.def, whileHas: e.whileHas, whileMark: e.whileMark, hpAbove: e.hpAbove, perMark: e.perMark, perField: e.perField, perMarkOp: e.perMarkOp, cats: e.cats, mainOnly: e.mainOnly, np: e.np, color: e.color, icon: e.icon, cls: e.cls, srcUid: src.uid, dmg: e.dmg, fields: e.fields, kind: e.kind, from: ctx.from };
         t.buffs.push(b);
         if (e.s === 'taunt') { g.lastTaunt = g.lastTaunt || [null, null]; g.lastTaunt[t.side] = t.uid; }
-        if (e.s === 'maxHp') t.hp = Math.max(1, Math.min(maxHp(t), t.hp + v));
+        if (e.s === 'maxHp') { g._quiet = true; t.hp = Math.max(1, Math.min(maxHp(t), t.hp + v)); g._quiet = false; if (g.stats && src && src.side === t.side && g.stats[src.uid] && v > 0) g.stats[src.uid].maxHpGiven += Math.round(v); }
         const demerit = !harmful && t.side !== src.side; // e.g. a skill that buffs the enemy as a drawback
         log(g, `${t.name}: ${describeBuff(b)}.`, harmful ? 'debuff' : demerit ? 'demerit' : 'buff');
         fx(g, { t: 'eff', uid: t.uid, buff: { ...b }, label: describeBuff(b) });
@@ -610,7 +614,7 @@ function applyEffectTargets(g, e, src, choice, ctx) {
         const base = e.pct ? maxHp(t) * e.pct / 100 : e.v;
         if (has(t, 'noHeal')) { log(g, `${t.name} can't recover HP (Recovery Disabled).`, 'miss'); fx(g, { t: 'eff', uid: t.uid, key: 'noHeal', label: 'No recovery', miss: true }); break; }
         const amt = Math.round(base * (1 + sumStat(t, 'healRecv') / 100 + (src ? sumStat(src, 'healGiven') : 0) / 100));
-        t.hp = Math.min(maxHp(t), t.hp + amt); log(g, `${t.name} heals ${amt}.`, 'buff'); fx(g, { t: 'eff', uid: t.uid, key: 'heal', label: `+${amt} HP` });
+        t.hp = Math.min(maxHp(t), t.hp + amt); creditHeal(g, t, src, amt); log(g, `${t.name} heals ${amt}.`, 'buff'); fx(g, { t: 'eff', uid: t.uid, key: 'heal', label: `+${amt} HP` });
         if (!g.inEndTurn) fireTriggers(g, t, 'healed', {});
         break;
       }
@@ -681,7 +685,7 @@ function applyEffectTargets(g, e, src, choice, ctx) {
         t.traits = new Set(nd.traits.concat(nd.tags || [], [nd.gender, nd.cls, `${nd.attr} Attribute`], (nd.align || '').split(' ')));
         t.buffs = t.buffs.filter(b => !b.passive);
         for (const p of nk.pas) t.buffs.push(Array.isArray(p) ? { s: p[0], v: p[1], t: Infinity, passive: true, from: 'Passive' } : { ...p, t: Infinity, passive: true, from: p.from || 'Passive' });
-        t.hp = Math.max(1, Math.round(maxHp(t) * ratio));
+        g._quiet = true; t.hp = Math.max(1, Math.round(maxHp(t) * ratio)); g._quiet = false;
         if (hasNoNP(t)) t.np = 0;
         remapDeck(g, t, nd.deck);
         log(g, `${old} transforms into ${nd.name}!`, 'activate');
@@ -893,7 +897,7 @@ function killOrGuts(g, t, by) {
     const kb = knight && knight.buffs.find(b => b.s === 'knighthood');
     guts.n -= 1;
     if (guts.n <= 0) t.buffs.splice(t.buffs.indexOf(guts), 1);
-    g._reviving = true; t.hp = guts.hp + (kb ? kb.gutsHp : 0); g._reviving = false;
+    g._reviving = true; t.hp = guts.hp + (kb ? kb.gutsHp : 0); g._reviving = false; if (g.stats && g.stats[t.uid]) g.stats[t.uid].guts++;
     log(g, `${t.name}'s Guts activates! Back at ${t.hp} HP.`, 'buff');
     if (kb) { t.buffs.push({ s: 'atk', v: kb.atkUp, t: 3, from: 'Knighthood Conferment' }); log(g, `${knight.name}'s Knighthood Conferment: ${t.name} +${kb.gutsHp} HP on revival, ATK +${kb.atkUp}% 3T.`, 'buff'); }
     fx(g, { t: 'guts', uid: t.uid, label: `Guts! ${guts.hp} HP` });
@@ -1063,7 +1067,7 @@ function useSeal(g, p) {
   const u = U(g, q.uid);
   if (!u || u.dead) { log(g, `P${p + 1}'s Command Seal fizzles.`, 'miss'); return; }
   addAffection(g, u, 10, 'Command Seal');
-  if (q.kind === 'heal') { const amt = Math.round(maxHp(u) - u.hp); u.hp = maxHp(u); log(g, `P${p + 1} Command Seal: ${u.name} is fully healed (+${amt} HP).`, 'buff'); }
+  if (q.kind === 'heal') { const amt = Math.round(maxHp(u) - u.hp); u.hp = maxHp(u); creditHeal(g, u, null, amt); log(g, `P${p + 1} Command Seal: ${u.name} is fully healed (+${amt} HP).`, 'buff'); }
   else { u.np = Math.min(npCap(u), u.np + 100); log(g, `P${p + 1} Command Seal: ${u.name}'s NP +100% (now ${Math.floor(u.np)}%).`, 'buff'); }
   fx(g, { t: 'seal', p, uid: u.uid, kind: q.kind, onField: P.front.includes(u.uid) });
 }
@@ -1506,7 +1510,7 @@ function attackCard(g, u, t, color, a, tag) {
 function lethalGuard(g, t, dmg) {
   if (dmg > 0 && dmg >= t.hp && has(t, 'evadeLethal')) { consume(t, 'evadeLethal'); log(g, `${t.name} evades the lethal blow!`, 'buff'); fx(g, { t: 'eff', uid: t.uid, key: 'evade', label: 'Lethal hit evaded', miss: true }); return 0; }
   if (dmg > 0 && has(t, 'absorbDmg')) { // Passionlip: damage taken this turn is absorbed as healing
-    if (!has(t, 'noHeal')) { t.hp = Math.min(maxHp(t), t.hp + dmg); log(g, `${t.name} absorbs the hit and heals ${dmg}.`, 'buff'); fx(g, { t: 'eff', uid: t.uid, key: 'heal', label: `Absorbs ${dmg}` }); }
+    if (!has(t, 'noHeal')) { t.hp = Math.min(maxHp(t), t.hp + dmg); creditHeal(g, t, t, dmg); log(g, `${t.name} absorbs the hit and heals ${dmg}.`, 'buff'); fx(g, { t: 'eff', uid: t.uid, key: 'heal', label: `Absorbs ${dmg}` }); }
     return 0;
   }
   return dmg;
@@ -1679,7 +1683,7 @@ function endTurn(g) {
       if (b.s === 'curse' && has(u, 'curseNoDeath')) v = Math.min(v, Math.max(0, u.hp - 1)); // Curse can't finish her off
       const dc = sumStat(u, 'dotCut'); if (dc) v = Math.max(0, v - dc); // Alice: less damage from Poison/Curse/Burn
       if (u.buffs.some(x => x.s === 'dotHeal' && x.kind === b.s)) { // Locusta: Poison heals her instead
-        if (!has(u, 'noHeal')) { u.hp = Math.min(maxHp(u), u.hp + v); log(g, `${u.name}'s ${b.s} heals them for ${v} HP.`, 'buff'); fx(g, { t: 'eff', uid: u.uid, key: 'heal', label: `+${v} HP` }); }
+        if (!has(u, 'noHeal')) { u.hp = Math.min(maxHp(u), u.hp + v); creditHeal(g, u, u, v); log(g, `${u.name}'s ${b.s} heals them for ${v} HP.`, 'buff'); fx(g, { t: 'eff', uid: u.uid, key: 'heal', label: `+${v} HP` }); }
         continue;
       }
       // Burn, Curse and Poison count as damage (and a KO) for whoever applied them
@@ -1691,7 +1695,10 @@ function endTurn(g) {
     }
     if (u.hp <= 0) { const by = u._dotBy != null ? g.units[u._dotBy] : u; delete u._dotBy; killOrGuts(g, u, by); }
     if (u.dead) continue;
-    const hr = sumStat(u, 'hpRegen'); if (hr && !has(u, 'noHeal')) u.hp = Math.min(maxHp(u), u.hp + hr);
+    const hr = sumStat(u, 'hpRegen'); if (hr && !has(u, 'noHeal')) {
+      u.hp = Math.min(maxHp(u), u.hp + hr);
+      for (const b of u.buffs) if (b.s === 'hpRegen' && b.v > 0) creditHeal(g, u, b.srcUid != null && g.units[b.srcUid] ? g.units[b.srcUid] : u, b.v); // credited to whoever gave the regen
+    }
     const nr = sumStat(u, 'npRegen'); if (nr) u.np = Math.min(npCap(u), u.np + nr);
     const sr = sumStat(u, 'starRegen'); if (sr) g.players[u.side].stars = Math.min(CFG.starBankCap, g.players[u.side].stars + sr);
     fireTriggers(g, u, 'turnEnd', {});
@@ -1718,7 +1725,7 @@ function endTurn(g) {
   }
   for (const P of g.players) P.mcds = P.mcds.map(c => Math.max(0, c - 1));
   for (const u of Object.values(g.units)) {
-    if (u.hp > maxHp(u) && !u.dead) u.hp = maxHp(u);
+    if (u.hp > maxHp(u) && !u.dead) { g._quiet = true; u.hp = maxHp(u); g._quiet = false; }
   }
   // replace fallen servants
   const enters = [];

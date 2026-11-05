@@ -1313,10 +1313,10 @@ function mcPicker(L, p) {
 }
 // ---- Battle stats and the victory announcement
 const STAT_COLS = [
-  ['dealt', 'Damage dealt', 'Dealt'], ['taken', 'Damage taken', 'Taken'], ['healed', 'HP restored to them', 'Healed'], ['healGiven', 'HP they restored to allies', 'Heal given'],
+  ['dealt', 'Damage dealt', 'Dealt'], ['taken', 'Damage taken', 'Taken'], ['healed', 'HP restored to them', 'Healed'], ['healGiven', 'HP they restored to their team, themselves included', 'Heal given'], ['maxHpGiven', 'Max HP they added to their team, themselves included', 'Max HP +'],
   ['npGain', 'NP gauge gained (%)', 'NP +'], ['npLost', 'NP gauge lost to enemy drain or effects (%)', 'NP −'], ['best', 'Highest damage from a single attack or NP', 'Best hit'],
   ['attacks', 'Attacks that landed (an AoE card counts once)', 'Hits'], ['nps', 'Noble Phantasms fired', 'NPs'], ['buffs', 'Buffs received', 'Buffs'], ['debuffs', 'Debuffs received', 'Debuffs'],
-  ['kills', 'Enemies defeated', 'KOs'], ['evaded', 'Attacks evaded or blocked', 'Dodged'], ['turns', 'Turns spent on the field', 'Turns'],
+  ['kills', 'Enemies defeated', 'KOs'], ['evaded', 'Attacks evaded or blocked', 'Dodged'], ['guts', 'Times they revived with Guts', 'Guts'], ['turns', 'Turns spent on the field', 'Turns'],
 ];
 const fmtStat = (k, v) => (k === 'npGain' || k === 'npLost' ? `${Math.round(v)}%` : Math.round(v).toLocaleString());
 function statsTable(g, p, lead) {
@@ -1334,7 +1334,7 @@ function statsLeaders(g) { const lead = {}; for (const [k] of STAT_COLS) { let b
 // MVP score: damage (Burn/Curse/Poison included), KOs and healing given, with a little for buffs received.
 function mvp(g, side) {
   if (!g.stats) return null; let best = null, sc = -1;
-  for (const [id, s] of Object.entries(g.stats)) { if (side != null && g.units[id].side !== side) continue; const v = s.dealt + s.healGiven * 0.8 + s.kills * 600 + s.buffs * 10; if (v > sc) { sc = v; best = +id; } }
+  for (const [id, s] of Object.entries(g.stats)) { if (side != null && g.units[id].side !== side) continue; const v = s.dealt + s.healGiven * 0.8 + (s.maxHpGiven || 0) * 0.5 + s.kills * 600 + s.buffs * 10; if (v > sc) { sc = v; best = +id; } }
   return best != null ? g.units[best] : null;
 }
 function statsModal() {
