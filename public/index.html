@@ -993,7 +993,7 @@ const EFFECT = {
   noHeal: ['heart', 'bad'], npDmgRes: ['resNp', 'orange'], lockHand: ['lock', 'white'],
   critRes: ['resCrit', 'orange'], classRel: ['swap', 'util'],
   healGiven: ['heartPlusC', 'heal'], dmgTakenPlus: ['plus', 'blue'], multiHit: ['crossSwords', 'atk'], noCards: ['lock', 'white'], buffRecv: ['shieldCheck', 'orange'],
-  ndGain: ['gaugePlusC', 'np'], critDmgTaken: ['critTaken', 'blue'], trigger: ['sparkle', 'util'], reflect: ['bullet', 'blue'],
+  ndGain: ['gaugePlusC', 'np'], critDmgTaken: ['critTaken', 'blue'], trigger: ['sparkle', 'util'], reflect: ['bullet', 'blue'], counter: ['bullet', 'blue'], counterDmg: ['bullet', 'blue'],
   stun: ['lock', 'yellow'], charm: ['heart', 'charm'], terror: ['stopwatch', 'blue'], skillSeal: ['lock', 'red'], npSeal: ['lock', 'orange'],
   swap: ['swap', 'util'], seal: ['seal', 'charm'], ocUp: ['burstPlusC', 'np'], quickHitDebuff: ['card', 'Q'], npOnBurnHit: ['gauge', 'np'],
   cardsBAQ: ['cardsBAQ', 'EX'], cardsBA: ['cardsBA', 'EX'], cardsBQ: ['cardsBQ', 'EX'], cardsAQ: ['cardsAQ', 'EX'], atkDef: ['atkDef', 'atk'],
@@ -3400,7 +3400,11 @@ function attackCard(g, u, t, color, a, tag) {
   }
   const blocked = hitBlocked(g, u, t);
   if (g.stats && !a.aoeRest) { if (blocked) g.stats[t.uid].evaded++; else g.stats[u.uid].attacks++; } else if (g.stats && blocked) g.stats[t.uid].evaded++;
-  if (blocked) { log(g, `${tag}: ${u.name}'s ${COLOR[color]} is blocked by ${t.name}'s ${blocked}.`, 'miss'); fx(g, { t: 'eff', uid: t.uid, key: blocked === 'Evade' ? 'evade' : 'invincible', label: blocked, miss: true }); return; }
+  if (blocked) {
+    log(g, `${tag}: ${u.name}'s ${COLOR[color]} is blocked by ${t.name}'s ${blocked}.`, 'miss'); fx(g, { t: 'eff', uid: t.uid, key: blocked === 'Evade' ? 'evade' : 'invincible', label: blocked, miss: true });
+    if (!t.dead && t.hp > 0 && !u.dead && has(t, 'counter')) counterAttack(g, t, u); // being targeted is enough, even if the attack is blocked
+    return;
+  }
   if (!a.aoeRest) fireTriggers(g, u, 'cardBefore', { color, target: t });
   let cardVal = color === 'EX' ? (pl.chain ? CFG.extraBrave : CFG.extraVal) : CFG.cardVal[color][slot];
   if (pl.bonus.B) cardVal += CFG.busterFirst;
@@ -3790,7 +3794,7 @@ const KITS = window.KITS;
 const CLASSES = ['All', ...E.CLASS_LIST.filter(c => POOL.some(d => d.cls === c))];
 const I = window.Icons;
 const CI = c => I.classIcon(c);
-const NOARROW = new Set(['trigger', 'reflect', 'deathImmune', 'bind', 'petrify', 'sleep', 'quickHitDebuff', 'ocUp', 'npOnBurnHit', 'taunt', 'evade', 'invincible', 'sureHit', 'ignoreDef', 'ignoreInv', 'allBuster', 'npToArts', 'debuffImmune', 'trait', 'buffBlock', 'ctrlImmune', 'guts', 'delayed', 'stun', 'charm', 'terror', 'skillSeal', 'npSeal', 'curse', 'burn', 'poison', 'curseOnAttack', 'busterAtkNp']);
+const NOARROW = new Set(['trigger', 'reflect', 'counter', 'deathImmune', 'bind', 'petrify', 'sleep', 'quickHitDebuff', 'ocUp', 'npOnBurnHit', 'taunt', 'evade', 'invincible', 'sureHit', 'ignoreDef', 'ignoreInv', 'allBuster', 'npToArts', 'debuffImmune', 'trait', 'buffBlock', 'ctrlImmune', 'guts', 'delayed', 'stun', 'charm', 'terror', 'skillSeal', 'npSeal', 'curse', 'burn', 'poison', 'curseOnAttack', 'busterAtkNp']);
 function buffBadge(b) {
   const dir = NOARROW.has(b.s) || typeof b.v !== 'number' ? null : (b.v >= 0 ? 'up' : 'down');
   const tip = `${E.describeBuff(b)}${b.from ? ' · from ' + b.from : ''}`;

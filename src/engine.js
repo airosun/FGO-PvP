@@ -1463,7 +1463,11 @@ function attackCard(g, u, t, color, a, tag) {
   }
   const blocked = hitBlocked(g, u, t);
   if (g.stats && !a.aoeRest) { if (blocked) g.stats[t.uid].evaded++; else g.stats[u.uid].attacks++; } else if (g.stats && blocked) g.stats[t.uid].evaded++;
-  if (blocked) { log(g, `${tag}: ${u.name}'s ${COLOR[color]} is blocked by ${t.name}'s ${blocked}.`, 'miss'); fx(g, { t: 'eff', uid: t.uid, key: blocked === 'Evade' ? 'evade' : 'invincible', label: blocked, miss: true }); return; }
+  if (blocked) {
+    log(g, `${tag}: ${u.name}'s ${COLOR[color]} is blocked by ${t.name}'s ${blocked}.`, 'miss'); fx(g, { t: 'eff', uid: t.uid, key: blocked === 'Evade' ? 'evade' : 'invincible', label: blocked, miss: true });
+    if (!t.dead && t.hp > 0 && !u.dead && has(t, 'counter')) counterAttack(g, t, u); // being targeted is enough, even if the attack is blocked
+    return;
+  }
   if (!a.aoeRest) fireTriggers(g, u, 'cardBefore', { color, target: t });
   let cardVal = color === 'EX' ? (pl.chain ? CFG.extraBrave : CFG.extraVal) : CFG.cardVal[color][slot];
   if (pl.bonus.B) cardVal += CFG.busterFirst;

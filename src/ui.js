@@ -15,7 +15,7 @@ const KITS = window.KITS;
 const CLASSES = ['All', ...E.CLASS_LIST.filter(c => POOL.some(d => d.cls === c))];
 const I = window.Icons;
 const CI = c => I.classIcon(c);
-const NOARROW = new Set(['trigger', 'reflect', 'deathImmune', 'bind', 'petrify', 'sleep', 'quickHitDebuff', 'ocUp', 'npOnBurnHit', 'taunt', 'evade', 'invincible', 'sureHit', 'ignoreDef', 'ignoreInv', 'allBuster', 'npToArts', 'debuffImmune', 'trait', 'buffBlock', 'ctrlImmune', 'guts', 'delayed', 'stun', 'charm', 'terror', 'skillSeal', 'npSeal', 'curse', 'burn', 'poison', 'curseOnAttack', 'busterAtkNp']);
+const NOARROW = new Set(['trigger', 'reflect', 'counter', 'deathImmune', 'bind', 'petrify', 'sleep', 'quickHitDebuff', 'ocUp', 'npOnBurnHit', 'taunt', 'evade', 'invincible', 'sureHit', 'ignoreDef', 'ignoreInv', 'allBuster', 'npToArts', 'debuffImmune', 'trait', 'buffBlock', 'ctrlImmune', 'guts', 'delayed', 'stun', 'charm', 'terror', 'skillSeal', 'npSeal', 'curse', 'burn', 'poison', 'curseOnAttack', 'busterAtkNp']);
 function buffBadge(b) {
   const dir = NOARROW.has(b.s) || typeof b.v !== 'number' ? null : (b.v >= 0 ? 'up' : 'down');
   const tip = `${E.describeBuff(b)}${b.from ? ' · from ' + b.from : ''}`;
