@@ -688,8 +688,12 @@ async function step(ev, tok) {
     flash(ev.uid, 'acting', 600);
     floater(ev.uid, `<span class="cardtag ${ev.color}">${esc(ev.np ? 'NP' : ev.label)}</span>${ev.np ? `<span>${esc(ev.label)}${ev.oc > 1 ? ` · OC ${ev.oc * 100}%` : ''}</span>` : ''}`, 'act');
     await wait(ev.np ? T.act + 300 : T.act, tok);
+  } else if (ev.t === 'hit' && ev.blocked) {
+    floater(ev.uid, `${I.badge(ev.blocked === 'evade' ? 'evade' : ev.blocked === 'solemn' ? 'trueInvincible' : 'invincible', { plain: true })}<span>Nullified by ${esc(ev.blockLabel)}</span>`, 'miss');
+    await wait(T.hit, tok);
   } else if (ev.t === 'hit') {
     flash(ev.uid, REDUCED ? 'hitflash' : 'shake', 450);
+    if (ev.pierced) floater(ev.uid, `<span>Pierced ${esc(ev.pierced.join(', '))}</span>`, 'neg');
     floater(ev.uid, `<b class="dnum ${ev.aff}">${ev.dmg}</b>${ev.crit ? '<span class="crit">Critical</span>' : ''}${ev.dot ? `<span>${esc(ev.dot)}</span>` : ''}`, 'dmgpop');
     await wait(200, tok); if (tok.skip) return; patchView(ev.snap); await wait(T.hit - 200, tok);
   } else if (ev.t === 'ko') {
@@ -779,6 +783,30 @@ function slash(tk, big, k) {
   el.style.setProperty('--rot', (((k * 53) % 70) - 35) + 'deg'); tk.appendChild(el); setTimeout(() => el.remove(), 420);
 }
 function shake(tk, big) { tk.classList.remove('struck', 'struckbig'); void tk.offsetWidth; tk.classList.add(REDUCED ? 'hitflash' : big ? 'struckbig' : 'struck'); }
+// One hit landing on a target. A nullified hit plays out but the target reacts to its defense instead:
+// Evade dodges, Invincible pulses gold, Anti-Enforcement DEF pulses silver. A pierced defense is called out on the first hit.
+const NULL_WORD = { evade: 'Dodged', inv: 'Nullified', solemn: 'Nullified' };
+function landHit(tk, ev, atk, big, k, part, side) {
+  const away = tk._home.cx > atk._home.cx ? 1 : -1;
+  if (ev.blocked) {
+    if (ev.blocked === 'evade') {
+      if (!REDUCED) tk.animate([{ transform: 'none' }, { transform: `translate(${away * 26}px, ${k % 2 ? 12 : -14}px) rotate(${away * 4}deg)`, offset: .35 }, { transform: 'none' }], { duration: dur(360), easing: 'ease-out' });
+    } else {
+      const cls = ev.blocked === 'solemn' ? 'nullsilver' : 'nullgold';
+      tk.classList.remove('nullgold', 'nullsilver'); void tk.offsetWidth; tk.classList.add(cls);
+    }
+    hitPop(tk, `<span class="nullpop ${ev.blocked}">${NULL_WORD[ev.blocked]}</span>${k === 0 && ev.crit ? '<span class="crit">Critical</span>' : ''}`, k, big, false, side);
+    return;
+  }
+  shake(tk, big); slash(tk, big, k);
+  const pierce = k === 0 && ev.pierced ? ev.pierced.map(l => `<span class="piercetag">Pierced ${esc(l)}</span>`).join('') : '';
+  hitPop(tk, `${pierce}<b class="dnum ${ev.aff}">${part}</b>${k === 0 && ev.crit ? '<span class="crit">Critical</span>' : ''}`, k, big, false, side);
+}
+// After the last hit: the total, or what nullified the attack.
+function hitTotal(tk, ev, n) {
+  if (ev.blocked) hitPop(tk, `<span class="hittotal nulltotal ${ev.blocked}">${n > 1 ? `${n} hits · ` : ''}Nullified by ${esc(ev.blockLabel)}</span>`, n, false, true);
+  else if (n > 1) hitPop(tk, `<span class="hittotal">${n} hits · <b class="dnum ${ev.aff}">${ev.dmg}</b></span>`, n, false, true);
+}
 const moveTo = (el, from, to, ms) => el.animate([{ transform: from }, { transform: to }], { duration: dur(ms), easing: 'cubic-bezier(.3,.7,.3,1)', fill: 'forwards' }).finished.catch(() => {});
 // One attacker hitting one target with every hit of the card (or single-target NP).
 async function strikeOne(atk, tk, ev, tok, big) {
@@ -793,12 +821,11 @@ async function strikeOne(atk, tk, ev, tok, big) {
   for (let k = 0; k < n; k++) {
     if (tok.skip) return;
     atk.animate([{ transform: inPos }, { transform: `${inPos} translate(${sgn * (big ? 16 : 10)}px, 0) rotate(${sgn * (big ? 7 : 5)}deg)` }, { transform: inPos }], { duration: dur(gap * 0.85), easing: 'ease-out' });
-    shake(tk, big); slash(tk, big, k);
-    if (hp != null) { hp -= parts[k]; setTokenHp(tk, ev.uid, hp); }
-    hitPop(tk, `<b class="dnum ${ev.aff}">${parts[k]}</b>${k === 0 && ev.crit ? '<span class="crit">Critical</span>' : ''}`, k, big);
+    landHit(tk, ev, atk, big, k, parts[k]);
+    if (hp != null && !ev.blocked) { hp -= parts[k]; setTokenHp(tk, ev.uid, hp); }
     await wait(gap, tok);
   }
-  if (n > 1) hitPop(tk, `<span class="hittotal">${n} hits · <b class="dnum ${ev.aff}">${ev.dmg}</b></span>`, n, false, true);
+  hitTotal(tk, ev, n);
   patchView(ev.snap);
   await moveTo(atk, inPos, 'none', 260);
 }
@@ -821,13 +848,12 @@ async function strikeAll(atk, tks, evs, tok, big = true) { // big: NP; otherwise
     if (st && big) { const w = document.createElement('div'); w.className = 'npwave' + (Math.sign(dx) < 0 ? ' rev' : ''); st.appendChild(w); setTimeout(() => w.remove(), 500); }
     evs.forEach((e, i) => {
       const tk = tks[e.uid]; if (!tk || k >= parts[i].length) return;
-      shake(tk, big); slash(tk, big, k + i);
-      if (hp[i] != null) { hp[i] -= parts[i][k]; setTokenHp(tk, e.uid, hp[i]); }
-      hitPop(tk, `<b class="dnum ${e.aff}">${parts[i][k]}</b>`, k, big, false, tk._home.cx > atk._home.cx ? 'sL' : 'sR');
+      landHit(tk, e, atk, big, k + i, parts[i][k], tk._home.cx > atk._home.cx ? 'sL' : 'sR');
+      if (hp[i] != null && !e.blocked) { hp[i] -= parts[i][k]; setTokenHp(tk, e.uid, hp[i]); }
     });
     await wait(gap, tok);
   }
-  evs.forEach(e => { if ((e.dist || []).length > 1) hitPop(tks[e.uid], `<span class="hittotal">${e.dist.length} hits · <b class="dnum ${e.aff}">${e.dmg}</b></span>`, n, false, true); });
+  evs.forEach(e => hitTotal(tks[e.uid], e, (e.dist || [100]).length));
   patchView(evs[evs.length - 1].snap);
   await moveTo(atk, inPos, 'none', big ? 300 : 240);
   atk.classList.remove('npglow');

@@ -838,6 +838,16 @@ h1, h2 { letter-spacing: .01em; }
 .mcopt.on { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold), 0 0 18px color-mix(in srgb, var(--gold) 20%, transparent); }
 .mcopt .badge { flex: none; }
 .mctxt { display: grid; gap: 3px; } .mctxt small { color: var(--muted); font-size: .74rem; line-height: 1.35; } .mctxt i { font-style: normal; font-family: var(--f-mono); opacity: .8; }
+
+/* nullified hits: Invincible pulses gold, Anti-Enforcement DEF silver; pierced defenses called out */
+.fighter.nullgold { animation: nullPulse .5s ease-out; --null: #f2c94c; }
+.fighter.nullsilver { animation: nullPulse .5s ease-out; --null: #dfe5ee; }
+@keyframes nullPulse { 0% { box-shadow: 0 0 0 0 var(--null), 0 0 0 0 var(--null); } 35% { box-shadow: 0 0 0 3px var(--null), 0 0 26px 8px color-mix(in srgb, var(--null) 70%, transparent); } 100% { box-shadow: 0 0 0 0 transparent, 0 0 34px 14px transparent; } }
+.nullpop { font-size: .8rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #fff; }
+.nullpop.inv { color: #f6d77a; } .nullpop.solemn { color: #e8edf5; } .nullpop.evade { color: #a8d4ff; }
+.hittotal.nulltotal.inv { border-color: #c9a33b; color: #f6d77a; } .hittotal.nulltotal.solemn { border-color: #aab3c2; color: #e8edf5; } .hittotal.nulltotal.evade { border-color: #5a8fc8; color: #a8d4ff; }
+.piercetag { display: block; font-size: .64rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #ff9b6b; text-shadow: 0 1px 2px #000; }
+@media (prefers-reduced-motion: reduce) { .fighter.nullgold, .fighter.nullsilver { animation-duration: .2s; } }
 </style>
 <script>__ICONS__</script>
 <script>__SCENES__</script>

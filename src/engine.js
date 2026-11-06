@@ -1452,7 +1452,8 @@ function execAction0(g, a) {
 function hitBlocked(g, u, t) {
   const pierceTI = has(u, 'pierceTrueInv'); // Hakuno / Jade Rabbit: goes through Anti-Enforcement DEF (not Evade)
   // A defense that gets pierced still loses a use, as in FGO
-  const pierced = (s, label) => { consume(t, s); log(g, `${u.name} pierces ${t.name}'s ${label}.`, 'debuff'); fx(g, { t: 'eff', uid: t.uid, key: s === 'evade' ? 'evade' : 'invincible', label: `${label} pierced`, miss: true }); };
+  g._pierced = [];
+  const pierced = (s, label) => { consume(t, s); g._pierced.push(label); log(g, `${u.name} pierces ${t.name}'s ${label}.`, 'debuff'); };
   if (has(t, 'trueInvincible')) { if (!pierceTI) { consume(t, 'trueInvincible'); return 'Anti-Enforcement DEF'; } pierced('trueInvincible', 'Anti-Enforcement DEF'); }
   if (has(t, 'invincible') && has(t, 'convertInv') && !pierceTI) { consume(t, 'invincible'); return 'Anti-Enforcement DEF'; } // Kukulcan
   if (has(t, 'invincible') && has(t, 'convertInv') && pierceTI) { pierced('invincible', 'Anti-Enforcement DEF'); return null; }
@@ -1461,7 +1462,7 @@ function hitBlocked(g, u, t) {
   if (!has(u, 'ignoreInv')) { // Kingprotea Alter's Giant's Protection guards every ally on her field
     const gp = front(g, t.side).find(x => !x.dead && has(x, 'guardianParry'));
     if (gp) { consume(gp, 'guardianParry'); return gp === t ? "Giant's Protection" : `Giant's Protection (from ${gp.name})`; }
-  } else { const gp = front(g, t.side).find(x => !x.dead && has(x, 'guardianParry')); if (gp) { consume(gp, 'guardianParry'); log(g, `${u.name} pierces ${gp.name}'s Giant's Protection.`, 'debuff'); } }
+  } else { const gp = front(g, t.side).find(x => !x.dead && has(x, 'guardianParry')); if (gp) { consume(gp, 'guardianParry'); g._pierced.push("Giant's Protection"); log(g, `${u.name} pierces ${gp.name}'s Giant's Protection.`, 'debuff'); } }
   return null;
 }
 
@@ -1478,10 +1479,18 @@ function attackCard(g, u, t, color, a, tag) {
     const b = u.buffs.find(x => x.s === 'curseOnAttack');
     t.buffs.push({ s: 'curse', v: b.v, t: 5, debuff: true, from: b.from, src: u.uid });
   }
-  const blocked = hitBlocked(g, u, t);
+  const blocked = hitBlocked(g, u, t); const pierced = g._pierced && g._pierced.length ? g._pierced.slice() : null;
   if (g.stats && !a.aoeRest) { if (blocked) g.stats[t.uid].evaded++; else g.stats[u.uid].attacks++; } else if (g.stats && blocked) g.stats[t.uid].evaded++;
   if (blocked) {
-    log(g, `${tag}: ${u.name}'s ${COLOR[color]} is blocked by ${t.name}'s ${blocked}.`, 'miss'); fx(g, { t: 'eff', uid: t.uid, key: blocked === 'Evade' ? 'evade' : 'invincible', label: blocked, miss: true });
+    // Every hit still plays out and charges NP for both sides as if it landed (a would-be crit counts double)
+    const stars0 = a.card.stars || 0, cc = (pl.chain === 'Q' || pl.mighty) ? CFG.quickChainCrit / 100 : 0;
+    const chance = (stars0 || cc) ? Math.min(1, Math.max(0, stars0 * 0.1 + cc + (stars0 ? sumStat(u, 'critRate', t) / 100 : 0) - sumStat(t, 'critRes') / 100)) : 0;
+    const crit = color !== 'EX' && g.rng() < chance;
+    const hits = (u.d.hits[color] || 1) * (color === 'EX' ? 1 : u.buffs.filter(b => b.s === 'multiHit').reduce((m, b) => m * b.v, 1));
+    u.np = Math.min(npCap(u), u.np + npPerHit(u, t, color, color === 'EX' ? 0 : slot, pl.artsFirstNp, crit) * hits);
+    defenderNp(t, hits);
+    log(g, `${tag}: ${u.name}'s ${COLOR[color]}${crit ? ' CRIT' : ''} on ${t.name} is nullified by ${blocked}. NP ${Math.floor(u.np)}%`, 'miss');
+    fx(g, { t: 'hit', uid: t.uid, src: u.uid, dmg: 0, blocked: blockKind(blocked), blockLabel: blocked, crit, color, dist: hitSplit(u, color, hits), aoe: !!a.aoeHalf });
     markCounter(g, t, u); // being targeted is enough, even if the attack is blocked
     return;
   }
@@ -1521,7 +1530,7 @@ function attackCard(g, u, t, color, a, tag) {
   if (color === 'B' && has(u, 'busterAtkNp')) { const b = u.buffs.find(x => x.s === 'busterAtkNp'); u.np = Math.min(npCap(u), u.np + b.v); consume(u, 'busterAtkNp'); }
   if (colorStat) consumeCardUses(u, colorStat);
   log(g, `${tag}: ${u.name} ${COLOR[color]}${crit ? ' CRIT' : ''} → ${t.name} for ${dmg}. NP ${Math.floor(u.np)}%, +${fmtStars(made)}★`, 'dmg', { dmgNum: dmg, aff: affOf(u, t) });
-  fx(g, { t: 'hit', uid: t.uid, src: u.uid, dmg, aff: affOf(u, t), crit, color, dist: hitSplit(u, color, hits), aoe: !!a.aoeHalf });
+  fx(g, { t: 'hit', uid: t.uid, src: u.uid, dmg, aff: affOf(u, t), crit, color, dist: hitSplit(u, color, hits), aoe: !!a.aoeHalf, pierced });
   if (dmg > 0 && t.hp > 0) fireTriggers(g, t, 'damaged', { crit, target: u, isHit: true });
   if (dmg > 0) wake(g, t);
   markCounter(g, t, u);
@@ -1623,6 +1632,10 @@ function counterAttack(g, u, t) {
   applyEffects(g, np.post || [], u, t.uid, { from: np.n, forceTargets: [t] });
   if (t.hp <= 0) killOrGuts(g, t, u);
 }
+// How a nullified hit looks: dodged (Evade), shrugged off in gold (Invincible) or silver (Anti-Enforcement DEF).
+function blockKind(label) { return label === 'Evade' ? 'evade' : /Anti-Enforcement/.test(label) ? 'solemn' : 'inv'; }
+// A nullified attack still charges NP on both sides exactly as if it had landed.
+function defenderNp(t, hits) { if (!t.dead) t.np = Math.min(npCap(t), t.np + t.d.nd * hits * (1 + (sumStat(t, 'npGain') + sumStat(t, 'ndGain')) / 100)); }
 function dealDamage(g, u, t, dmg, hits) {
   t.hp -= dmg;
   if (dmg > 0 && has(t, 'reflect')) { t._reflect = t._reflect || {}; t._reflect[u.uid] = (t._reflect[u.uid] || 0) + dmg; }
@@ -1659,8 +1672,13 @@ function execNP(g, u, a, tag) {
     const letter = LETTER[color];
     for (const t of targets) {
       markCounter(g, t, u); // an NP aimed at her (or hitting her side) sets off her counter, blocked or not
-      const blocked = hitBlocked(g, u, t);
-      if (blocked) { log(g, `${t.name} blocks the NP with ${blocked}.`, 'miss'); fx(g, { t: 'eff', uid: t.uid, key: blocked === 'Evade' ? 'evade' : 'invincible', label: blocked, miss: true }); continue; }
+      const blocked = hitBlocked(g, u, t); const pierced = g._pierced && g._pierced.length ? g._pierced.slice() : null;
+      if (blocked) {
+        u.np = Math.min(npCap(u), u.np + npPerHit(u, t, letter, 0, false, false) * hits); defenderNp(t, hits);
+        log(g, `${np.n} on ${t.name} is nullified by ${blocked}.`, 'miss');
+        fx(g, { t: 'hit', uid: t.uid, src: u.uid, dmg: 0, blocked: blockKind(blocked), blockLabel: blocked, np: true, aoe: np.tgt === 'all' && !single, color: letter, dist: hitSplit(u, 'NP', hits) });
+        continue;
+      }
       const cardUp = sumStat(u, { B: 'buster', A: 'arts', Q: 'quick' }[letter]);
       const cardRes = sumStat(t, { B: 'busterRes', A: 'artsRes', Q: 'quickRes' }[letter]);
       const def = defMod(u, t, np.ignoreDefUp || np.ignoreDef || has(u, 'ignoreDef'));
@@ -1687,7 +1705,7 @@ function execNP(g, u, a, tag) {
       const npStars = starsFor(g, u, letter, 0, a.plan && a.plan.bonus && a.plan.bonus.Q, false, hits);
       g.players[u.side].stars = Math.min(CFG.starBankCap, g.players[u.side].stars + npStars);
       log(g, `${np.n} hits ${t.name} for ${dmg}. +${fmtStars(npStars)}★`, 'dmg', { dmgNum: dmg, aff: affOf(u, t) });
-      fx(g, { t: 'hit', uid: t.uid, src: u.uid, dmg, aff: affOf(u, t), np: true, aoe: np.tgt === 'all' && !single, color: letter, dist: hitSplit(u, 'NP', hits) });
+      fx(g, { t: 'hit', uid: t.uid, src: u.uid, dmg, aff: affOf(u, t), np: true, aoe: np.tgt === 'all' && !single, color: letter, dist: hitSplit(u, 'NP', hits), pierced });
       if (dmg > 0 && t.hp > 0) fireTriggers(g, t, 'damaged', { target: u, isHit: true });
       if (dmg > 0) wake(g, t);
       onHitRiders(g, u, t, letter, true);
