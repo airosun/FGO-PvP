@@ -1489,7 +1489,9 @@ function attackCard(g, u, t, color, a, tag) {
     const hits = (u.d.hits[color] || 1) * (color === 'EX' ? 1 : u.buffs.filter(b => b.s === 'multiHit').reduce((m, b) => m * b.v, 1));
     u.np = Math.min(npCap(u), u.np + npPerHit(u, t, color, color === 'EX' ? 0 : slot, pl.artsFirstNp, crit) * hits);
     defenderNp(t, hits);
-    log(g, `${tag}: ${u.name}'s ${COLOR[color]}${crit ? ' CRIT' : ''} on ${t.name} is nullified by ${blocked}. NP ${Math.floor(u.np)}%`, 'miss');
+    const made = starsFor(g, u, color, color === 'EX' ? 0 : slot, pl.bonus.Q, crit, hits);
+    g.players[u.side].stars = Math.min(CFG.starBankCap, g.players[u.side].stars + made);
+    log(g, `${tag}: ${u.name}'s ${COLOR[color]}${crit ? ' CRIT' : ''} on ${t.name} is nullified by ${blocked}. NP ${Math.floor(u.np)}%, +${fmtStars(made)}★`, 'miss');
     fx(g, { t: 'hit', uid: t.uid, src: u.uid, dmg: 0, blocked: blockKind(blocked), blockLabel: blocked, crit, color, dist: hitSplit(u, color, hits), aoe: !!a.aoeHalf });
     markCounter(g, t, u); // being targeted is enough, even if the attack is blocked
     return;
@@ -1675,7 +1677,9 @@ function execNP(g, u, a, tag) {
       const blocked = hitBlocked(g, u, t); const pierced = g._pierced && g._pierced.length ? g._pierced.slice() : null;
       if (blocked) {
         u.np = Math.min(npCap(u), u.np + npPerHit(u, t, letter, 0, false, false) * hits); defenderNp(t, hits);
-        log(g, `${np.n} on ${t.name} is nullified by ${blocked}.`, 'miss');
+        const npStars = starsFor(g, u, letter, 0, a.plan && a.plan.bonus && a.plan.bonus.Q, false, hits);
+        g.players[u.side].stars = Math.min(CFG.starBankCap, g.players[u.side].stars + npStars);
+        log(g, `${np.n} on ${t.name} is nullified by ${blocked}. +${fmtStars(npStars)}★`, 'miss');
         fx(g, { t: 'hit', uid: t.uid, src: u.uid, dmg: 0, blocked: blockKind(blocked), blockLabel: blocked, np: true, aoe: np.tgt === 'all' && !single, color: letter, dist: hitSplit(u, 'NP', hits) });
         continue;
       }
