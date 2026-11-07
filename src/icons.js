@@ -146,7 +146,7 @@ const EFFECT = {
   noHeal: ['heart', 'bad'], npDmgRes: ['resNp', 'orange'], lockHand: ['lock', 'white'],
   critRes: ['resCrit', 'orange'], classRel: ['swap', 'util'],
   healGiven: ['heartPlusC', 'heal'], dmgTakenPlus: ['plus', 'blue'], multiHit: ['crossSwords', 'atk'], noCards: ['lock', 'white'], buffRecv: ['shieldCheck', 'orange'],
-  ndGain: ['gaugePlusC', 'np'], critDmgTaken: ['critTaken', 'blue'], trigger: ['sparkle', 'util'], reflect: ['bullet', 'blue'], counter: ['bullet', 'blue'], counterDmg: ['bullet', 'blue'],
+  ndGain: ['gaugePlusC', 'np'], critDmgTaken: ['critTaken', 'blue'], trigger: ['sparkle', 'util'], reflect: ['bullet', 'blue'], territory: ['shieldFill', 'silver'], formRevert: ['sword', 'gold'], counter: ['bullet', 'blue'], counterDmg: ['bullet', 'blue'],
   stun: ['lock', 'yellow'], charm: ['heart', 'charm'], terror: ['stopwatch', 'blue'], skillSeal: ['lock', 'red'], npSeal: ['lock', 'orange'],
   swap: ['swap', 'util'], seal: ['seal', 'charm'], ocUp: ['burstPlusC', 'np'], quickHitDebuff: ['card', 'Q'], npOnBurnHit: ['gauge', 'np'],
   cardsBAQ: ['cardsBAQ', 'EX'], cardsBA: ['cardsBA', 'EX'], cardsBQ: ['cardsBQ', 'EX'], cardsAQ: ['cardsAQ', 'EX'], atkDef: ['atkDef', 'atk'],

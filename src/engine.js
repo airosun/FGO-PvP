@@ -133,7 +133,7 @@ function snakeOrder(first) {
 // Meta Supports: a team may draft at most one. Artoria Caster, Koyanskaya of Light, Merlin, Lady Avalon, Tamamo-no-Mae,
 // Lord El-Melloi II, Skadi (Caster), Skadi (Ruler), Larva/Tiamat (Archer).
 const META = [284, 314, 150, 353, 62, 37, 215, 357, 450];
-const EXCLUSIVE = [[190, 191], [424, 425], [472, 473]]; // Mecha Eli-chan / Mk.II; Kishinami Hakuno (Male/Female); Gray Lily (Saber/Lancer)
+const EXCLUSIVE = [[190, 191], [424, 425], [472, 473], [1, 1001]]; // + Mash / Paladin Mash // Mecha Eli-chan / Mk.II; Kishinami Hakuno (Male/Female); Gray Lily (Saber/Lancer)
 const BYCOST = new WeakMap(); // every servant sorted by cost, cached per roster
 function byCost(R) { let s = BYCOST.get(R); if (!s) { s = Object.values(R).sort((a, b) => costOf(a) - costOf(b)); BYCOST.set(R, s); } return s; }
 function canPick(team, id, taken, R) {
@@ -434,6 +434,7 @@ function resolveTargets(g, e, src, choice) {
     case 'ally': { const t = choice && U(g, choice); return [t && !t.dead && t.side === p ? t : src]; }
     case 'allies': return front(g, p);
     case 'others': return front(g, p).filter(u => u !== src);
+    case 'alliesBut': { const t = choice && U(g, choice); const pick = t && t.side === p ? t : src; return front(g, p).filter(u => u !== pick); } // everyone except the chosen ally
     case 'firstOther': { const t = front(g, p).find(u => u !== src); return t ? [t] : []; }
     case 'lastOther': { const t = front(g, p).filter(u => u !== src && !u.dead).pop(); return t ? [t] : []; }
     case 'randomAlly': { // one random ally, the same one for every effect of this skill use
@@ -455,6 +456,7 @@ function targetPassesCond(e, t) {
     if (!t.g || !front(t.g, t.side).some(u => !u.dead && hasTrait(u, want))) return false;
   } else if (e.cond && !hasTrait(t, e.cond)) return false;
   if (e.condAny && !e.condAny.some(c => hasTrait(t, c))) return false;
+  if (e.foeOnField && !(t.g && front(t.g, enemyOf(t.side)).some(u => !u.dead && hasTrait(u, e.foeOnField)))) return false; // only if such an enemy is on the field
   if (e.condNot && e.condNot.some(c => hasTrait(t, c))) return false;
   if (e.condStatus && !e.condStatus.some(st => has(t, st))) return false;
   if (e.align && !t.d.align.includes(e.align)) return false;
@@ -625,6 +627,12 @@ function applyEffectTargets(g, e, src, choice, ctx) {
         if (!g.inEndTurn) fireTriggers(g, t, 'healed', {});
         break;
       }
+      case 'npPerStar': { // spend stars (up to max) for NP per star
+        const P = g.players[t.side]; const n = Math.min(Math.floor(P.stars), e.max || 50);
+        P.stars -= n; t.np = Math.min(npCap(t), t.np + n * e.v);
+        log(g, `${t.name} spends ${n} stars: NP +${n * e.v}%.`, 'buff'); fx(g, { t: 'eff', uid: t.uid, key: 'np', label: `NP +${n * e.v}% (${n}★)` });
+        break;
+      }
       case 'cdReduce': { t.cds = t.cds.map(c => Math.max(0, c - e.v)); log(g, `${t.name}: skill cooldowns −${e.v}.`, 'buff'); fx(g, { t: 'eff', uid: t.uid, key: 'cdReduce', label: `Cooldowns −${e.v}` }); break; }
       case 'cleanse': {
         if (e.marks) { // removes one particular effect by name, buff or debuff (count: only that many stacks, oldest first)
@@ -688,15 +696,20 @@ function applyEffectTargets(g, e, src, choice, ctx) {
         const nd = g.R[e.into]; const nk = g.KITS[e.into];
         if (!nd || !nk) break;
         const ratio = t.hp / maxHp(t), old = t.name;
+        const from = t.d.id;
         t.d = nd; t.kit = nk; t.name = nd.name; t.cls = nd.cls; t.hpBase = nd.hp;
         t.traits = new Set(nd.traits.concat(nd.tags || [], [nd.gender, nd.cls, `${nd.attr} Attribute`], (nd.align || '').split(' ')));
+        const terr = t.buffs.find(b => b.s === 'territory'); // uses left carry over between forms
         t.buffs = t.buffs.filter(b => !b.passive);
         for (const p of nk.pas) t.buffs.push(Array.isArray(p) ? { s: p[0], v: p[1], t: Infinity, passive: true, from: 'Passive' } : { ...p, t: Infinity, passive: true, from: p.from || 'Passive' });
+        if (terr) { const nb = t.buffs.find(b => b.s === 'territory'); if (nb) nb.n = terr.n; }
         g._quiet = true; t.hp = Math.max(1, Math.round(maxHp(t) * ratio)); g._quiet = false;
         if (hasNoNP(t)) t.np = 0;
         remapDeck(g, t, nd.deck);
+        t.buffs = t.buffs.filter(b => b.s !== 'formRevert');
+        if (e.revert) t.buffs.push({ s: 'formRevert', v: 1, t: e.revert, into: from, label: e.label || 'Form change', from: ctx.from }); // changes back when this runs out
         log(g, `${old} transforms into ${nd.name}!`, 'activate');
-        fx(g, { t: 'eff', uid: t.uid, key: 'trait', label: `Transforms: ${nd.name}` });
+        fx(g, { t: 'eff', uid: t.uid, key: 'trait', label: e.label ? `${e.label}!` : `Transforms: ${nd.name}` });
         break;
       }
       case 'npPerTrait': {
@@ -806,6 +819,8 @@ function describeBuff(b) {
   if (b.s === 'lockHand') return `Hand locked (same cards each turn)${turns}`;
   if (b.s === 'immuneTo') return `Immune to ${b.cats.map(c => STAT_LABEL[c] || c).join(' and ')}${uses}${turns}`;
   if (b.s === 'aura') return `${b.label || 'Aura'}: allies' ${STAT_LABEL[b.aura.s] || b.aura.s} ${b.aura.v > 0 ? '+' : ''}${b.aura.v}%${b.aura.cond ? ` (${b.aura.cond} only)` : ''}${b.aura.notVsClass ? ` (not vs ${b.aura.notVsClass.join(', ')})` : ''} while on the field`;
+  if (b.s === 'territory') return `Territory Defense: hits on their allies are held to ${b.v} damage (${b.n} left)`;
+  if (b.s === 'formRevert') return `${b.label || 'Form change'}: changes back in ${b.t}T`;
   if (b.s === 'counter') return `Counters each enemy attack, NP or debuff aimed at them with ${b.np ? b.np.n : 'an NP'}${turns}`;
   if (b.s === 'eternalSleep') return 'Eternal Slumber (can\'t act, permanent)';
   if (b.s === 'rankUp') return `Skill Rank Up${turns}`;
@@ -1519,7 +1534,7 @@ function attackCard(g, u, t, color, a, tag) {
   if (a.aoeHalf) dmg *= 0.5; // a card that hits every enemy deals half to each
   const cut = has(u, 'ignoreDmgCut') ? 0 : sumStat(t, 'dmgCut');
   if (cut) { dmg -= cut; consumeAllUses(t, 'dmgCut'); }
-  dmg = Math.max(0, Math.round(dmg));
+  dmg = territoryCap(g, t, Math.max(0, Math.round(dmg)));
   dmg = lethalGuard(g, t, dmg);
   const hits = (u.d.hits[color] || 1) * (color === 'EX' ? 1 : u.buffs.filter(b => b.s === 'multiHit').reduce((m, b) => m * b.v, 1));
   dealDamage(g, u, t, dmg, hits);
@@ -1625,7 +1640,7 @@ function counterAttack(g, u, t) {
     * Math.max(0.1, 1 + (sumStat(u, 'npDmg') + sumStat(u, 'special', t)) / 100) * Math.max(0.1, 1 - sumStat(t, 'npDmgRes') / 100) * rnd;
   dmg += sumStat(u, 'dmgPlus') + sumStat(t, 'dmgTakenPlus');
   const cut = sumStat(t, 'dmgCut'); if (cut) { dmg -= cut; consumeAllUses(t, 'dmgCut'); }
-  dmg = lethalGuard(g, t, Math.max(0, Math.round(dmg)));
+  dmg = lethalGuard(g, t, territoryCap(g, t, Math.max(0, Math.round(dmg))));
   const hits = np.hits || 1;
   t.hp -= dmg;
   u.np = Math.min(npCap(u), u.np + npPerHit(u, t, letter, 0, false, false) * hits);
@@ -1638,6 +1653,15 @@ function counterAttack(g, u, t) {
 function blockKind(label) { return label === 'Evade' ? 'evade' : /Anti-Enforcement/.test(label) ? 'solemn' : 'inv'; }
 // A nullified attack still charges NP on both sides exactly as if it had landed.
 function defenderNp(t, hits) { if (!t.dead) t.np = Math.min(npCap(t), t.np + t.d.nd * hits * (1 + (sumStat(t, 'npGain') + sumStat(t, 'ndGain')) / 100)); }
+// Paladin Mash's Territory Defense: a hit on one of her allies on the field is held to a fixed amount (limited uses).
+function territoryCap(g, t, dmg) {
+  const guard = front(g, t.side).find(x => x !== t && !x.dead && t.side === x.side && x.buffs.some(b => b.s === 'territory' && (b.n == null || b.n > 0)));
+  if (!guard) return dmg;
+  const b = guard.buffs.find(b => b.s === 'territory' && (b.n == null || b.n > 0));
+  if (dmg <= b.v) return dmg;
+  b.n -= 1; log(g, `${guard.name}'s Territory Defense holds the hit on ${t.name} to ${b.v} (${b.n} left).`, 'buff');
+  return b.v;
+}
 function dealDamage(g, u, t, dmg, hits) {
   t.hp -= dmg;
   if (dmg > 0 && has(t, 'reflect')) { t._reflect = t._reflect || {}; t._reflect[u.uid] = (t._reflect[u.uid] || 0) + dmg; }
@@ -1777,6 +1801,9 @@ function endTurn(g) {
   for (const u of Object.values(g.units)) {
     if (!u.dead && !onField(u)) continue; // reserve: durations and skill cooldowns wait until they're back on the field
     for (const b of u.buffs) if (b.t !== Infinity && existing.has(b)) b.t -= 1;
+    for (const b of u.buffs.filter(x => x.s === 'formRevert' && x.t <= 0)) { // e.g. the Holy Sword runs out: back to the original form
+      u.buffs.splice(u.buffs.indexOf(b), 1); if (!u.dead) applyEffect(g, { k: 'transform', to: 'self', into: b.into }, u, u, { from: b.label });
+    }
     for (const b of u.buffs.filter(x => x.s === 'doom' && x.t <= 0)) { // Thirst of Death runs out
       if (u.dead) break;
       const src = U(g, b.srcUid) || u;

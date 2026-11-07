@@ -3,7 +3,7 @@
 'use strict';
 const ROLES = ['Main DPS', 'Sub DPS', 'Healer', 'Utility Support'];
 const OVERRIDE = {"25":"Sub DPS","81":"Sub DPS","88":"Main DPS","134":"Sub DPS","141":"Healer","183":"Healer","195":"Main DPS","227":"Sub DPS","228":"Sub DPS","269":"Sub DPS","272":"Main DPS","339":"Main DPS","382":"Sub DPS","405":"Main DPS","417":"Main DPS","421":"Main DPS"}; // hand corrections
-const ALLY = new Set(['allies', 'ally', 'others', 'firstOther', 'lowestHpAlly', 'lastOther', 'randomAlly']);
+const ALLY = new Set(['allies', 'ally', 'others', 'alliesBut', 'firstOther', 'lowestHpAlly', 'lastOther', 'randomAlly']);
 const FOE = new Set(['enemies', 'enemy']);
 const OFF = { atk: 1, buster: 1, arts: 1, quick: 1, npDmg: 1, critDmg: .5, special: .6, ignoreDef: .3, dmgPlus: .05, sureHit: 0, starGather: .1, critRate: .1 };
 const DEF = { invincible: 18, evade: 15, taunt: 15, def: .8, dmgCut: .05, guts: 12, debuffImmune: 6, maxHp: .02, trueInvincible: 18, specialDef: .4 };

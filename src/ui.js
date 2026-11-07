@@ -4,7 +4,11 @@
 const E = window.Engine;
 const R = {}; for (const d of window.ROSTER) R[d.id] = d;
 // Draftable servants (alternate forms like Hyde are reachable only through their skills).
-const POOL = window.ROSTER.filter(d => !d.hidden);
+const POOL = window.ROSTER.filter(d => !d.hidden && !d.formOf);
+// Servants with a second draftable form, picked through a switch on the base servant (Mash -> Paladin Mash).
+const ALT_FORM = {}; for (const d of window.ROSTER) if (d.formOf) ALT_FORM[d.formOf] = d.id;
+const baseOf = id => (window.ROSTER.find(d => d.id === id) || {}).formOf || id;
+const formTaken = (S, id) => S.taken.has(id) || (ALT_FORM[id] != null && S.taken.has(ALT_FORM[id]));
 // Draft roles (Main DPS / Sub DPS / Healer / Utility Support) read from each kit; Meta Supports are a hand-picked overlay.
 const ROLE = {}; for (const d of window.ROSTER) if (window.KITS[d.id]) ROLE[d.id] = Roles.classify(window.KITS[d.id], d.id);
 const ROLE_CLS = { 'Main DPS': 'r-main', 'Sub DPS': 'r-sub', Healer: 'r-heal', 'Utility Support': 'r-util' };
@@ -15,7 +19,7 @@ const KITS = window.KITS;
 const CLASSES = ['All', ...E.CLASS_LIST.filter(c => POOL.some(d => d.cls === c))];
 const I = window.Icons;
 const CI = c => I.classIcon(c);
-const NOARROW = new Set(['trigger', 'reflect', 'counter', 'deathImmune', 'bind', 'petrify', 'sleep', 'quickHitDebuff', 'ocUp', 'npOnBurnHit', 'taunt', 'evade', 'invincible', 'sureHit', 'ignoreDef', 'ignoreInv', 'allBuster', 'npToArts', 'debuffImmune', 'trait', 'buffBlock', 'ctrlImmune', 'guts', 'delayed', 'stun', 'charm', 'terror', 'skillSeal', 'npSeal', 'curse', 'burn', 'poison', 'curseOnAttack', 'busterAtkNp']);
+const NOARROW = new Set(['trigger', 'reflect', 'counter', 'territory', 'formRevert', 'deathImmune', 'bind', 'petrify', 'sleep', 'quickHitDebuff', 'ocUp', 'npOnBurnHit', 'taunt', 'evade', 'invincible', 'sureHit', 'ignoreDef', 'ignoreInv', 'allBuster', 'npToArts', 'debuffImmune', 'trait', 'buffBlock', 'ctrlImmune', 'guts', 'delayed', 'stun', 'charm', 'terror', 'skillSeal', 'npSeal', 'curse', 'burn', 'poison', 'curseOnAttack', 'busterAtkNp']);
 function buffBadge(b) {
   const dir = NOARROW.has(b.s) || typeof b.v !== 'number' ? null : (b.v >= 0 ? 'up' : 'down');
   const tip = `${E.describeBuff(b)}${b.from ? ' · from ' + b.from : ''}`;
@@ -152,11 +156,11 @@ function renderPool(S, team) {
   const roleOk = d => !S.role || S.role === 'All' || (S.role === 'Meta Support' ? isMeta(d.id) : ROLE[d.id] === S.role);
   const list = POOL.filter(d => (S.filter === 'All' || d.cls === S.filter) && (S.rar === 'All' || d.rar === +S.rar) && roleOk(d) && searchMatch(d, S.search, mode));
   const tiles = list.map(d => {
-    const taken = S.taken.has(d.id);
+    const taken = formTaken(S, d.id);
     const chk = team ? E.canPick(team, d.id, S.taken, R) : { ok: true };
-    return `<button class="tile r${d.rar} c-${clsKey(d.cls)}${isMeta(d.id) ? ' meta' : ''}${taken ? ' taken' : ''}${!taken && !chk.ok ? ' blocked' : ''}${S.focus === d.id ? ' focus' : ''}" data-act="focus" data-id="${d.id}" ${taken ? 'disabled' : ''}>
+    return `<button class="tile r${d.rar} c-${clsKey(d.cls)}${isMeta(d.id) ? ' meta' : ''}${taken ? ' taken' : ''}${!taken && !chk.ok ? ' blocked' : ''}${S.focus === d.id || baseOf(S.focus) === d.id ? ' focus' : ''}" data-act="focus" data-id="${d.id}" ${taken ? 'disabled' : ''}>
       <span class="ttop">${CI(d.cls)}<span class="tstars">${d.rar ? '★'.repeat(d.rar) : '0★'}</span><span class="cost" title="Cost">${E.costOf(d)}</span></span>
-      <span class="tname">${esc(d.name)}</span>
+      <span class="tname">${esc(d.name)}</span>${ALT_FORM[d.id] ? `<span class="tform">+ ${esc(R[ALT_FORM[d.id]].name.replace(/^.*\((.*)\)$/, '$1'))} form · ${'★'.repeat(R[ALT_FORM[d.id]].rar)}</span>` : ''}
       <span class="tdeck">${deckChips(d.deck)}<span class="npc ${d.np[0]}" title="NP card">${d.np[0]}</span></span><span class="trole"><span class="rdot ${ROLE_CLS[ROLE[d.id]] || ''}"></span>${esc(ROLE[d.id] || '')}${isMeta(d.id) ? '<span class="mtag">Meta</span>' : ''}</span>${S.search && mode !== 'servant' ? `<span class="tmatch">${esc((searchHits(d, S.search, mode) || []).slice(0, 3).join(' · '))}</span>` : ''}</button>`;
   }).join('');
   return `<div class="pool">
@@ -234,8 +238,13 @@ function modal(body, foot, closeAct, label) {
     <button class="modal-x" data-act="${closeAct}" aria-label="Close">✕</button><div class="modal-body">${body}</div>${foot ? `<div class="modal-foot">${foot}</div>` : ''}</div></div>`;
 }
 function skillTip(x, i) { return Describe.skillText(x.kit, i); }
+// Form switch shown on a servant with a second draftable form (Mash: 4★ base / 5★ Paladin).
+function formSwitch(d) {
+  const base = baseOf(d.id), alt = ALT_FORM[base]; if (alt == null) return '';
+  return `<div class="formswitch" role="group" aria-label="Form">${[base, alt].map(id => `<button class="chip${id === d.id ? ' on' : ''}" data-act="form-switch" data-id="${id}" aria-pressed="${id === d.id}">${'★'.repeat(R[id].rar)} ${esc(R[id].name)} <small>cost ${E.costOf(R[id])}</small></button>`).join('')}</div>`;
+}
 function servantDetail(d) {
-  return `<div class="sdetail"><p class="eyebrow">${d.cls} · ${'★'.repeat(d.rar)} · cost ${E.costOf(d)}</p><h3>${esc(d.name)}${d.traits.includes('Super Giant') ? ' <span class="sgtag" data-tip="Super Giant: some effects check for this (Kingprotea, Habetrot, Barghest and others).">Super Giant</span>' : ''}</h3>
+  return `${formSwitch(d)}<div class="sdetail"><p class="eyebrow">${d.cls} · ${'★'.repeat(d.rar)} · cost ${E.costOf(d)}</p><h3>${esc(d.name)}${d.traits.includes('Super Giant') ? ' <span class="sgtag" data-tip="Super Giant: some effects check for this (Kingprotea, Habetrot, Barghest and others).">Super Giant</span>' : ''}</h3>
     <dl class="stats"><div><dt>ATK</dt><dd>${d.atk}</dd></div><div><dt>HP</dt><dd>${d.hp}</dd></div><div><dt>Deck</dt><dd>${deckChips(d.deck)}</dd></div><div><dt>NP gain</dt><dd>${d.na}%/hit</dd></div><div><dt>Star gen</dt><dd>${d.sr ?? '–'}%</dd></div></dl>
     <div class="hitrow"><span class="hitlbl">Hits per card</span>${hitChips(d)}</div>
     <p class="roles">${roleTags(d)}</p>
@@ -1561,6 +1570,7 @@ document.addEventListener('click', ev => {
     case 'role': PS().role = el.dataset.r; return render();
     case 'rar': PS().rar = el.dataset.r; return render();
     case 'focus': PS().focus = +el.dataset.id; return render();
+    case 'form-switch': PS().focus = +el.dataset.id; return render();
     case 'close-detail': PS().focus = null; return render();
     case 'search-mode-menu': PS().modeMenu = !PS().modeMenu; return render();
     case 'search-mode': { PS().mode = el.dataset.m; PS().modeMenu = false; render(); const i = document.getElementById('draftSearch'); if (i) { i.focus(); const n = i.value.length; i.setSelectionRange(n, n); } return; }

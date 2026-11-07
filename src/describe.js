@@ -231,7 +231,7 @@ function line(e, ctx = {}) {
     case 'koSelf': return { text: 'Defeats itself (Guts can save it)' };
     case 'cdReduce': return wrap(`Skill cooldowns −${e.v}`);
     case 'field': return { text: `Battlefield becomes ${FIELDN[e.name] || e.name} for ${turns(e.t)}${e.endsOnDeath ? ' (ends if this servant is defeated)' : ''}` };
-    case 'transform': return { text: e.intoName ? `Transforms into ${e.intoName}: its NP becomes ${e.intoNp}` : 'Transforms into its other form' };
+    case 'transform': return { text: e.text ? e.text : e.intoName ? `Transforms into ${e.intoName}: its NP becomes ${e.intoNp}` : 'Transforms into its other form' };
     case 'absorbHp': return wrap(`Drains ${num(e.v)} HP (never below 1); this servant restores the total`);
     case 'absorbNp': return wrap(`Takes up to ${num(e.v)}% NP; this servant gains the total`);
     case 'redeal': return { text: 'Redraws your Command Cards' };
