@@ -124,7 +124,7 @@ function buffWhat(e) {
       return `Counters every enemy attack, NP, debuff, buff removal or NP drain aimed at {O} with ${n.n || '{P} NP'} (${num(n.dmg || 0)}% ${n.card || ''} damage${(n.post || []).length ? ', plus its effects' : ''}), even when the attack is blocked. Goes through Buff Block and can't be removed; doesn't fire while {S} can't act`;
     }
     case 'noHeal': return 'Recovery Disabled (can\'t restore HP)';
-    case 'npDmgRes': return `NP damage taken −${num(v)}%`;
+    case 'npDmgRes': return v < 0 ? `NP damage taken +${num(-v)}%` : `NP damage taken −${num(v)}%`;
     case 'lockHand': return 'Locks your current Command Cards: the same hand returns each turn (breaks if your field changes)';
     case 'dmgCut': return `Damage Cut ${num(v)} per hit` + ocRange(e, v, 'v5', num);
     case 'dmgTakenPlus': return `Takes ${sign(v)} damage from every attack` + ocRange(e, v, 'v5', sign);
@@ -163,17 +163,19 @@ function buffWhat(e) {
 }
 
 // One effect -> { text, sub? } (sub = nested lines for triggered/delayed effects)
-// A demerit: a drawback the caster puts on themselves (or their own stars) by using the skill or NP.
+// A demerit: a drawback the caster puts on themselves, their allies or their own stars by using the skill or NP.
 const SELF_BAD = new Set(['stun', 'skillSeal', 'npSeal', 'noHeal', 'buffBlock', 'burn', 'curse', 'poison', 'charm', 'sleep', 'petrify', 'bind', 'terror', 'confusion', 'dmgTakenPlus']);
+const OWN_SIDE = new Set(['self', 'ally', 'allies', 'others', 'firstOther', 'lowestHpAlly', 'lastOther', 'randomAlly', 'alliesBut']);
 function isDemerit(e) {
   if (e.demerit) return true;
-  const self = e.to === 'self' || e.to == null;
-  if (['selfDmg', 'koSelf'].includes(e.k)) return true;
-  if (e.k === 'hpLoss' && self) return true;
+  const own = e.to == null || OWN_SIDE.has(e.to);
+  if (['selfDmg', 'koSelf', 'sacrifice'].includes(e.k)) return true;
+  if (!own) return false;
+  if (e.k === 'hpLoss') return true;
   if (e.k === 'stars' && e.v < 0) return true;
-  if (e.k === 'np' && e.v < 0 && self) return true;
-  if (e.k === 'control' && (self || e.selfInflicted)) return true;
-  if (e.k === 'buff' && e.to === 'self' && (e.debuff || SELF_BAD.has(e.s) || (typeof e.v === 'number' && e.v < 0))) return true;
+  if (e.k === 'np' && e.v < 0) return true;
+  if (e.k === 'control' || e.k === 'dot') return true;
+  if (e.k === 'buff' && (e.debuff || SELF_BAD.has(e.s) || (typeof e.v === 'number' && e.v < 0))) return true;
   return false;
 }
 function line(e, ctx = {}) {
