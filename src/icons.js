@@ -43,6 +43,12 @@ const P = {
   burstBold: '<path d="M12 2.8l2.1 5.2 5.5-.8-3.4 4.4 3.4 4.4-5.5-.8L12 20.4l-2.1-5.2-5.5.8 3.4-4.4L4.4 7.2l5.5.8z" fill="currentColor" stroke="var(--t-orange)" stroke-width="2.2" stroke-linejoin="round"/>',
   redSpark: '<path d="M13.4 2.5 6.8 12.6h4.6L9.6 21.5l7.6-11.1h-4.7z" fill="#ff3b3b" stroke="#ffb3a8" stroke-width=".9" stroke-linejoin="round"/><path d="M4.2 6.4 6.6 8M3.4 15.6 5.9 14.2M19.6 4.8l-2 2.1M20.8 16.4l-2.6-1.2M18.4 20.2l-1.6-2" stroke="#ff5a4e" stroke-width="1.4" stroke-linecap="round"/><path d="M5.8 4.2l.9 1.6M17 12.6l1.8.6" stroke="#ffd0c8" stroke-width="1" stroke-linecap="round"/>',
   crashWave: '<path d="M2.5 17.5c2.6 0 3.4-1.6 5-1.6s2.4 1.6 4.9 1.6 3.4-1.6 4.9-1.6 2.3 1.6 4.2 1.6" stroke-width="1.8"/><path d="M3 13.4c0-5.6 4.4-9.6 9.6-9.6 3.4 0 6.2 1.7 7.4 4.2-2.6-1.2-6.4-.4-7.3 2.6-.8 2.6 1 4.6 3.5 4.6-2.4 1.4-5.6 1.1-7.4-.7" fill="currentColor" stroke-linejoin="round"/><path d="M2.5 21c2.6 0 3.4-1.4 5-1.4s2.4 1.4 4.9 1.4 3.4-1.4 4.9-1.4 2.3 1.4 4.2 1.4" stroke-width="1.4" opacity=".7"/>',
+  brainCheck: '<path d="M12 5.2c-.9-1.3-3.4-1.6-4.6 0-1.9-.1-3.3 1.6-2.9 3.4-1.5.9-1.8 3.2-.6 4.4-.6 1.8.7 3.6 2.6 3.6.7 1.6 2.9 2.2 4.3 1.1.4-.3.7-.6 1.2-.6s.8.3 1.2.6c1.4 1.1 3.6.5 4.3-1.1 1.9 0 3.2-1.8 2.6-3.6 1.2-1.2.9-3.5-.6-4.4.4-1.8-1-3.5-2.9-3.4-1.2-1.6-3.7-1.3-4.6 0z"/><path d="m8.8 12.2 2.2 2.2 4.3-4.5" stroke-width="2"/>',
+  brainX: '<path d="M12 5.2c-.9-1.3-3.4-1.6-4.6 0-1.9-.1-3.3 1.6-2.9 3.4-1.5.9-1.8 3.2-.6 4.4-.6 1.8.7 3.6 2.6 3.6.7 1.6 2.9 2.2 4.3 1.1.4-.3.7-.6 1.2-.6s.8.3 1.2.6c1.4 1.1 3.6.5 4.3-1.1 1.9 0 3.2-1.8 2.6-3.6 1.2-1.2.9-3.5-.6-4.4.4-1.8-1-3.5-2.9-3.4-1.2-1.6-3.7-1.3-4.6 0z"/><path d="m9.4 9.4 5.2 5.2M14.6 9.4l-5.2 5.2" stroke-width="2"/>',
+  shieldSkull: '<path d="M12 3.2 19 6v5.2c0 4.6-3.2 8-7 9.6-3.8-1.6-7-5-7-9.6V6z"/><g transform="translate(12 12.2) scale(.42) translate(-12 -11.5)" style="color:var(--t-blue)"><path d="M12 3.5c-4.4 0-7.5 3-7.5 7 0 2.4 1.1 3.9 2.5 4.8V19h10v-3.7c1.4-.9 2.5-2.4 2.5-4.8 0-4-3.1-7-7.5-7z" fill="currentColor" stroke="none"/><circle cx="9.3" cy="11" r="1.7" fill="var(--icon-bg)" stroke="none"/><circle cx="14.7" cy="11" r="1.7" fill="var(--icon-bg)" stroke="none"/></g>',
+  spokesSplit: '<g transform="translate(-1.9 .7) rotate(-9 12 21)"><path d="M12 3.2 5 6v5.2c0 4.6 3.2 8 7 9.6l.8-3.8-1.8-3.5 2-3.5-2-3z" fill="currentColor"/><path d="M12 3.2 5 6v5.2c0 4.6 3.2 8 7 9.6l.8-3.8-1.8-3.5 2-3.5-2-3z" fill="#000" opacity=".2" stroke="none"/><path d="M11.6 11.6 5.6 11.6M11.6 11.6 7.2 6.4M11.6 11.6 7.4 16.6M11.6 11.6V5" stroke="currentColor" stroke-width="1.2"/><path d="M12 3.2 5 6v5.2c0 4.6 3.2 8 7 9.6l.8-3.8-1.8-3.5 2-3.5-2-3z" fill="none" stroke="currentColor" stroke-width="1.3"/></g><g transform="translate(1.9 .7) rotate(9 12 21)"><path d="M12 3.2 19 6v5.2c0 4.6-3.2 8-7 9.6l.8-3.8-1.8-3.5 2-3.5-2-3z" fill="currentColor"/><path d="M12 3.2 19 6v5.2c0 4.6-3.2 8-7 9.6l.8-3.8-1.8-3.5 2-3.5-2-3z" fill="#000" opacity=".2" stroke="none"/><path d="M12.4 11.6h6M12.4 11.6l4.4-5.2M12.4 11.6l4.2 5" stroke="currentColor" stroke-width="1.2"/><path d="M12 3.2 19 6v5.2c0 4.6-3.2 8-7 9.6l.8-3.8-1.8-3.5 2-3.5-2-3z" fill="none" stroke="currentColor" stroke-width="1.3"/></g>',
+  shieldSplit: '<g transform="translate(-1.9 .7) rotate(-9 12 21)"><path d="M12 3.2 5 6v5.2c0 4.6 3.2 8 7 9.6l.8-3.8-1.8-3.5 2-3.5-2-3z" fill="currentColor"/></g><g transform="translate(1.9 .7) rotate(9 12 21)"><path d="M12 3.2 19 6v5.2c0 4.6-3.2 8-7 9.6l.8-3.8-1.8-3.5 2-3.5-2-3z" fill="currentColor"/></g>',
+  dragonHead: '<path d="M3.2 13.6c1.6-3.6 5-6.1 9.2-6.2l2.3-3.6 1 3.1 3.4-1.6-1.2 3.6c1.6 1 2.8 2.4 3.4 4.2l-3.6.6c-.4 1.3-1.4 2.4-2.8 2.9l.6 3.2-3.6-1.7-2.6 2.2-.5-3.3c-2.2-.4-4.2-1.7-5.6-3.4z" fill="currentColor"/><circle cx="14.9" cy="10.6" r="1.1" fill="var(--icon-bg)" stroke="none"/><path d="M6.4 14.4h3.2" stroke="var(--icon-bg)" stroke-width="1.1"/>',
   tag: '<path d="M3.5 12.2V4.5h7.7l9.3 9.3-7.7 7.7z"/><circle cx="8" cy="8.5" r="1.3" fill="currentColor"/>',
   hourglass: '<path d="M7 3.5h10M7 20.5h10M8 3.5c0 5 8 5 8 8.5s-8 3.5-8 8.5M16 3.5c0 5-8 5-8 8.5s8 3.5 8 8.5"/>',
   dice: '<rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1.3" fill="currentColor"/><circle cx="15" cy="15" r="1.3" fill="currentColor"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/>',
@@ -81,6 +87,8 @@ function IN(g, k, style = '') { return `<g transform="translate(12 12) scale(${k
 const CW = '<path d="M12 3.4a8.6 8.6 0 1 1-7.45 4.3"/><path d="M5.4 11 4.85 7.2 1.3 8.6"/>';
 // Small plus in the bottom-right corner.
 const CP = '<path d="M19.4 15.6v6.4M16.2 18.8h6.4" stroke-width="2.1"/>';
+const CS = '<g transform="translate(17.6 17.4) rotate(45)" stroke="none" fill="currentColor"><path d="M0 -6.6 1.3 -5V1.4H-1.3V-5z"/><rect x="-3.2" y="1.4" width="6.4" height="1.6" rx=".6"/><rect x="-.85" y="3" width="1.7" height="3" rx=".5"/></g>'; // a small sword in the bottom right corner
+const REDX = '<path d="M5.5 5.5l13 13M18.5 5.5l-13 13" stroke="#e8524e" stroke-width="2.6"/>';
 const SWORD = '<path d="M20.5 3.5l-1.1 4.4-9.6 9.6-3.3-3.3 9.6-9.6z" fill="currentColor"/><path d="M5 13.2l5.8 5.8"/><path d="M7.6 16.4 4 20"/>';
 const CC = { B: 'var(--buster)', A: 'var(--arts)', Q: 'var(--quick)' };
 // Several card stars in one icon, each outlined so overlaps stay readable.
@@ -129,6 +137,10 @@ Object.assign(P, {
   swordMinus: `<path d="M20.5 3.5l-1.1 4.4-9.6 9.6-3.3-3.3 9.6-9.6z" fill="currentColor"/><path d="M5 13.2l5.8 5.8"/><path d="M7.6 16.4 4 20"/><path d="M15.2 19.6h6" stroke-width="2.4"/>`,
   cloudZ: `<path d="M7 18.5a4 4 0 0 1-.6-8 5.4 5.4 0 0 1 10.4-1.4 4.7 4.7 0 0 1 .5 9.4z" fill="currentColor"/><path d="M7.4 11.6h4.4l-4.4 4.6h4.4M13.6 9h3.2l-3.2 3.3h3.2" stroke="var(--icon-bg)" stroke-width="1.7"/>`,
   heartPlusC: `<g transform="translate(-1.2 -1.2)"><path d="M12 20s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.4 4.3 4.3 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10z"/><path d="M12 10.3v5M9.5 12.8h5"/></g>${CP}`,
+  gaugeSwordC: `<g transform="translate(0 -2.6)"><rect x="3.5" y="7" width="15.5" height="10" rx="2"/><path d="M20.5 10.5v3"/><rect x="5.8" y="9.3" width="7" height="5.4" fill="currentColor" stroke="none"/></g>${CS}`,
+  heartPlusC: `<g transform="translate(-1.6 -1.4) scale(.92)"><path d="M12 20s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.4 4.3 4.3 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10z"/><path d="M12 10.3v5M9.5 12.8h5"/></g>${CP}`,
+  swapX: `<path d="M4 8h13l-3.5-3.5M20 16H7l3.5 3.5"/>${REDX}`,
+  heartPlusX: `<path d="M12 20s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.4 4.3 4.3 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10z"/><path d="M12 10.3v5M9.5 12.8h5"/>${REDX}`,
   gaugePlusC: `<g transform="translate(0 -2.6)"><rect x="3.5" y="7" width="15.5" height="10" rx="2"/><path d="M20.5 10.5v3"/><rect x="5.8" y="9.3" width="7" height="5.4" fill="currentColor" stroke="none"/></g>${CP}`,
   burstPlusC: `<g transform="translate(12 12) scale(.86) translate(-13.4 -13.4)"><path d="M12 2.8l2.1 5.2 5.5-.8-3.4 4.4 3.4 4.4-5.5-.8L12 20.4l-2.1-5.2-5.5.8 3.4-4.4L4.4 7.2l5.5.8z" fill="currentColor"/></g>${CP}`,
   gun: `<path d="M2.8 7.2h16.4l1.2 1.2v2.9h-9.6l-.9 1.3.5 1.1-1.6 6.3H4.6l2.1-7.6-3.9-.1z" fill="currentColor"/><path d="M10.9 11.3l-.4 2.8h-2" stroke-width="1.5"/>`,
@@ -138,23 +150,23 @@ Object.assign(P, {
 // effect key -> [glyph, tone]
 const EFFECT = {
   robin: ['robin', 'robin'], magicBullet: ['magicBullet', 'silver'], sunrise: ['sunrise', 'gold'], dayNight: ['dayNight', 'white'], npDmgBold: ['burstBold', 'np'], redSpark: ['redSpark', 'red'], crashWave: ['crashWave', 'blue'],
-  atk: ['sword', 'atk'], def: ['shield', 'orange'], buster: ['hexStar', 'B'], arts: ['hexStar', 'A'], quick: ['hexStar', 'Q'], extra: ['hexStar', 'EX'],
+  atk: ['sword', 'atk'], def: ['shieldFill', 'orange'], buster: ['hexStar', 'B'], arts: ['hexStar', 'A'], quick: ['hexStar', 'Q'], extra: ['hexStar', 'EX'],
   busterRes: ['resB', 'orange'], artsRes: ['resA', 'orange'], quickRes: ['resQ', 'orange'], allBuster: ['card', 'B'], npToArts: ['card', 'A'],
   npDmg: ['burst', 'np'], critDmg: ['bolt', 'crit'], critRate: ['bolt', 'crit'], starDrop: ['ringStar', 'star'], starGather: ['star', 'star'], starRegen: ['cwStar', 'star'], stars: ['star', 'star'],
   npGain: ['ringGauge', 'np'], npRegen: ['cwGauge', 'np'], np: ['gauge', 'np'], busterAtkNp: ['gauge', 'np'], drain: ['gaugeDown', 'bad'],
-  debuffRes: ['shieldCheck', 'res'], mentalRes: ['shieldCheck', 'res'], atkDebuffRes: ['shieldCheck', 'res'], debuffImmune: ['shieldCheckFill', 'res'], ctrlImmune: ['shieldCheck', 'res'], cleanse: ['bubbles', 'res'],
+  debuffRes: ['brainCheck', 'orange'], mentalRes: ['shieldCheck', 'res'], atkDebuffRes: ['shieldCheck', 'res'], debuffImmune: ['shieldCheckFill', 'res'], ctrlImmune: ['shieldCheck', 'res'], cleanse: ['bubbles', 'res'],
   buffSuccess: ['dice', 'orange'], debuffSuccess: ['dice', 'orange'], mentalSuccess: ['dice', 'orange'],
-  heal: ['heartPlus', 'heal'], healRecv: ['heartPlus', 'heal'], hpRegen: ['cwHeart', 'heal'], maxHp: ['heart', 'orange'],
+  heal: ['heartPlus', 'heal'], healRecv: ['heartPlusC', 'heal'], hpRegen: ['cwHeart', 'heal'], maxHp: ['heart', 'orange'],
   dmgPlus: ['plus', 'atk'], dmgCut: ['shieldMinus', 'orange'], evade: ['dash', 'dpurple'], invincible: ['shieldSpokes', 'gold'], taunt: ['crosshair', 'white'],
-  sureHit: ['target', 'red'], ignoreDef: ['shieldBroken', 'atk'], ignoreInv: ['shieldBroken', 'gold'], strip: ['shieldBroken', 'blue'],
-  special: ['plus', 'atk'], specialDef: ['shieldCheck', 'orange'], guts: ['kneel', 'orange'], death: ['skull', 'bad'],
+  sureHit: ['target', 'red'], ignoreDef: ['shieldSplit', 'orange'], ignoreInv: ['spokesSplit', 'gold'], strip: ['shieldBroken', 'blue'],
+  special: ['hexStar', 'atk'], specialDef: ['shieldCheck', 'orange'], guts: ['kneel', 'orange'], death: ['skull', 'bad'],
   curse: ['skull', 'purple'], burn: ['flame', 'bad'], burnDmg: ['flamePlus', 'bad'], poison: ['drop', 'dpurple'], curseOnAttack: ['swordMinus', 'atk'],
   pigify: ['pig', 'bad'], bind: ['lock', 'yellow'], petrify: ['lock', 'yellow'], sleep: ['cloudZ', 'pink'], stripRes: ['dice', 'orange'], deathRes: ['shieldCheck', 'orange'], deathImmune: ['shieldCheckFill', 'res'], deathSuccess: ['skull', 'atk'],
   immuneTo: ['shieldCheckFill', 'res'], trueInvincible: ['shieldSpokes', 'silver'], npType: ['swap', 'np'], curseNoDeath: ['shieldCheck', 'res'],
-  noHeal: ['heart', 'bad'], npDmgRes: ['resNp', 'orange'], lockHand: ['lock', 'white'],
+  noHeal: ['heartPlusX', 'heal'], npDmgRes: ['resNp', 'orange'], lockHand: ['lock', 'white'],
   critRes: ['resCrit', 'orange'], classRel: ['swap', 'util'],
-  healGiven: ['heartPlusC', 'heal'], dmgTakenPlus: ['plus', 'blue'], multiHit: ['crossSwords', 'atk'], noCards: ['lock', 'white'], buffRecv: ['shieldCheck', 'orange'],
-  ndGain: ['gaugePlusC', 'np'], critDmgTaken: ['critTaken', 'blue'], trigger: ['sparkle', 'util'], reflect: ['bullet', 'blue'], moonState: ['moonState', 'white'], sunState: ['sunState', 'gold'], npAoe: ['moonState', 'white'], territory: ['shieldFill', 'silver'], formRevert: ['sword', 'gold'], counter: ['bullet', 'blue'], counterDmg: ['bullet', 'blue'],
+  healGiven: ['heartPlusC', 'heal'], dmgTakenPlus: ['shieldFill', 'blue'], multiHit: ['crossSwords', 'atk'], noCards: ['lock', 'white'], buffRecv: ['shieldCheck', 'orange'],
+  ndGain: ['gaugeSwordC', 'np'], critDmgTaken: ['critTaken', 'blue'], trigger: ['stopwatch', 'orange'], reflect: ['bullet', 'blue'], noSwap: ['swapX', 'util'], dragonTrait: ['dragonHead', 'orange'], eyeBlue: ['eye', 'blue'], eyeRed: ['eye', 'red'], moonState: ['moonState', 'white'], sunState: ['sunState', 'gold'], npAoe: ['moonState', 'white'], territory: ['shieldFill', 'silver'], formRevert: ['sword', 'gold'], counter: ['bullet', 'blue'], counterDmg: ['bullet', 'blue'],
   stun: ['lock', 'yellow'], charm: ['heart', 'charm'], terror: ['stopwatch', 'blue'], skillSeal: ['lock', 'red'], npSeal: ['lock', 'orange'],
   swap: ['swap', 'util'], seal: ['seal', 'charm'], ocUp: ['burstPlusC', 'np'], quickHitDebuff: ['card', 'Q'], npOnBurnHit: ['gauge', 'np'],
   cardsBAQ: ['cardsBAQ', 'EX'], cardsBA: ['cardsBA', 'EX'], cardsBQ: ['cardsBQ', 'EX'], cardsAQ: ['cardsAQ', 'EX'], atkDef: ['atkDef', 'atk'],
@@ -170,7 +182,7 @@ function classIcon(cls) { return `<span class="clsico" title="${cls}" aria-label
 // Named statuses with their own icon (matched on the effect's label), for the skill and for the status badge.
 const STATUS_ICON = { 'Infinite Growth': 'delayed', 'Blessing of Kur': 'kurFlower', 'Living Flame': 'livingFlame', 'Holy Grail Possession': 'holyGrail', 'Magic Bullet': 'magicBullet', Roman: 'romanShield', 'Like!': 'like', Like: 'like', 'Grudge of Vengeance': 'grudge', Vengeance: 'grudge', 'Past Alteration': 'pastAlt', Confusion: 'timedBad' };
 // Skills whose icon is picked by name, and buffs from those skills that share it (BB (Summer)'s card lock).
-const SKILL_ICON = { 'Faceless Moon EX': 'facelessMoon', 'Load Magic Bullet B': 'magicBullet', 'Ray Horizon A': 'sunrise', 'Connection to Wisdom EX': 'dayNight', 'Proserpina in Bloom EX': 'npDmgBold', 'Illusion (Fantastical) A': 'invincible',
+const SKILL_ICON = { 'Eye of the Blue Star B': 'eyeBlue', 'Eye of the Red Star B': 'eyeRed', 'Faceless Moon EX': 'facelessMoon', 'Load Magic Bullet B': 'magicBullet', 'Ray Horizon A': 'sunrise', 'Connection to Wisdom EX': 'dayNight', 'Proserpina in Bloom EX': 'npDmgBold', 'Illusion (Fantastical) A': 'invincible',
   'Evil Eye of the Abyss B+++': 'stun', 'Mass Hysteria B': 'stun', 'Tranquil Fig EX': 'delayed', 'Schwarzwald Falke B': 'evade', 'Huge Scale B': 'maxHp', 'Mistress C EX': 'heal',
   'Melt Envy EX': 'drain', 'Complete Fluidity B': 'crashWave', 'La Black Luna C': 'stun', 'Ruinous Beauty A': 'drain', 'Midsummer Nights A': 'stun', "Aphrodite's Blessing EX": 'hpRegen',
   'Fae Vampirism A': 'drain', 'Magic Circuit (Rotation) A': 'npRegen', 'Shakutenrin Jizai Fuza A': 'np', 'Mystic Eyes of Death Perception A': 'redSpark', 'Morning Star C': 'redSpark' };
@@ -182,7 +194,9 @@ function badDelayed(b) {
 }
 function statusKey(b) {
   if (!b) return null;
-  if ((b.s === 'delayed' || b.k === 'delayed') && badDelayed(b)) return 'timedBad';
+  if ((b.s === 'delayed' || b.k === 'delayed' || b.s === 'trigger') && badDelayed(b)) return 'timedBad';
+  if (b.s === 'terror' || b.label === 'Terror' || b.label === 'Confusion') return 'timedBad';
+  if (b.s === 'trait' && /^Dragon$/i.test(b.trait || '') || /\[Dragon\]/.test(b.label || '')) return 'dragonTrait';
   if (b.tags && b.tags.includes('Mark Of Sin')) return 'sinBrand';      // Brand of Sin stacks
   if (b.s === 'dotHeal' && b.kind === 'poison') return 'poisonHeal'; // Poison Recovery
   return STATUS_ICON[b.label] || STATUS_ICON[b.trait] || FROM_ICON[b.from + '|' + b.s] || atkTrigger(b) || null;
@@ -203,10 +217,12 @@ function effectKey(e) {
   if (e.k === 'dot') return e.kind;
   return { np: 'np', heal: 'heal', stars: 'stars', cleanse: 'cleanse', strip: 'strip', drain: 'drain', death: 'death', guts: 'guts', delayed: 'delayed', koSelf: 'death', selfDmg: 'death', cdReduce: 'cdReduce', transform: 'trait', npPerTrait: 'np', field: 'sparkle' }[e.k] || 'sparkle';
 }
-const DOWN_BLUE = new Set(['atk', 'def', 'busterRes', 'artsRes', 'quickRes', 'critRes']);
+const DOWN_BLUE = new Set(['atk', 'def', 'busterRes', 'artsRes', 'quickRes', 'critRes', 'maxHp', 'npGain', 'npDmgRes']);
+// Lowered stats that change shape, not just colour
+const DOWN_ICON = { debuffRes: ['brainX', 'blue'], deathRes: ['shieldSkull', 'orange'] };
 // Badge for an effect key. neg = harmful to the holder. dir = 'up' | 'down' | null.
 function badge(key, { neg = false, dir = null, tip = '', size = '', plain = false } = {}) {
-  let [glyph, tone, extra] = EFFECT[key] || ['sparkle', 'util'];
+  let [glyph, tone, extra] = (dir === 'down' && DOWN_ICON[key]) || EFFECT[key] || ['sparkle', 'util'];
   if (dir === 'down' && DOWN_BLUE.has(key)) tone = 'blue'; // lowered ATK/DEF and lowered card or crit resistance read blue
   const arrow = dir ? `<span class="arr ${dir}">${dir === 'up' ? '▲' : '▼'}</span>` : '';
   const attrs = plain ? 'aria-hidden="true"' : `tabindex="0" role="img" data-tip="${tip}" aria-label="${tip}"`;

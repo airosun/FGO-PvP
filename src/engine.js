@@ -1892,7 +1892,7 @@ function decideByLimit(g) {
 const API = {
   pron, CFG, MYSTIC, masterSkills, isSwap, STAT_LABEL, cardWillChange, fullCap, cardSealed, fieldActive, effCls, affLevel, AFF_NAME, CLASS_LIST, FIELDS, fieldName, currentField, fieldTurnsLeft, actBlocker, rawAffinity, snap, sealUsable, sealTargetOk, queueSeal, unqueueSeal, MASTER, masterUsable, queueMaster, unqueueMaster, swappingOut, npCap, npLevel, hasNoNP, allyTargetOk, COLOR, costOf, teamCost, snakeOrder, canPick, EXCLUSIVE, META, starRate, npPerHit, skillRank, skillOption, newBattle, front, maxHp, has, sumStat,
   skillUsable, skillTargetKind, queueSkill, unqueueSkill, activateOrderChange, resolveSkills, availableNPs, cardColor, npColor, canAct,
-  setCards, resolveCards, describeBuff, cloneGame, classMult, attrMult, aliveCount, hpPct, mkRng,
+  setCards, resolveCards, describeBuff, cloneGame, _applyEffect: (...a) => applyEffect(...a), classMult, attrMult, aliveCount, hpPct, mkRng,
 };
 if (typeof module !== 'undefined') module.exports = API; else root.Engine = API;
 })(typeof window !== 'undefined' ? window : globalThis);
