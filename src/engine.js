@@ -1151,11 +1151,50 @@ function skillUsable(g, u, i) {
   if (u.cds[i] > 0) return { ok: false, why: `Cooldown ${u.cds[i]}` };
   const sk_ = u.kit.sk[i];
   if (sk_ && sk_.needNp && u.np < sk_.needNp) return { ok: false, why: `Needs ${sk_.needNp}% NP` };
-  if (sk_ && sk_.needStars && g.players[u.side].stars < sk_.needStars) return { ok: false, why: `Needs ${sk_.needStars} stars` };
+  if (sk_ && sk_.needStars && plannedStars(g, u.side) < sk_.needStars) return { ok: false, why: `Needs ${sk_.needStars} stars` };
   if (has(u, 'skillSeal')) return { ok: false, why: 'Skill Seal' };
   if (actBlocker(u)) return { ok: false, why: actBlocker(u) };
   if (g.players[u.side].skillQueue.some(q => q.uid === u.uid && q.i === i)) return { ok: false, why: 'Queued' };
   return { ok: true };
+}
+// ---- Potential stars: stars a queued skill will give count as soon as it is queued, so a later skill this turn
+// can spend them (Mozart's 50 stars paying for Kukulcan's upgraded options). A skill that leans on them
+// records which star skills it depends on; if one of those is canceled, the dependent skill is canceled too.
+const STAR_OK_KEYS = new Set(['k', 'v', 'to', 'opt', 'optCost', 'ifAllyAttr', 'ifAlliesFullHp']);
+function queuedEffs(u, i, opt) {
+  const sk = u.kit.sk[i]; if (!sk) return [];
+  const stage = sk.ranks ? Math.min(skillRank(u), sk.ranks.length) : 0, effs = stage ? sk.ranks[stage - 1] : sk.e;
+  const o = sk.opts ? (Number.isInteger(+opt) ? +opt : 0) : null;
+  return effs.filter(e => !(sk.opts && e.opt != null && e.opt !== o));
+}
+function skillStarGain(g, u, i, opt) {
+  let n = 0;
+  for (const e of queuedEffs(u, i, opt)) {
+    if (e.k !== 'stars' || !(e.v > 0) || Object.keys(e).some(k => !STAR_OK_KEYS.has(k))) continue; // conditional star gains aren't counted
+    if (e.ifAllyAttr && !front(g, u.side).some(a => a.d.attr === e.ifAllyAttr)) continue;
+    if (e.ifAlliesFullHp && !front(g, u.side).every(a => a.hp >= maxHp(a))) continue;
+    n += e.v;
+  }
+  return n;
+}
+function skillStarCost(u, i, opt) {
+  const sk = u.kit.sk[i]; if (!sk) return 0;
+  const o = sk.opts ? (sk.opts[Number.isInteger(+opt) ? +opt : 0] || {}) : {};
+  let n = o.stars || 0;
+  if (!o.stars) for (const e of queuedEffs(u, i, opt)) if (e.k === 'stars' && e.v < 0) n += -e.v; // e.g. Astraea's Star's Judgment
+  return n;
+}
+// Stars a player can plan with: banked stars, plus what queued skills will give, minus what queued skills spend.
+function plannedStars(g, p) {
+  const P = g.players[p]; let s = P.stars;
+  for (const q of P.skillQueue.slice().sort((x, y) => x.seq - y.seq)) { const u = U(g, q.uid); if (!u) continue; s = Math.max(0, Math.min(CFG.starBankCap, s + skillStarGain(g, u, q.i, q.opt)) - skillStarCost(u, q.i, q.opt)); }
+  return s;
+}
+// Banked stars not yet claimed by queued skills (no potential stars).
+function realStarsLeft(g, p) {
+  const P = g.players[p]; let s = P.stars;
+  for (const q of P.skillQueue) { const u = U(g, q.uid); if (u) s -= skillStarCost(u, q.i, q.opt); }
+  return s;
 }
 function skillTargetKind(u, i) {
   const e = u.kit.sk[i].e;
@@ -1166,10 +1205,30 @@ function skillTargetKind(u, i) {
 function queueSkill(g, p, uid, i, target, opt) {
   const u = U(g, uid); const ok = skillUsable(g, u, i);
   if (!ok.ok) return ok;
-  g.players[p].skillQueue.push({ uid, i, target, opt, seq: nextSeq(g) });
+  const P = g.players[p], sk = u.kit.sk[i];
+  const need = Math.max(skillStarCost(u, i, opt), sk.needStars || 0);
+  if (need && plannedStars(g, p) < need) return { ok: false, why: `Needs ${need} stars` };
+  const q = { uid, i, target, opt, seq: nextSeq(g) };
+  // Not enough banked stars on their own: this skill is paid with potential stars from the star skills queued before it.
+  if (need && realStarsLeft(g, p) < need) {
+    const deps = P.skillQueue.filter(x => { const xu = U(g, x.uid); return xu && skillStarGain(g, xu, x.i, x.opt) > 0; }).map(x => x.seq);
+    if (deps.length) q.dependsOn = deps;
+  }
+  P.skillQueue.push(q);
   return { ok: true };
 }
-function unqueueSkill(g, p, idx) { g.players[p].skillQueue.splice(idx, 1); }
+// Removing a star skill also removes the skills that were paid for with its potential stars.
+function unqueueSkill(g, p, idx) {
+  const P = g.players[p]; const gone = P.skillQueue.splice(idx, 1);
+  const dropped = new Set(gone.map(x => x.seq)); let more = true;
+  while (more) {
+    more = false;
+    for (let k = P.skillQueue.length - 1; k >= 0; k--) {
+      const x = P.skillQueue[k];
+      if ((x.dependsOn || []).some(s => dropped.has(s))) { dropped.add(x.seq); P.skillQueue.splice(k, 1); more = true; }
+    }
+  }
+}
 // Skill resolution runs in phases across both players: taunts, stuns, buffs, debuffs, buff removal, debuff removal.
 // Within a phase the tie-breaker holder goes first. Once a side has a taunter, the other side's single-target
 // enemy skills are drawn to it.
@@ -1222,6 +1281,7 @@ function resolveSkills(g) {
       ...(P.sealQueue ? [{ kind: 'seal', seq: P.sealQueue.seq }] : [])];
     return items.sort((a, b) => a.seq - b.seq);
   });
+  g._canceledSeqs = new Set();
   const at = [0, 0]; let turn = g.initiative;
   while (at[0] < lists[0].length || at[1] < lists[1].length) {
     const p = at[turn] < lists[turn].length ? turn : 1 - turn;
@@ -1262,10 +1322,20 @@ function resolveItem0(g, p, item) {
   }
   const q = item.q; const u = U(g, q.uid); const sk = u.kit.sk[q.i];
   const allowedAfterSwap = g.players[p].masterQueue.some(m => m.applied && m.out === u.uid && q.seq < m.seq && (m.outSkills || []).some(x => x.i === q.i && x.seq === q.seq));
-  if (!g.players[p].front.includes(u.uid) && !allowedAfterSwap) { log(g, `${u.name}'s ${sk.n} fizzles (not on the field).`, 'miss'); return; }
+  const canceled = g._canceledSeqs || (g._canceledSeqs = new Set());
+  if (!g.players[p].front.includes(u.uid) && !allowedAfterSwap) { canceled.add(q.seq); log(g, `${u.name}'s ${sk.n} fizzles (not on the field).`, 'miss'); return; }
+  // Paid with potential stars from a star skill that didn't activate: canceled too, and the skill stays ready.
+  const dep = (q.dependsOn || []).find(s => canceled.has(s));
+  if (dep != null) {
+    canceled.add(q.seq);
+    log(g, `${u.name}'s ${sk.n} is canceled (the star skill it was counting on didn't activate). The skill stays ready.`, 'miss');
+    fx(g, { t: 'eff', uid: u.uid, key: 'stars', label: `${sk.n} canceled`, miss: true });
+    return;
+  }
   // Stunned, charmed or skill-sealed before activating: canceled, and the skill stays ready.
   const why = u.dead ? 'defeated' : actBlocker(u) || (has(u, 'skillSeal') ? 'Skill Seal' : null);
   if (why) {
+    canceled.add(q.seq);
     log(g, `${u.name}'s ${sk.n} is canceled (${why}). The skill stays ready.`, 'miss');
     fx(g, { t: 'eff', uid: u.uid, key: has(u, 'charm') ? 'charm' : has(u, 'pigify') ? 'pigify' : has(u, 'skillSeal') ? 'skillSeal' : 'stun', label: `${sk.n} canceled`, miss: true });
     return;
@@ -1890,7 +1960,7 @@ function decideByLimit(g) {
 }
 
 const API = {
-  pron, CFG, MYSTIC, masterSkills, isSwap, STAT_LABEL, cardWillChange, fullCap, cardSealed, fieldActive, effCls, affLevel, AFF_NAME, CLASS_LIST, FIELDS, fieldName, currentField, fieldTurnsLeft, actBlocker, rawAffinity, snap, sealUsable, sealTargetOk, queueSeal, unqueueSeal, MASTER, masterUsable, queueMaster, unqueueMaster, swappingOut, npCap, npLevel, hasNoNP, allyTargetOk, COLOR, costOf, teamCost, snakeOrder, canPick, EXCLUSIVE, META, starRate, npPerHit, skillRank, skillOption, newBattle, front, maxHp, has, sumStat,
+  pron, CFG, MYSTIC, plannedStars, realStarsLeft, skillStarGain, skillStarCost, masterSkills, isSwap, STAT_LABEL, cardWillChange, fullCap, cardSealed, fieldActive, effCls, affLevel, AFF_NAME, CLASS_LIST, FIELDS, fieldName, currentField, fieldTurnsLeft, actBlocker, rawAffinity, snap, sealUsable, sealTargetOk, queueSeal, unqueueSeal, MASTER, masterUsable, queueMaster, unqueueMaster, swappingOut, npCap, npLevel, hasNoNP, allyTargetOk, COLOR, costOf, teamCost, snakeOrder, canPick, EXCLUSIVE, META, starRate, npPerHit, skillRank, skillOption, newBattle, front, maxHp, has, sumStat,
   skillUsable, skillTargetKind, queueSkill, unqueueSkill, activateOrderChange, resolveSkills, availableNPs, cardColor, npColor, canAct,
   setCards, resolveCards, describeBuff, cloneGame, _applyEffect: (...a) => applyEffect(...a), classMult, attrMult, aliveCount, hpPct, mkRng,
 };

@@ -181,6 +181,7 @@ button.primary { background: var(--gold); color: var(--gold-ink); border-color: 
 .badge.neg.t-B, .badge.neg.t-A, .badge.neg.t-Q { background: rgba(226, 115, 122, .12); }
 .arr { position: absolute; right: -4px; bottom: -5px; font-size: 9px; line-height: 1; padding: 1px 2px; border-radius: 3px; background: var(--bg); }
 .arr.up { color: var(--pos); } .arr.down { color: var(--neg); }
+.arr.dbl { display: grid; line-height: .62; padding: 2px 2px 1px; } .arr.dbl i { font-style: normal; }
 .badge:focus-visible, .usedsk:focus-visible, .logic:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
 #tip { position: fixed; z-index: 40; background: var(--ink); color: var(--bg); font-size: .8rem; line-height: 1.35; padding: 7px 10px; border-radius: 7px; box-shadow: 0 6px 24px rgba(0, 0, 0, .45); pointer-events: none; }
 
@@ -308,6 +309,7 @@ button.primary { background: var(--gold); color: var(--gold-ink); border-color: 
 .battle .siderow { gap: 6px; }
 .sidelabel { align-items: center; flex-wrap: wrap; }
 .sidemeta { margin-left: auto; }
+.potstars { color: var(--t-star); font-weight: 600; }
 .token { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px 2px 4px; border-radius: 999px; background: var(--gold); color: var(--gold-ink); font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; cursor: help; --icon-bg: var(--gold); }
 .token .ico { width: 16px; height: 16px; }
 .unit { padding: 8px 10px; gap: 4px; }

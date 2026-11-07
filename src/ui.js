@@ -497,7 +497,9 @@ function sideMeta(p) {
   const g = app.g; const v = app.view;
   const reserve = v ? v.reserves[p] : g.players[p].reserve;
   const res = reserve.filter(id => !(v ? v.units[id].dead : g.units[id].dead)).length;
-  return `${res} in reserve · ${Math.floor(v ? v.stars[p] : g.players[p].stars)}★ banked`;
+  const bank = Math.floor(v ? v.stars[p] : g.players[p].stars);
+  const plan = !v && g.phase === 'skills' && g.players[p].skillQueue.length ? Math.floor(E.plannedStars(g, p)) : bank;
+  return `${res} in reserve · ${bank}★ banked${plan !== bank ? ` <span class="potstars" title="Stars after the skills you've queued: potential stars from star skills count right away">→ ${plan}★ after queued skills</span>` : ''}`;
 }
 function fieldNow() {
   const g = app.g; const f = app.view && app.view.field !== undefined ? app.view.field : E.currentField(g);
@@ -605,7 +607,7 @@ function skillDock() {
   const sq = P.sealQueue ? `<li class="qchip master seal" data-seq="${P.sealQueue.seq}" data-tip="${esc('Command Seal: ' + (P.sealQueue.kind === 'heal' ? 'full heal' : 'NP +100%') + ' → ' + g.units[P.sealQueue.uid].name)}">${I.badge('seal', { plain: true })}<span>Seal: ${P.sealQueue.kind === 'heal' ? 'Full heal' : 'NP +100%'} → ${esc(g.units[P.sealQueue.uid].name)}</span><button class="x" data-act="unseal" aria-label="Remove Command Seal">✕</button></li>` : '';
   const optPick = T && T.kind === 'opt' ? (T.opt.kind === 'npType'
     ? `<div class="reserves optpick"><span class="hint">${esc(g.units[T.uid].kit.sk[T.i].n)}: choose the NP card type</span>${T.opt.options.map(o => `<button class="resbtn opt ${o[0]}" data-act="skill-opt" data-v="${o}"><span class="npc ${o[0]}">${o[0]}</span><span>${o}${o === T.opt.def ? ' (default)' : ''}</span></button>`).join('')}</div>`
-    : `<div class="reserves optpick"><span class="hint">${esc(g.units[T.uid].kit.sk[T.i].n)}: choose one</span>${T.opt.options.map(o => { const short = o.stars && P.stars < o.stars; return `<button class="resbtn opt" data-act="skill-opt" data-v="${o.v}" ${short ? 'disabled' : ''}><span>${esc(o.label)}</span>${o.stars ? `<small>${short ? `Needs ${o.stars} stars (you have ${Math.floor(P.stars)})` : `Uses ${o.stars} of your ${Math.floor(P.stars)} stars`}</small>` : ''}</button>`; }).join('')}</div>`) : '';
+    : `<div class="reserves optpick"><span class="hint">${esc(g.units[T.uid].kit.sk[T.i].n)}: choose one</span>${T.opt.options.map(o => { const have = Math.floor(E.plannedStars(g, g.units[T.uid].side)), short = o.stars && have < o.stars; return `<button class="resbtn opt" data-act="skill-opt" data-v="${o.v}" ${short ? 'disabled' : ''}><span>${esc(o.label)}</span>${o.stars ? `<small>${short ? `Needs ${o.stars} stars (you have ${have})` : `Uses ${o.stars} of your ${have} stars`}</small>` : ''}</button>`; }).join('')}</div>`) : '';
   const armMsg = !T ? '' : T.kind === 'opt' ? (T.opt.kind === 'npType' ? 'Pick the NP type' : 'Pick an option') : T.seal ? 'Command Seal: pick a servant' : T.kind === 'swapOut' ? 'Order Change: pick the servant on the field to swap out' : T.kind === 'swapIn' ? 'Order Change: pick who comes in' : `Pick ${T.kind === 'ally' ? 'an ally' : 'an enemy'} on the field`;
   return `<div class="dock"><div class="dock-head"><h3>${NET() ? 'Your skills' : `${esc(PN(p))}: skills`}</h3>${sealRow}${T ? `<span class="arm">${armMsg} <button data-act="cancel-target">Cancel</button></span>` : ''}</div>
     ${handPreview(p)}${rows}${master}${reservePick}${sealPick}${optPick}
@@ -708,7 +710,7 @@ function patchView(snap) {
   });
   document.querySelectorAll('#arena .fighter').forEach(f => { const x = viewUnit(g.units[+f.dataset.uid]); const pct = Math.max(0, Math.min(100, x.hp / E.maxHp(x) * 100)); const bar = f.querySelector('.fbar > span'); if (bar) bar.style.width = pct + '%'; const hp = f.querySelector('.fhp'); if (hp) hp.textContent = `HP ${Math.max(0, Math.round(x.hp))}/${Math.round(E.maxHp(x))}`; });
   document.querySelectorAll('.unit[data-uid]').forEach(el => { if (tokenEl(+el.dataset.uid)) el.classList.add('away'); });
-  document.querySelectorAll('.siderow').forEach(r => { const p = r.classList.contains('p0') ? 0 : 1; const m = r.querySelector('.sidemeta'); if (m) m.textContent = sideMeta(p); });
+  document.querySelectorAll('.siderow').forEach(r => { const p = r.classList.contains('p0') ? 0 : 1; const m = r.querySelector('.sidemeta'); if (m) m.innerHTML = sideMeta(p); });
   const log = document.querySelector('.log'); if (log) { const t = document.createElement('div'); t.innerHTML = renderLog(); log.replaceWith(t.firstElementChild); const ll = document.getElementById('logList'); if (ll) ll.scrollTop = ll.scrollHeight; }
 }
 function floater(uid, html, cls) {

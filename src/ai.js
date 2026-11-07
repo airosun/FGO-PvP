@@ -225,7 +225,7 @@ function planSkills(g, p, rng) {
         target = pool.slice().sort((a, b) => allySkillValue(sk, b) - allySkillValue(sk, a) || attackPower(b) - attackPower(a))[0].uid;
       } else if (kind === 'enemy') target = (pr.ctrl ? scary : focus).uid;
       const opt = E.skillOption(u, i); let ov;
-      if (opt) ov = opt.kind === 'npType' ? (opt.def || opt.options[0]) : (opt.options.find(o => !o.stars || P.stars >= o.stars) || opt.options[0]).v;
+      if (opt) ov = opt.kind === 'npType' ? (opt.def || opt.options[0]) : (opt.options.find(o => !o.stars || E.plannedStars(c, p) >= o.stars) || opt.options[0]).v;
       const r = E.queueSkill(c, p, u.uid, i, target, ov);
       if (r.ok) queued.push(u.uid);
     });

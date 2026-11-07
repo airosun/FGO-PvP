@@ -186,6 +186,7 @@ button.primary { background: var(--gold); color: var(--gold-ink); border-color: 
 .badge.neg.t-B, .badge.neg.t-A, .badge.neg.t-Q { background: rgba(226, 115, 122, .12); }
 .arr { position: absolute; right: -4px; bottom: -5px; font-size: 9px; line-height: 1; padding: 1px 2px; border-radius: 3px; background: var(--bg); }
 .arr.up { color: var(--pos); } .arr.down { color: var(--neg); }
+.arr.dbl { display: grid; line-height: .62; padding: 2px 2px 1px; } .arr.dbl i { font-style: normal; }
 .badge:focus-visible, .usedsk:focus-visible, .logic:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
 #tip { position: fixed; z-index: 40; background: var(--ink); color: var(--bg); font-size: .8rem; line-height: 1.35; padding: 7px 10px; border-radius: 7px; box-shadow: 0 6px 24px rgba(0, 0, 0, .45); pointer-events: none; }
 
@@ -313,6 +314,7 @@ button.primary { background: var(--gold); color: var(--gold-ink); border-color: 
 .battle .siderow { gap: 6px; }
 .sidelabel { align-items: center; flex-wrap: wrap; }
 .sidemeta { margin-left: auto; }
+.potstars { color: var(--t-star); font-weight: 600; }
 .token { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px 2px 4px; border-radius: 999px; background: var(--gold); color: var(--gold-ink); font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; cursor: help; --icon-bg: var(--gold); }
 .token .ico { width: 16px; height: 16px; }
 .unit { padding: 8px 10px; gap: 4px; }
@@ -1169,6 +1171,7 @@ Object.assign(P, {
   curseHeal: `${CW}<g transform="translate(12 12) scale(.5) translate(-12 -12)" style="color:var(--t-purple)">${P.skull}</g>`,
 });
 Object.assign(P, {
+  maxText: '<path d="M1.67 8.9H3.71L5.12 12.22L6.54 8.9H8.57V15.1H7.06V10.57L5.63 13.91H4.62L3.19 10.57V15.1H1.67ZM13.9 13.97H11.4L11.01 15.1H9.4L11.69 8.9H13.6L15.9 15.1H14.29ZM11.8 12.82H13.5L12.65 10.35ZM20.17 11.94 22.33 15.1H20.66L19.21 12.98L17.77 15.1H16.1L18.25 11.94L16.18 8.9H17.85L19.21 10.9L20.56 8.9H22.24Z" fill="#fff" stroke="#e8524e" stroke-width="2.2" stroke-linejoin="round" paint-order="stroke"/>',
   brainRing: `<circle cx="12" cy="12" r="10.2" stroke-width="1.7"/>${SCALE('brain', .74)}`,
   convertInv: `<g transform="translate(-3.2 -.4) translate(12 12) scale(.78) translate(-12 -12)" style="color:var(--t-gold)">${P.shieldSpokes}</g><g transform="translate(3.4 1) translate(12 12) scale(.78) translate(-12 -12)" style="color:var(--t-silver)"><path d="M12 3.2 19 6v5.2c0 4.6-3.2 8-7 9.6-3.8-1.6-7-5-7-9.6V6z" fill="var(--icon-bg)" stroke="var(--icon-bg)" stroke-width="3.4"/>${P.shieldSpokes}</g>`,
 });
@@ -1207,7 +1210,7 @@ const EFFECT = {
   // special states
   cardTypeB: ['cardTypeB', 'B'], cardTypeA: ['cardTypeA', 'A'], cardTypeQ: ['cardTypeQ', 'Q'], cardSealB: ['cardSealB', 'B'], cardSealA: ['cardSealA', 'A'], cardSealQ: ['cardSealQ', 'Q'],
   pierceTrueInv: ['spokesSplit', 'silver'], convertInv: ['convertInv', 'gold'], exAoe: ['exAoe', 'EX'], negateField: ['eclipse', 'gold'], plotArmor: ['shieldCheckFill', 'res'],
-  evadeLethal: ['evadeLethal', 'dpurple'], ignoreDmgCut: ['dmgCutSplit', 'orange'], dotCut: ['shieldFill', 'orange'], curseHeal: ['curseHeal', 'heal'], guardianParry: ['shieldSpokes', 'gold'], knighthood: ['kneel', 'orange'],
+  evadeLethal: ['evadeLethal', 'dpurple'], ignoreDmgCut: ['dmgCutSplit', 'orange'], dotCut: ['shieldFill', 'orange'], curseHeal: ['curseHeal', 'heal'], guardianParry: ['shieldSpokes', 'gold'], knighthood: ['kneel', 'orange'], fullCap: ['maxText', 'white'],
   buffBlock: ['noEntry', 'blue'], trait: ['tag', 'util'], delayed: ['stopwatch', 'orange'], cdReduce: ['hourglassDark', 'gold'],
 };
 const CLASS = { Saber: 'sword', Archer: 'bow', Lancer: 'spear', Rider: 'horse', Caster: 'wand', Assassin: 'mask', Berserker: 'bull', Shielder: 'shieldFill', Ruler: 'flag', Avenger: 'flames', 'Moon Cancer': 'moon', 'Alter Ego': 'halves', Foreigner: 'outer', Pretender: 'crown', 'Beast I': 'claws', 'Beast II': 'horns', Unbeast: 'planet' };
@@ -1223,7 +1226,7 @@ const STATUS_ICON = { 'Infinite Growth': 'delayed', 'Blessing of Kur': 'kurFlowe
   'Mount Liang': 'mountLiang', 'Apply Trait (Good)': 'goodTrait', 'Completed Draft': 'draft', 'My Fair Soldier': 'fairSoldier', 'Apply Trait (Super Giant)': 'giantTrait', "Spirit's Anger": 'spiritAnger',
   Protectee: 'protectee', 'Non-Protectee': 'nonProtectee', 'Apply Trait [Chaotic]': 'chaoticTrait', Illya: 'illya', Elisabeth: 'elisabeth', 'Sheathed Stance': 'sheathed', Shinsengumi: 'shinsengumi', 'Target Lock': 'targetLock' };
 // Special states picked by their stat, shown without an up/down arrow.
-const STATE_ICON = { pierceTrueInv: 1, convertInv: 1, exAoe: 1, negateField: 1, plotArmor: 1, evadeLethal: 1, ignoreDmgCut: 1, dotCut: 1, guardianParry: 1, knighthood: 1 };
+const STATE_ICON = { pierceTrueInv: 1, convertInv: 1, exAoe: 1, negateField: 1, plotArmor: 1, evadeLethal: 1, ignoreDmgCut: 1, dotCut: 1, guardianParry: 1, knighthood: 1, fullCap: 1 };
 // Skills whose icon is picked by name, and buffs from those skills that share it (BB (Summer)'s card lock).
 const SKILL_ICON = { 'Eye of the Blue Star B': 'eyeBlue', 'Eye of the Red Star B': 'eyeRed', 'Faceless Moon EX': 'facelessMoon', 'Load Magic Bullet B': 'magicBullet', 'Ray Horizon A': 'sunrise', 'Connection to Wisdom EX': 'dayNight', 'Proserpina in Bloom EX': 'npDmgBold', 'Illusion (Fantastical) A': 'invincible',
   'Evil Eye of the Abyss B+++': 'stun', 'Mass Hysteria B': 'stun', 'Tranquil Fig EX': 'delayed', 'Schwarzwald Falke B': 'evade', 'Huge Scale B': 'maxHp', 'Mistress C EX': 'heal',
@@ -1250,6 +1253,7 @@ function badDelayed(b) { return delayedTone(b) === 'timedBad'; }
 function statusKey(b) {
   if (!b) return null;
   if (b.s === 'aura' && b.aura) { const a = b.aura; if (a.s === 'trigger') return 'trigger'; return a.s + (typeof a.v === 'number' ? (a.v >= 0 ? ':up' : ':down') : ''); } // field passives show the stat they grant
+  if (b.s === 'npDmgBoost') return 'npDmg:up2'; // NP damage boost: the NP dmg icon with a double arrow
   if (b.s === 'cardType' && CC[b.color]) return 'cardType' + b.color;
   if (b.s === 'cardSeal') return 'cardSeal' + ((b.cards || [])[0] || 'A');
   if (b.s === 'dotHeal' && b.kind === 'curse') return 'curseHeal';
@@ -1285,7 +1289,7 @@ function badge(key, { neg = false, dir = null, tip = '', size = '', plain = fals
   if (typeof key === 'string' && key.includes(':')) [key, dir] = key.split(':'); // e.g. 'critDmg:up' from a field passive
   let [glyph, tone, extra] = (dir === 'down' && DOWN_ICON[key]) || EFFECT[key] || ['sparkle', 'util'];
   if (dir === 'down' && DOWN_BLUE.has(key)) tone = 'blue'; // lowered ATK/DEF and lowered card or crit resistance read blue
-  const arrow = dir ? `<span class="arr ${dir}">${dir === 'up' ? '▲' : '▼'}</span>` : '';
+  const arrow = dir ? `<span class="arr ${dir === 'up2' ? 'up dbl' : dir}">${dir === 'up2' ? '<i>▲</i><i>▲</i>' : dir === 'up' ? '▲' : '▼'}</span>` : '';
   const attrs = plain ? 'aria-hidden="true"' : `tabindex="0" role="img" data-tip="${tip}" aria-label="${tip}"`;
   return `<span class="badge t-${tone}${neg ? ' neg' : ''}${extra ? ' ' + extra : ''} ${size}" ${attrs}>${svg(glyph)}${arrow}</span>`;
 }
@@ -3069,11 +3073,50 @@ function skillUsable(g, u, i) {
   if (u.cds[i] > 0) return { ok: false, why: `Cooldown ${u.cds[i]}` };
   const sk_ = u.kit.sk[i];
   if (sk_ && sk_.needNp && u.np < sk_.needNp) return { ok: false, why: `Needs ${sk_.needNp}% NP` };
-  if (sk_ && sk_.needStars && g.players[u.side].stars < sk_.needStars) return { ok: false, why: `Needs ${sk_.needStars} stars` };
+  if (sk_ && sk_.needStars && plannedStars(g, u.side) < sk_.needStars) return { ok: false, why: `Needs ${sk_.needStars} stars` };
   if (has(u, 'skillSeal')) return { ok: false, why: 'Skill Seal' };
   if (actBlocker(u)) return { ok: false, why: actBlocker(u) };
   if (g.players[u.side].skillQueue.some(q => q.uid === u.uid && q.i === i)) return { ok: false, why: 'Queued' };
   return { ok: true };
+}
+// ---- Potential stars: stars a queued skill will give count as soon as it is queued, so a later skill this turn
+// can spend them (Mozart's 50 stars paying for Kukulcan's upgraded options). A skill that leans on them
+// records which star skills it depends on; if one of those is canceled, the dependent skill is canceled too.
+const STAR_OK_KEYS = new Set(['k', 'v', 'to', 'opt', 'optCost', 'ifAllyAttr', 'ifAlliesFullHp']);
+function queuedEffs(u, i, opt) {
+  const sk = u.kit.sk[i]; if (!sk) return [];
+  const stage = sk.ranks ? Math.min(skillRank(u), sk.ranks.length) : 0, effs = stage ? sk.ranks[stage - 1] : sk.e;
+  const o = sk.opts ? (Number.isInteger(+opt) ? +opt : 0) : null;
+  return effs.filter(e => !(sk.opts && e.opt != null && e.opt !== o));
+}
+function skillStarGain(g, u, i, opt) {
+  let n = 0;
+  for (const e of queuedEffs(u, i, opt)) {
+    if (e.k !== 'stars' || !(e.v > 0) || Object.keys(e).some(k => !STAR_OK_KEYS.has(k))) continue; // conditional star gains aren't counted
+    if (e.ifAllyAttr && !front(g, u.side).some(a => a.d.attr === e.ifAllyAttr)) continue;
+    if (e.ifAlliesFullHp && !front(g, u.side).every(a => a.hp >= maxHp(a))) continue;
+    n += e.v;
+  }
+  return n;
+}
+function skillStarCost(u, i, opt) {
+  const sk = u.kit.sk[i]; if (!sk) return 0;
+  const o = sk.opts ? (sk.opts[Number.isInteger(+opt) ? +opt : 0] || {}) : {};
+  let n = o.stars || 0;
+  if (!o.stars) for (const e of queuedEffs(u, i, opt)) if (e.k === 'stars' && e.v < 0) n += -e.v; // e.g. Astraea's Star's Judgment
+  return n;
+}
+// Stars a player can plan with: banked stars, plus what queued skills will give, minus what queued skills spend.
+function plannedStars(g, p) {
+  const P = g.players[p]; let s = P.stars;
+  for (const q of P.skillQueue.slice().sort((x, y) => x.seq - y.seq)) { const u = U(g, q.uid); if (!u) continue; s = Math.max(0, Math.min(CFG.starBankCap, s + skillStarGain(g, u, q.i, q.opt)) - skillStarCost(u, q.i, q.opt)); }
+  return s;
+}
+// Banked stars not yet claimed by queued skills (no potential stars).
+function realStarsLeft(g, p) {
+  const P = g.players[p]; let s = P.stars;
+  for (const q of P.skillQueue) { const u = U(g, q.uid); if (u) s -= skillStarCost(u, q.i, q.opt); }
+  return s;
 }
 function skillTargetKind(u, i) {
   const e = u.kit.sk[i].e;
@@ -3084,10 +3127,30 @@ function skillTargetKind(u, i) {
 function queueSkill(g, p, uid, i, target, opt) {
   const u = U(g, uid); const ok = skillUsable(g, u, i);
   if (!ok.ok) return ok;
-  g.players[p].skillQueue.push({ uid, i, target, opt, seq: nextSeq(g) });
+  const P = g.players[p], sk = u.kit.sk[i];
+  const need = Math.max(skillStarCost(u, i, opt), sk.needStars || 0);
+  if (need && plannedStars(g, p) < need) return { ok: false, why: `Needs ${need} stars` };
+  const q = { uid, i, target, opt, seq: nextSeq(g) };
+  // Not enough banked stars on their own: this skill is paid with potential stars from the star skills queued before it.
+  if (need && realStarsLeft(g, p) < need) {
+    const deps = P.skillQueue.filter(x => { const xu = U(g, x.uid); return xu && skillStarGain(g, xu, x.i, x.opt) > 0; }).map(x => x.seq);
+    if (deps.length) q.dependsOn = deps;
+  }
+  P.skillQueue.push(q);
   return { ok: true };
 }
-function unqueueSkill(g, p, idx) { g.players[p].skillQueue.splice(idx, 1); }
+// Removing a star skill also removes the skills that were paid for with its potential stars.
+function unqueueSkill(g, p, idx) {
+  const P = g.players[p]; const gone = P.skillQueue.splice(idx, 1);
+  const dropped = new Set(gone.map(x => x.seq)); let more = true;
+  while (more) {
+    more = false;
+    for (let k = P.skillQueue.length - 1; k >= 0; k--) {
+      const x = P.skillQueue[k];
+      if ((x.dependsOn || []).some(s => dropped.has(s))) { dropped.add(x.seq); P.skillQueue.splice(k, 1); more = true; }
+    }
+  }
+}
 // Skill resolution runs in phases across both players: taunts, stuns, buffs, debuffs, buff removal, debuff removal.
 // Within a phase the tie-breaker holder goes first. Once a side has a taunter, the other side's single-target
 // enemy skills are drawn to it.
@@ -3140,6 +3203,7 @@ function resolveSkills(g) {
       ...(P.sealQueue ? [{ kind: 'seal', seq: P.sealQueue.seq }] : [])];
     return items.sort((a, b) => a.seq - b.seq);
   });
+  g._canceledSeqs = new Set();
   const at = [0, 0]; let turn = g.initiative;
   while (at[0] < lists[0].length || at[1] < lists[1].length) {
     const p = at[turn] < lists[turn].length ? turn : 1 - turn;
@@ -3180,10 +3244,20 @@ function resolveItem0(g, p, item) {
   }
   const q = item.q; const u = U(g, q.uid); const sk = u.kit.sk[q.i];
   const allowedAfterSwap = g.players[p].masterQueue.some(m => m.applied && m.out === u.uid && q.seq < m.seq && (m.outSkills || []).some(x => x.i === q.i && x.seq === q.seq));
-  if (!g.players[p].front.includes(u.uid) && !allowedAfterSwap) { log(g, `${u.name}'s ${sk.n} fizzles (not on the field).`, 'miss'); return; }
+  const canceled = g._canceledSeqs || (g._canceledSeqs = new Set());
+  if (!g.players[p].front.includes(u.uid) && !allowedAfterSwap) { canceled.add(q.seq); log(g, `${u.name}'s ${sk.n} fizzles (not on the field).`, 'miss'); return; }
+  // Paid with potential stars from a star skill that didn't activate: canceled too, and the skill stays ready.
+  const dep = (q.dependsOn || []).find(s => canceled.has(s));
+  if (dep != null) {
+    canceled.add(q.seq);
+    log(g, `${u.name}'s ${sk.n} is canceled (the star skill it was counting on didn't activate). The skill stays ready.`, 'miss');
+    fx(g, { t: 'eff', uid: u.uid, key: 'stars', label: `${sk.n} canceled`, miss: true });
+    return;
+  }
   // Stunned, charmed or skill-sealed before activating: canceled, and the skill stays ready.
   const why = u.dead ? 'defeated' : actBlocker(u) || (has(u, 'skillSeal') ? 'Skill Seal' : null);
   if (why) {
+    canceled.add(q.seq);
     log(g, `${u.name}'s ${sk.n} is canceled (${why}). The skill stays ready.`, 'miss');
     fx(g, { t: 'eff', uid: u.uid, key: has(u, 'charm') ? 'charm' : has(u, 'pigify') ? 'pigify' : has(u, 'skillSeal') ? 'skillSeal' : 'stun', label: `${sk.n} canceled`, miss: true });
     return;
@@ -3808,7 +3882,7 @@ function decideByLimit(g) {
 }
 
 const API = {
-  pron, CFG, MYSTIC, masterSkills, isSwap, STAT_LABEL, cardWillChange, fullCap, cardSealed, fieldActive, effCls, affLevel, AFF_NAME, CLASS_LIST, FIELDS, fieldName, currentField, fieldTurnsLeft, actBlocker, rawAffinity, snap, sealUsable, sealTargetOk, queueSeal, unqueueSeal, MASTER, masterUsable, queueMaster, unqueueMaster, swappingOut, npCap, npLevel, hasNoNP, allyTargetOk, COLOR, costOf, teamCost, snakeOrder, canPick, EXCLUSIVE, META, starRate, npPerHit, skillRank, skillOption, newBattle, front, maxHp, has, sumStat,
+  pron, CFG, MYSTIC, plannedStars, realStarsLeft, skillStarGain, skillStarCost, masterSkills, isSwap, STAT_LABEL, cardWillChange, fullCap, cardSealed, fieldActive, effCls, affLevel, AFF_NAME, CLASS_LIST, FIELDS, fieldName, currentField, fieldTurnsLeft, actBlocker, rawAffinity, snap, sealUsable, sealTargetOk, queueSeal, unqueueSeal, MASTER, masterUsable, queueMaster, unqueueMaster, swappingOut, npCap, npLevel, hasNoNP, allyTargetOk, COLOR, costOf, teamCost, snakeOrder, canPick, EXCLUSIVE, META, starRate, npPerHit, skillRank, skillOption, newBattle, front, maxHp, has, sumStat,
   skillUsable, skillTargetKind, queueSkill, unqueueSkill, activateOrderChange, resolveSkills, availableNPs, cardColor, npColor, canAct,
   setCards, resolveCards, describeBuff, cloneGame, _applyEffect: (...a) => applyEffect(...a), classMult, attrMult, aliveCount, hpPct, mkRng,
 };
@@ -4363,7 +4437,9 @@ function sideMeta(p) {
   const g = app.g; const v = app.view;
   const reserve = v ? v.reserves[p] : g.players[p].reserve;
   const res = reserve.filter(id => !(v ? v.units[id].dead : g.units[id].dead)).length;
-  return `${res} in reserve · ${Math.floor(v ? v.stars[p] : g.players[p].stars)}★ banked`;
+  const bank = Math.floor(v ? v.stars[p] : g.players[p].stars);
+  const plan = !v && g.phase === 'skills' && g.players[p].skillQueue.length ? Math.floor(E.plannedStars(g, p)) : bank;
+  return `${res} in reserve · ${bank}★ banked${plan !== bank ? ` <span class="potstars" title="Stars after the skills you've queued: potential stars from star skills count right away">→ ${plan}★ after queued skills</span>` : ''}`;
 }
 function fieldNow() {
   const g = app.g; const f = app.view && app.view.field !== undefined ? app.view.field : E.currentField(g);
@@ -4471,7 +4547,7 @@ function skillDock() {
   const sq = P.sealQueue ? `<li class="qchip master seal" data-seq="${P.sealQueue.seq}" data-tip="${esc('Command Seal: ' + (P.sealQueue.kind === 'heal' ? 'full heal' : 'NP +100%') + ' → ' + g.units[P.sealQueue.uid].name)}">${I.badge('seal', { plain: true })}<span>Seal: ${P.sealQueue.kind === 'heal' ? 'Full heal' : 'NP +100%'} → ${esc(g.units[P.sealQueue.uid].name)}</span><button class="x" data-act="unseal" aria-label="Remove Command Seal">✕</button></li>` : '';
   const optPick = T && T.kind === 'opt' ? (T.opt.kind === 'npType'
     ? `<div class="reserves optpick"><span class="hint">${esc(g.units[T.uid].kit.sk[T.i].n)}: choose the NP card type</span>${T.opt.options.map(o => `<button class="resbtn opt ${o[0]}" data-act="skill-opt" data-v="${o}"><span class="npc ${o[0]}">${o[0]}</span><span>${o}${o === T.opt.def ? ' (default)' : ''}</span></button>`).join('')}</div>`
-    : `<div class="reserves optpick"><span class="hint">${esc(g.units[T.uid].kit.sk[T.i].n)}: choose one</span>${T.opt.options.map(o => { const short = o.stars && P.stars < o.stars; return `<button class="resbtn opt" data-act="skill-opt" data-v="${o.v}" ${short ? 'disabled' : ''}><span>${esc(o.label)}</span>${o.stars ? `<small>${short ? `Needs ${o.stars} stars (you have ${Math.floor(P.stars)})` : `Uses ${o.stars} of your ${Math.floor(P.stars)} stars`}</small>` : ''}</button>`; }).join('')}</div>`) : '';
+    : `<div class="reserves optpick"><span class="hint">${esc(g.units[T.uid].kit.sk[T.i].n)}: choose one</span>${T.opt.options.map(o => { const have = Math.floor(E.plannedStars(g, g.units[T.uid].side)), short = o.stars && have < o.stars; return `<button class="resbtn opt" data-act="skill-opt" data-v="${o.v}" ${short ? 'disabled' : ''}><span>${esc(o.label)}</span>${o.stars ? `<small>${short ? `Needs ${o.stars} stars (you have ${have})` : `Uses ${o.stars} of your ${have} stars`}</small>` : ''}</button>`; }).join('')}</div>`) : '';
   const armMsg = !T ? '' : T.kind === 'opt' ? (T.opt.kind === 'npType' ? 'Pick the NP type' : 'Pick an option') : T.seal ? 'Command Seal: pick a servant' : T.kind === 'swapOut' ? 'Order Change: pick the servant on the field to swap out' : T.kind === 'swapIn' ? 'Order Change: pick who comes in' : `Pick ${T.kind === 'ally' ? 'an ally' : 'an enemy'} on the field`;
   return `<div class="dock"><div class="dock-head"><h3>${NET() ? 'Your skills' : `${esc(PN(p))}: skills`}</h3>${sealRow}${T ? `<span class="arm">${armMsg} <button data-act="cancel-target">Cancel</button></span>` : ''}</div>
     ${handPreview(p)}${rows}${master}${reservePick}${sealPick}${optPick}
@@ -4574,7 +4650,7 @@ function patchView(snap) {
   });
   document.querySelectorAll('#arena .fighter').forEach(f => { const x = viewUnit(g.units[+f.dataset.uid]); const pct = Math.max(0, Math.min(100, x.hp / E.maxHp(x) * 100)); const bar = f.querySelector('.fbar > span'); if (bar) bar.style.width = pct + '%'; const hp = f.querySelector('.fhp'); if (hp) hp.textContent = `HP ${Math.max(0, Math.round(x.hp))}/${Math.round(E.maxHp(x))}`; });
   document.querySelectorAll('.unit[data-uid]').forEach(el => { if (tokenEl(+el.dataset.uid)) el.classList.add('away'); });
-  document.querySelectorAll('.siderow').forEach(r => { const p = r.classList.contains('p0') ? 0 : 1; const m = r.querySelector('.sidemeta'); if (m) m.textContent = sideMeta(p); });
+  document.querySelectorAll('.siderow').forEach(r => { const p = r.classList.contains('p0') ? 0 : 1; const m = r.querySelector('.sidemeta'); if (m) m.innerHTML = sideMeta(p); });
   const log = document.querySelector('.log'); if (log) { const t = document.createElement('div'); t.innerHTML = renderLog(); log.replaceWith(t.firstElementChild); const ll = document.getElementById('logList'); if (ll) ll.scrollTop = ll.scrollHeight; }
 }
 function floater(uid, html, cls) {

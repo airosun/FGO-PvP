@@ -198,6 +198,7 @@ Object.assign(P, {
   curseHeal: `${CW}<g transform="translate(12 12) scale(.5) translate(-12 -12)" style="color:var(--t-purple)">${P.skull}</g>`,
 });
 Object.assign(P, {
+  maxText: '<path d="M1.67 8.9H3.71L5.12 12.22L6.54 8.9H8.57V15.1H7.06V10.57L5.63 13.91H4.62L3.19 10.57V15.1H1.67ZM13.9 13.97H11.4L11.01 15.1H9.4L11.69 8.9H13.6L15.9 15.1H14.29ZM11.8 12.82H13.5L12.65 10.35ZM20.17 11.94 22.33 15.1H20.66L19.21 12.98L17.77 15.1H16.1L18.25 11.94L16.18 8.9H17.85L19.21 10.9L20.56 8.9H22.24Z" fill="#fff" stroke="#e8524e" stroke-width="2.2" stroke-linejoin="round" paint-order="stroke"/>',
   brainRing: `<circle cx="12" cy="12" r="10.2" stroke-width="1.7"/>${SCALE('brain', .74)}`,
   convertInv: `<g transform="translate(-3.2 -.4) translate(12 12) scale(.78) translate(-12 -12)" style="color:var(--t-gold)">${P.shieldSpokes}</g><g transform="translate(3.4 1) translate(12 12) scale(.78) translate(-12 -12)" style="color:var(--t-silver)"><path d="M12 3.2 19 6v5.2c0 4.6-3.2 8-7 9.6-3.8-1.6-7-5-7-9.6V6z" fill="var(--icon-bg)" stroke="var(--icon-bg)" stroke-width="3.4"/>${P.shieldSpokes}</g>`,
 });
@@ -236,7 +237,7 @@ const EFFECT = {
   // special states
   cardTypeB: ['cardTypeB', 'B'], cardTypeA: ['cardTypeA', 'A'], cardTypeQ: ['cardTypeQ', 'Q'], cardSealB: ['cardSealB', 'B'], cardSealA: ['cardSealA', 'A'], cardSealQ: ['cardSealQ', 'Q'],
   pierceTrueInv: ['spokesSplit', 'silver'], convertInv: ['convertInv', 'gold'], exAoe: ['exAoe', 'EX'], negateField: ['eclipse', 'gold'], plotArmor: ['shieldCheckFill', 'res'],
-  evadeLethal: ['evadeLethal', 'dpurple'], ignoreDmgCut: ['dmgCutSplit', 'orange'], dotCut: ['shieldFill', 'orange'], curseHeal: ['curseHeal', 'heal'], guardianParry: ['shieldSpokes', 'gold'], knighthood: ['kneel', 'orange'],
+  evadeLethal: ['evadeLethal', 'dpurple'], ignoreDmgCut: ['dmgCutSplit', 'orange'], dotCut: ['shieldFill', 'orange'], curseHeal: ['curseHeal', 'heal'], guardianParry: ['shieldSpokes', 'gold'], knighthood: ['kneel', 'orange'], fullCap: ['maxText', 'white'],
   buffBlock: ['noEntry', 'blue'], trait: ['tag', 'util'], delayed: ['stopwatch', 'orange'], cdReduce: ['hourglassDark', 'gold'],
 };
 const CLASS = { Saber: 'sword', Archer: 'bow', Lancer: 'spear', Rider: 'horse', Caster: 'wand', Assassin: 'mask', Berserker: 'bull', Shielder: 'shieldFill', Ruler: 'flag', Avenger: 'flames', 'Moon Cancer': 'moon', 'Alter Ego': 'halves', Foreigner: 'outer', Pretender: 'crown', 'Beast I': 'claws', 'Beast II': 'horns', Unbeast: 'planet' };
@@ -252,7 +253,7 @@ const STATUS_ICON = { 'Infinite Growth': 'delayed', 'Blessing of Kur': 'kurFlowe
   'Mount Liang': 'mountLiang', 'Apply Trait (Good)': 'goodTrait', 'Completed Draft': 'draft', 'My Fair Soldier': 'fairSoldier', 'Apply Trait (Super Giant)': 'giantTrait', "Spirit's Anger": 'spiritAnger',
   Protectee: 'protectee', 'Non-Protectee': 'nonProtectee', 'Apply Trait [Chaotic]': 'chaoticTrait', Illya: 'illya', Elisabeth: 'elisabeth', 'Sheathed Stance': 'sheathed', Shinsengumi: 'shinsengumi', 'Target Lock': 'targetLock' };
 // Special states picked by their stat, shown without an up/down arrow.
-const STATE_ICON = { pierceTrueInv: 1, convertInv: 1, exAoe: 1, negateField: 1, plotArmor: 1, evadeLethal: 1, ignoreDmgCut: 1, dotCut: 1, guardianParry: 1, knighthood: 1 };
+const STATE_ICON = { pierceTrueInv: 1, convertInv: 1, exAoe: 1, negateField: 1, plotArmor: 1, evadeLethal: 1, ignoreDmgCut: 1, dotCut: 1, guardianParry: 1, knighthood: 1, fullCap: 1 };
 // Skills whose icon is picked by name, and buffs from those skills that share it (BB (Summer)'s card lock).
 const SKILL_ICON = { 'Eye of the Blue Star B': 'eyeBlue', 'Eye of the Red Star B': 'eyeRed', 'Faceless Moon EX': 'facelessMoon', 'Load Magic Bullet B': 'magicBullet', 'Ray Horizon A': 'sunrise', 'Connection to Wisdom EX': 'dayNight', 'Proserpina in Bloom EX': 'npDmgBold', 'Illusion (Fantastical) A': 'invincible',
   'Evil Eye of the Abyss B+++': 'stun', 'Mass Hysteria B': 'stun', 'Tranquil Fig EX': 'delayed', 'Schwarzwald Falke B': 'evade', 'Huge Scale B': 'maxHp', 'Mistress C EX': 'heal',
@@ -279,6 +280,7 @@ function badDelayed(b) { return delayedTone(b) === 'timedBad'; }
 function statusKey(b) {
   if (!b) return null;
   if (b.s === 'aura' && b.aura) { const a = b.aura; if (a.s === 'trigger') return 'trigger'; return a.s + (typeof a.v === 'number' ? (a.v >= 0 ? ':up' : ':down') : ''); } // field passives show the stat they grant
+  if (b.s === 'npDmgBoost') return 'npDmg:up2'; // NP damage boost: the NP dmg icon with a double arrow
   if (b.s === 'cardType' && CC[b.color]) return 'cardType' + b.color;
   if (b.s === 'cardSeal') return 'cardSeal' + ((b.cards || [])[0] || 'A');
   if (b.s === 'dotHeal' && b.kind === 'curse') return 'curseHeal';
@@ -314,7 +316,7 @@ function badge(key, { neg = false, dir = null, tip = '', size = '', plain = fals
   if (typeof key === 'string' && key.includes(':')) [key, dir] = key.split(':'); // e.g. 'critDmg:up' from a field passive
   let [glyph, tone, extra] = (dir === 'down' && DOWN_ICON[key]) || EFFECT[key] || ['sparkle', 'util'];
   if (dir === 'down' && DOWN_BLUE.has(key)) tone = 'blue'; // lowered ATK/DEF and lowered card or crit resistance read blue
-  const arrow = dir ? `<span class="arr ${dir}">${dir === 'up' ? '▲' : '▼'}</span>` : '';
+  const arrow = dir ? `<span class="arr ${dir === 'up2' ? 'up dbl' : dir}">${dir === 'up2' ? '<i>▲</i><i>▲</i>' : dir === 'up' ? '▲' : '▼'}</span>` : '';
   const attrs = plain ? 'aria-hidden="true"' : `tabindex="0" role="img" data-tip="${tip}" aria-label="${tip}"`;
   return `<span class="badge t-${tone}${neg ? ' neg' : ''}${extra ? ' ' + extra : ''} ${size}" ${attrs}>${svg(glyph)}${arrow}</span>`;
 }
