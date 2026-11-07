@@ -950,6 +950,10 @@ h1, h2 { letter-spacing: .01em; }
 
 .kalt { display: grid; gap: 8px; padding: 10px; border: 1px dashed var(--gold); border-radius: 12px; background: color-mix(in srgb, var(--gold) 5%, transparent); }
 .sdetail h4 small { text-transform: none; letter-spacing: 0; font-weight: 400; }
+
+/* demerits (drawbacks the caster takes for using a skill or NP) read in red */
+.klines li.demerit .kw, .klines li.demerit .km { color: var(--neg); }
+.klines li.demerit::before { background: var(--neg); }
 </style>
 <script>__ICONS__</script>
 <script>__SCENES__</script>

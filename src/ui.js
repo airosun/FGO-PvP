@@ -218,7 +218,7 @@ function deckChips(deck) { return deck.split('').map(c => `<i class="dk ${c}">${
 // Kit descriptions come from describe.js: plain language, the numbers used in this game.
 function kitLines(ls) {
   return `<ul class="klines">${ls.map(l => { const [main, ...meta] = l.text.split(' · ');
-    return `<li><span class="kw">${esc(main)}</span>${meta.length ? `<span class="km">${meta.map(esc).join(' · ')}</span>` : ''}${l.sub ? kitLines(l.sub) : ''}</li>`; }).join('')}</ul>`;
+    return `<li${l.demerit ? ' class="demerit" title="Demerit: a drawback for using this"' : ''}><span class="kw">${esc(main)}</span>${meta.length ? `<span class="km">${meta.map(esc).join(' · ')}</span>` : ''}${l.sub ? kitLines(l.sub) : ''}</li>`; }).join('')}</ul>`;
 }
 function kitHtml(d) {
   const kit = KITS[d.id]; const K = Describe.describeKit(kit, d);

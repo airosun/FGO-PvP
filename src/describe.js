@@ -163,7 +163,25 @@ function buffWhat(e) {
 }
 
 // One effect -> { text, sub? } (sub = nested lines for triggered/delayed effects)
+// A demerit: a drawback the caster puts on themselves (or their own stars) by using the skill or NP.
+const SELF_BAD = new Set(['stun', 'skillSeal', 'npSeal', 'noHeal', 'buffBlock', 'burn', 'curse', 'poison', 'charm', 'sleep', 'petrify', 'bind', 'terror', 'confusion', 'dmgTakenPlus']);
+function isDemerit(e) {
+  if (e.demerit) return true;
+  const self = e.to === 'self' || e.to == null;
+  if (['selfDmg', 'koSelf'].includes(e.k)) return true;
+  if (e.k === 'hpLoss' && self) return true;
+  if (e.k === 'stars' && e.v < 0) return true;
+  if (e.k === 'np' && e.v < 0 && self) return true;
+  if (e.k === 'control' && (self || e.selfInflicted)) return true;
+  if (e.k === 'buff' && e.to === 'self' && (e.debuff || SELF_BAD.has(e.s) || (typeof e.v === 'number' && e.v < 0))) return true;
+  return false;
+}
 function line(e, ctx = {}) {
+  const l = line0(e, ctx);
+  if (l && !ctx.inTrigger && isDemerit(e)) l.demerit = true;
+  return l;
+}
+function line0(e, ctx = {}) {
   if (e.hidden) return null;
   const who = WHO[e.to] || '';
   const wrap = (what, extra = [], ee = e) => {
@@ -232,7 +250,7 @@ function line(e, ctx = {}) {
     case 'koSelf': return { text: 'Defeats itself (Guts can save it)' };
     case 'cdReduce': return wrap(`Skill cooldowns −${e.v}`);
     case 'field': return { text: `Battlefield becomes ${FIELDN[e.name] || e.name} for ${turns(e.t)}${e.endsOnDeath ? ' (ends if this servant is defeated)' : ''}` };
-    case 'npPerStar': return { text: `Spends up to ${num(e.max || 50)} stars: NP +${num(e.v)}% for each star spent` };
+    case 'npPerStar': return { text: `NP +${num(e.v)}% for each of your stars (up to ${num(e.max || 50)} stars)` };
     case 'transform': return { text: e.text ? e.text : e.intoName ? `Transforms into ${e.intoName}: its NP becomes ${e.intoNp}` : 'Transforms into its other form' };
     case 'absorbHp': return wrap(`Drains ${num(e.v)} HP (never below 1); this servant restores the total`);
     case 'absorbNp': return wrap(`Takes up to ${num(e.v)}% NP; this servant gains the total`);
@@ -262,6 +280,7 @@ function lines(list, ctx = {}) {
   for (let i = 0; i < L.length; i++) {
     let n = 1; while (i + n < L.length && JSON.stringify(L[i + n]) === JSON.stringify(L[i])) n++;
     const l = line(L[i], { ...ctx, all: L }); if (!l) { i += n - 1; continue; }
+    if (L[i].k === 'npPerStar') { out.push(l, { text: `Lose the stars spent (up to ${num(L[i].max || 50)})`, demerit: true }); continue; } // the gain and its cost
     if (n > 1) l.text = l.text.replace(/^([^·]+)/, m => `${m.trim()} ×${n} stacks `);
     out.push(l); i += n - 1;
   }
