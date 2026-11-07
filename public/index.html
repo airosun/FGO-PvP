@@ -855,6 +855,93 @@ h1, h2 { letter-spacing: .01em; }
 .hittotal.nulltotal.inv { border-color: #c9a33b; color: #f6d77a; } .hittotal.nulltotal.solemn { border-color: #aab3c2; color: #e8edf5; } .hittotal.nulltotal.evade { border-color: #5a8fc8; color: #a8d4ff; }
 .piercetag { display: block; font-size: .64rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #ff9b6b; text-shadow: 0 1px 2px #000; }
 @media (prefers-reduced-motion: reduce) { .fighter.nullgold, .fighter.nullsilver { animation-duration: .2s; } }
+
+/* ---- class attack effects */
+.afx { position: absolute; pointer-events: none; z-index: 6; }
+.fighter > .afx { left: 50%; top: 50%; }
+.afx svg { width: 100%; height: 100%; display: block; overflow: visible; }
+/* sword (Saber, Beast I with fire) */
+.afx.slashfx { width: 130%; height: 4px; margin: -2px 0 0 -65%; border-radius: 3px; rotate: var(--rot); background: linear-gradient(90deg, transparent, #fff 45%, #dfe9ff 55%, transparent); filter: drop-shadow(0 0 4px #bcd2ff); animation: slashIn .36s ease-out forwards; }
+.afx.slashfx.big { height: 8px; margin-top: -4px; width: 175%; margin-left: -87%; background: linear-gradient(90deg, transparent, #fff 40%, var(--gold) 60%, transparent); filter: drop-shadow(0 0 8px var(--gold)); }
+.afx.slashfx.t-fire { background: linear-gradient(90deg, transparent, #fff3c4 30%, #ff9a3c 55%, #e5381f 75%, transparent); filter: drop-shadow(0 0 6px #ff6a2a) drop-shadow(0 -3px 6px #ffb347); }
+.afx.slashfx.short { width: 70%; height: 3px; margin-left: -35%; background: linear-gradient(90deg, transparent, #f2f5fa 50%, transparent); filter: drop-shadow(0 0 3px #c9d4e6); animation-duration: .24s; }
+.afx.slashfx.short.big { width: 95%; margin-left: -47%; height: 5px; }
+.afx.slashfx.dark { background: linear-gradient(90deg, transparent, #2a0d36 25%, #8c3cc8 55%, #1a0822 80%, transparent); filter: drop-shadow(0 0 6px #6b2399); }
+.afx.stab { width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; background: radial-gradient(circle, #fff, rgba(255,255,255,0) 70%); animation: popRing .26s ease-out forwards; }
+/* shield bash */
+.afx.shieldfx { width: 46px; height: 46px; margin: -23px 0 0 -23px; animation: shieldBash .44s cubic-bezier(.2,.9,.3,1.2) forwards; }
+.afx.shieldfx.big { width: 72px; height: 72px; margin: -36px 0 0 -36px; }
+@keyframes shieldBash { 0% { transform: translateX(calc(var(--dir) * -70px)) scale(.7); opacity: 0; } 35% { transform: translateX(calc(var(--dir) * -8px)) scale(1.1); opacity: 1; } 55% { transform: translateX(0) scale(1); } 100% { transform: translateX(calc(var(--dir) * -12px)) scale(1); opacity: 0; } }
+/* spear jab */
+.afx.spearfx { width: 120px; height: 14px; margin: -7px 0 0 -60px; animation: spearJab .32s ease-out forwards; }
+.afx.spearfx.big { width: 170px; height: 20px; margin: -10px 0 0 -85px; }
+@keyframes spearJab { 0% { transform: scaleX(var(--dir)) translateX(-110px); opacity: 0; } 35% { transform: scaleX(var(--dir)) translateX(-20px); opacity: 1; } 55% { transform: scaleX(var(--dir)) translateX(-34px); opacity: 1; } 100% { transform: scaleX(var(--dir)) translateX(-90px); opacity: 0; } }
+/* fists (Berserker, Beast II glowing) */
+.afx.fistfx { width: 40px; height: 40px; margin: -20px 0 0 -20px; animation: fistHit .4s cubic-bezier(.2,.9,.3,1.3) forwards; }
+.afx.fistfx.big { width: 64px; height: 64px; margin: -32px 0 0 -32px; }
+.afx.fistfx.t-glow, .afx.burst.t-glow { filter: drop-shadow(0 0 8px #ffe48a) drop-shadow(0 0 16px #ff9fe0) brightness(1.25); }
+@keyframes fistHit { 0% { transform: scaleX(var(--dir)) translateX(-60px) scale(.6); opacity: 0; } 40% { transform: scaleX(var(--dir)) translateX(0) scale(1.15); opacity: 1; } 100% { transform: scaleX(var(--dir)) translateX(4px) scale(1); opacity: 0; } }
+/* flagstaff swing (Ruler) */
+.afx.flagfx { width: 150px; height: 42px; margin: -21px 0 0 -140px; transform-origin: 6% 50%; animation: flagSwing .44s cubic-bezier(.3,.8,.3,1) forwards; }
+.afx.flagfx.big { width: 210px; height: 58px; margin: -29px 0 0 -196px; }
+@keyframes flagSwing { 0% { transform: scaleX(var(--dir)) rotate(-70deg); opacity: 0; } 25% { opacity: 1; } 60% { transform: scaleX(var(--dir)) rotate(18deg); opacity: 1; } 100% { transform: scaleX(var(--dir)) rotate(30deg); opacity: 0; } }
+/* impact bursts and rings */
+.afx.burst { width: 44px; height: 44px; margin: -22px 0 0 -22px; color: #fff6d6; animation: burstPop .38s ease-out forwards; }
+.afx.burst.big { width: 70px; height: 70px; margin: -35px 0 0 -35px; }
+.afx.burst.small { width: 26px; height: 26px; margin: -13px 0 0 -13px; }
+.afx.burst.dark { color: #7a2fae; filter: drop-shadow(0 0 6px #2a0838); }
+.afx.burst.magic { color: #b9f1ff; filter: drop-shadow(0 0 6px #49b8ff); }
+.afx.burst.cosmic { color: #e6c9ff; filter: drop-shadow(0 0 8px #9b5cff) drop-shadow(0 0 4px #4de1d2); }
+.afx.burst.glitch { color: #fff; filter: drop-shadow(3px 0 0 #ff2e63) drop-shadow(-3px 0 0 #08f7fe); animation: burstPop .38s ease-out forwards, glitchJit .12s steps(2) infinite; }
+.afx.burst.space { color: #d8c8ff; filter: drop-shadow(0 0 6px #6a4cff); }
+.afx.burst.proj { color: #bfe8ff; filter: drop-shadow(0 0 6px #7ec9ff); opacity: .9; }
+@keyframes burstPop { 0% { transform: scale(.3) rotate(0); opacity: 1; } 60% { transform: scale(1.1) rotate(20deg); opacity: .95; } 100% { transform: scale(1.3) rotate(30deg); opacity: 0; } }
+.afx.ring { width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 50%; border: 3px solid rgba(255,255,255,.85); animation: popRing .42s ease-out forwards; }
+.afx.ring.big { width: 90px; height: 90px; margin: -45px 0 0 -45px; border-width: 4px; }
+.afx.ring.magic { border-color: #6fd3ff; box-shadow: 0 0 14px #3aa0ff, inset 0 0 10px #3aa0ff; }
+.afx.ring.cosmic { border-color: #b78cff; box-shadow: 0 0 18px #7d4dff, inset 0 0 14px #2de0c8; }
+.afx.ring.glitch { border-color: #08f7fe; box-shadow: 4px 0 0 #ff2e63, -4px 0 0 #08f7fe; }
+.afx.ring.space { border-color: #a58cff; box-shadow: 0 0 16px #5a3dff; }
+@keyframes popRing { 0% { transform: scale(.3); opacity: 1; } 100% { transform: scale(1.4); opacity: 0; } }
+.afx.sparks { width: 90px; height: 90px; margin: -45px 0 0 -45px; border-radius: 50%; background:
+  radial-gradient(circle at 20% 30%, #fff 0 1.5px, transparent 2.5px), radial-gradient(circle at 75% 20%, #c9a6ff 0 1.5px, transparent 2.5px), radial-gradient(circle at 60% 80%, #6ff 0 1.5px, transparent 2.5px),
+  radial-gradient(circle at 30% 75%, #fff 0 1px, transparent 2px), radial-gradient(circle at 85% 60%, #fff 0 1px, transparent 2px); animation: sparkOut .5s ease-out forwards; }
+@keyframes sparkOut { 0% { transform: scale(.3) rotate(0); opacity: 1; } 100% { transform: scale(1.6) rotate(90deg); opacity: 0; } }
+.afx.dust { width: 80px; height: 30px; margin: 4px 0 0 -40px; border-radius: 50%; background: radial-gradient(ellipse, rgba(196,170,130,.85), rgba(196,170,130,0) 70%); animation: dustUp .5s ease-out forwards; }
+.afx.dust.big { width: 120px; height: 44px; margin-left: -60px; }
+@keyframes dustUp { 0% { transform: scale(.4); opacity: .9; } 100% { transform: scale(1.5) translateY(-8px); opacity: 0; } }
+/* projectiles (page coordinates in the arena layer) */
+.afx.proj { z-index: 45; }
+.afx.proj.arrow { width: 74px; height: 13px; filter: drop-shadow(0 0 4px rgba(255,240,200,.9)) drop-shadow(-10px 0 6px rgba(255,255,255,.35)); }
+.afx.proj.arrow.big { width: 90px; height: 16px; filter: drop-shadow(0 0 6px var(--gold)) drop-shadow(-14px 0 8px rgba(255,220,140,.4)); }
+.afx.proj.bolt { width: 16px; height: 16px; border-radius: 50%; background: radial-gradient(circle, #fff 0 25%, #7fe0ff 45%, rgba(60,140,255,0) 72%); box-shadow: 0 0 14px 4px rgba(90,170,255,.8), -14px 0 18px 2px rgba(90,170,255,.35); }
+.afx.proj.bolt.big { width: 36px; height: 36px; box-shadow: 0 0 26px 10px rgba(90,170,255,.85), -24px 0 30px 6px rgba(90,170,255,.4); }
+.afx.proj.cosmic { width: 22px; height: 22px; border-radius: 50%; background: radial-gradient(circle, #fff 0 18%, #c79bff 40%, #3be0cf 60%, rgba(40,10,90,0) 74%); box-shadow: 0 0 18px 6px rgba(150,90,255,.75), 0 0 34px 10px rgba(45,224,200,.25); }
+.afx.proj.cosmic.big { width: 44px; height: 44px; box-shadow: 0 0 32px 14px rgba(150,90,255,.8), 0 0 60px 20px rgba(45,224,200,.3); }
+.afx.horse { z-index: 45; color: #e8dcc6; filter: drop-shadow(0 3px 2px rgba(0,0,0,.6)); }
+.afx.horse.big { color: #f5e9c8; filter: drop-shadow(0 0 8px var(--gold)) drop-shadow(0 3px 2px rgba(0,0,0,.6)); }
+/* auras on the attacker */
+.fighter > .afx.aura { inset: -14px; left: -14px; top: -14px; border-radius: 16px; z-index: 0; }
+.afx.aura.miasma { background: radial-gradient(ellipse at 50% 60%, transparent 45%, rgba(70,10,90,.55) 70%, transparent 85%); filter: blur(3px); animation: miasma 1.1s ease-in-out infinite; }
+.fighter.aura-miasma { box-shadow: 0 0 22px 6px rgba(80,15,110,.7), 0 0 4px 1px #3a0b4f inset; }
+@keyframes miasma { 0%,100% { transform: scale(1) rotate(0); opacity: .85; } 50% { transform: scale(1.08) rotate(2deg); opacity: 1; } }
+.fighter.aura-glitch { animation: glitchJit .18s steps(2) infinite; }
+.fighter.aura-glitch .fname { text-shadow: 2px 0 #ff2e63, -2px 0 #08f7fe; }
+.afx.aura.glitch { background: repeating-linear-gradient(0deg, rgba(8,247,254,.18) 0 2px, transparent 2px 6px); mix-blend-mode: screen; animation: glitchBars .3s steps(3) infinite; }
+@keyframes glitchJit { 0% { translate: 0 0; } 25% { translate: 2px -1px; } 50% { translate: -2px 1px; } 75% { translate: 1px 1px; } 100% { translate: 0 0; } }
+@keyframes glitchBars { 0% { clip-path: inset(0 0 70% 0); } 33% { clip-path: inset(40% 0 30% 0); } 66% { clip-path: inset(75% 0 5% 0); } 100% { clip-path: inset(10% 0 60% 0); } }
+.afx.aura.space { background: radial-gradient(circle at 15% 25%, #fff 0 1px, transparent 2px), radial-gradient(circle at 80% 15%, #cdb8ff 0 1.2px, transparent 2.2px), radial-gradient(circle at 70% 85%, #fff 0 1px, transparent 2px), radial-gradient(circle at 30% 80%, #9fd8ff 0 1px, transparent 2px), radial-gradient(circle at 92% 55%, #fff 0 .8px, transparent 1.8px), radial-gradient(ellipse, rgba(60,30,140,.45), rgba(10,5,40,0) 70%); animation: spaceDrift 3s linear infinite; }
+.fighter.aura-space { box-shadow: 0 0 22px 6px rgba(90,60,220,.55); }
+@keyframes spaceDrift { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+/* Alter Ego projection */
+.fighter.projection { opacity: .72; background: color-mix(in srgb, #7ec9ff 18%, var(--panel)); border-color: #7ec9ff; box-shadow: 0 0 18px 4px rgba(126,201,255,.55); filter: saturate(.6) brightness(1.15); z-index: 3; }
+.fighter.projecting { box-shadow: 0 0 12px 2px rgba(126,201,255,.45); }
+/* the AoE NP sweep takes the class's colour */
+.stage .npwave.w-cosmic { background: linear-gradient(90deg, transparent, rgba(150,90,255,.5) 45%, rgba(45,224,200,.35) 55%, transparent); }
+.stage .npwave.w-bolt { background: linear-gradient(90deg, transparent, rgba(90,170,255,.5) 50%, transparent); }
+.stage .npwave.w-avenge { background: linear-gradient(90deg, transparent, rgba(80,15,110,.6) 50%, transparent); mix-blend-mode: normal; }
+.stage .npwave.w-arrow, .stage .npwave.w-horse { opacity: .5; }
+@media (prefers-reduced-motion: reduce) { .afx, .fighter.aura-glitch { animation-duration: .01s !important; } .afx.aura { display: none; } }
 </style>
 <script>// Original inline-SVG icon set: class icons and effect icons. Drawn for this prototype, not taken from the game.
 (function (root) {
@@ -886,6 +973,7 @@ const P = {
   dash: '<path d="M4 8h10M7 12h13M4 16h9"/>',
   target: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1" fill="currentColor"/>',
   crosshair: '<circle cx="12" cy="12" r="6.5"/><path d="M12 2.5v5M12 16.5v5M2.5 12h5M16.5 12h5"/>',
+  flames: '<path d="M12 21.5c-3.6 0-6-2.3-6-5.4 0-3.3 2.6-4.9 3.3-8.6 1.9 1.3 2.7 3 2.7 4.6.9-.9 1.3-2.2 1.2-3.6 2.8 1.9 4.8 4.5 4.8 7.6 0 3.1-2.4 5.4-6 5.4z" fill="currentColor"/><path d="M6.2 17.8c-2-.8-3.2-2.4-3.2-4.4 0-2 1.3-3.2 1.8-5.4 1.2.9 1.6 2.1 1.5 3.3" fill="currentColor" stroke="none" opacity=".75"/><path d="M17.8 17.8c2-.8 3.2-2.4 3.2-4.4 0-2-1.3-3.2-1.8-5.4-1.2.9-1.6 2.1-1.5 3.3" fill="currentColor" stroke="none" opacity=".75"/><path d="M12 20.2c-1.5 0-2.5-1-2.5-2.3 0-1.4 1.1-2 1.4-3.6.8.5 1.1 1.3 1.1 2 .4-.3.6-.8.6-1.4 1.1.8 1.9 1.8 1.9 3 0 1.3-1 2.3-2.5 2.3z" fill="var(--icon-bg)" stroke="none"/>',
   flame: '<path d="M12 21c-3.8 0-6-2.5-6-5.6 0-3.8 3.3-5.4 3.7-9.9 2.6 1.6 3.4 3.8 3.3 5.6 1-.7 1.6-1.9 1.7-3.1 2.4 2 3.3 4.4 3.3 7.4 0 3.1-2.2 5.6-6 5.6z" fill="currentColor"/>',
   pig: '<path d="M6.6 8.4 5 4.6l4 1.9M17.4 8.4 19 4.6l-4 1.9"/><path d="M12 6.2c-4.3 0-7.4 2.9-7.4 6.6s3.1 6.6 7.4 6.6 7.4-2.9 7.4-6.6-3.1-6.6-7.4-6.6z"/><ellipse cx="12" cy="14.6" rx="3" ry="2.1"/><circle cx="10.9" cy="14.6" r=".55" fill="currentColor" stroke="none"/><circle cx="13.1" cy="14.6" r=".55" fill="currentColor" stroke="none"/><circle cx="9" cy="10.9" r=".9" fill="currentColor" stroke="none"/><circle cx="15" cy="10.9" r=".9" fill="currentColor" stroke="none"/>',
   skull: '<path d="M12 3.5c-4.4 0-7.5 3-7.5 7 0 2.4 1.1 3.9 2.5 4.8V19h10v-3.7c1.4-.9 2.5-2.4 2.5-4.8 0-4-3.1-7-7.5-7z" fill="currentColor"/><circle cx="9.3" cy="11" r="1.6" fill="var(--icon-bg)"/><circle cx="14.7" cy="11" r="1.6" fill="var(--icon-bg)"/>',
@@ -1010,7 +1098,7 @@ const EFFECT = {
   kurFlower: ['flower', 'red'], livingFlame: ['ringFlame', 'blue'], holyGrail: ['chalice', 'gold'], romanShield: ['scutum', 'red'], facelessMoon: ['moonFull', 'purple'], like: ['thumbUp', 'heal'], grudge: ['kanjiEn', 'red'], pastAlt: ['wheel', 'white'], timedBad: ['stopwatch', 'blue'], eternalSleep: ['cloudZ', 'peri'], sinBrand: ['pBrand', 'red'], poisonHeal: ['cwDrop', 'heal'], rankUp: ['ringDots', 'yellow'], atkPlus: ['swordPlus', 'atk'], mcChaldea: ['shirt', 'white'], mcAtlas: ['shirt', 'purple'], doom: ['skullDark', 'blue'],
   buffBlock: ['noEntry', 'blue'], trait: ['tag', 'util'], delayed: ['stopwatch', 'orange'], cdReduce: ['hourglassDark', 'gold'],
 };
-const CLASS = { Saber: 'sword', Archer: 'bow', Lancer: 'spear', Rider: 'horse', Caster: 'wand', Assassin: 'mask', Berserker: 'bull', Shielder: 'shield', Ruler: 'flag', Avenger: 'avenge', 'Moon Cancer': 'moon', 'Alter Ego': 'halves', Foreigner: 'outer', Pretender: 'crown', 'Beast I': 'claws', 'Beast II': 'horns', Unbeast: 'planet' };
+const CLASS = { Saber: 'sword', Archer: 'bow', Lancer: 'spear', Rider: 'horse', Caster: 'wand', Assassin: 'mask', Berserker: 'bull', Shielder: 'shieldFill', Ruler: 'flag', Avenger: 'flames', 'Moon Cancer': 'moon', 'Alter Ego': 'halves', Foreigner: 'outer', Pretender: 'crown', 'Beast I': 'claws', 'Beast II': 'horns', Unbeast: 'planet' };
 
 function svg(glyph, cls = '') {
   return `<svg class="ico ${cls}" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${P[glyph] || P.sparkle}</svg>`;
@@ -3888,7 +3976,7 @@ const app = {
 };
 window.__app = app; // handy for debugging in the console
 window.__render = () => render();
-window.__test = { get startBattle() { return startBattle; }, get lockCards() { return lockCards; }, get randomChoice() { return randomChoice; }, get POOL() { return POOL; }, get R() { return R; } };
+window.__test = { get startBattle() { return startBattle; }, get lockCards() { return lockCards; }, get randomChoice() { return randomChoice; }, get POOL() { return POOL; }, get R() { return R; }, get arena() { return arena; }, get clearArena() { return clearArena; } };
 
 // ---------------------------------------------------------------- Setup
 function startDraft(first0) {
@@ -4633,7 +4721,7 @@ function shake(tk, big) { tk.classList.remove('struck', 'struckbig'); void tk.of
 // One hit landing on a target. A nullified hit plays out but the target reacts to its defense instead:
 // Evade dodges, Invincible pulses gold, Anti-Enforcement DEF pulses silver. A pierced defense is called out on the first hit.
 const NULL_WORD = { evade: 'Dodged', inv: 'Nullified', solemn: 'Nullified' };
-function landHit(tk, ev, atk, big, k, part, side) {
+function landHit(tk, ev, atk, big, k, part, side, st) {
   const away = tk._home.cx > atk._home.cx ? 1 : -1;
   if (ev.blocked) {
     if (ev.blocked === 'evade') {
@@ -4645,7 +4733,7 @@ function landHit(tk, ev, atk, big, k, part, side) {
     hitPop(tk, `<span class="nullpop ${ev.blocked}">${NULL_WORD[ev.blocked]}</span>${k === 0 && ev.crit ? '<span class="crit">Critical</span>' : ''}`, k, big, false, side);
     return;
   }
-  shake(tk, big); slash(tk, big, k);
+  shake(tk, big); if (!st) slash(tk, big, k);
   const pierce = k === 0 && ev.pierced ? ev.pierced.map(l => `<span class="piercetag">Pierced ${esc(l)}</span>`).join('') : '';
   hitPop(tk, `${pierce}<b class="dnum ${ev.aff}">${part}</b>${k === 0 && ev.crit ? '<span class="crit">Critical</span>' : ''}`, k, big, false, side);
 }
@@ -4655,55 +4743,163 @@ function hitTotal(tk, ev, n) {
   else if (n > 1) hitPop(tk, `<span class="hittotal">${n} hits · <b class="dnum ${ev.aff}">${ev.dmg}</b></span>`, n, false, true);
 }
 const moveTo = (el, from, to, ms) => el.animate([{ transform: from }, { transform: to }], { duration: dur(ms), easing: 'cubic-bezier(.3,.7,.3,1)', fill: 'forwards' }).finished.catch(() => {});
-// One attacker hitting one target with every hit of the card (or single-target NP).
-async function strikeOne(atk, tk, ev, tok, big) {
-  const parts = splitDamage(ev.dmg, ev.dist || [100]); const n = parts.length;
-  const dx = tk._home.cx - atk._home.cx, dy = tk._home.cy - atk._home.cy;
-  const reach = 1 - (parseFloat(atk.style.width) + 18) / Math.max(parseFloat(atk.style.width) + 19, Math.hypot(dx, dy));
-  const inPos = `translate(${dx * reach}px, ${dy * reach}px)${big ? ' scale(1.12)' : ''}`;
-  const sgn = Math.sign(dx) || 1;
-  await moveTo(atk, 'none', inPos, big ? 300 : 230); if (tok.skip) return;
-  let hp = ev.snap && ev.snap.units[ev.uid] ? ev.snap.units[ev.uid].hp + ev.dmg : null;
-  const gap = Math.max(big ? 140 : 80, Math.min(big ? 300 : 220, (big ? 1100 : 760) / n));
-  for (let k = 0; k < n; k++) {
-    if (tok.skip) return;
-    atk.animate([{ transform: inPos }, { transform: `${inPos} translate(${sgn * (big ? 16 : 10)}px, 0) rotate(${sgn * (big ? 7 : 5)}deg)` }, { transform: inPos }], { duration: dur(gap * 0.85), easing: 'ease-out' });
-    landHit(tk, ev, atk, big, k, parts[k]);
-    if (hp != null && !ev.blocked) { hp -= parts[k]; setTokenHp(tk, ev.uid, hp); }
-    await wait(gap, tok);
+// ---- Class attack styles. kind: how the attacker delivers (melee steps in, ranged fires from home, charge sends a
+// mount through, projection sends a copy of themselves); fx: what lands on the target; aura: what hangs on the attacker;
+// seq: an AoE NP hits each enemy in quick succession instead of all at once.
+const ATK_STYLE = {
+  Shielder: { kind: 'melee', fx: 'shield' },
+  Saber: { kind: 'melee', fx: 'sword' },
+  Archer: { kind: 'ranged', fx: 'arrow' },
+  Lancer: { kind: 'melee', fx: 'spear', seq: true },
+  Rider: { kind: 'charge', fx: 'horse' },
+  Caster: { kind: 'ranged', fx: 'bolt' },
+  Assassin: { kind: 'melee', fx: 'daggers' },
+  Berserker: { kind: 'melee', fx: 'fist' },
+  Ruler: { kind: 'melee', fx: 'flag' },
+  Avenger: { kind: 'melee', fx: 'avenge', aura: 'miasma', seq: true },
+  'Moon Cancer': { kind: 'melee', fx: 'blow', aura: 'glitch' },
+  'Alter Ego': { kind: 'projection', fx: 'blow' },
+  Foreigner: { kind: 'melee', fx: 'blow', aura: 'space' },
+  'Beast I': { kind: 'melee', fx: 'sword', tint: 'fire' },
+  'Beast II': { kind: 'melee', fx: 'fist', tint: 'glow' },
+  Unbeast: { kind: 'ranged', fx: 'cosmic' },
+};
+const PRETEND_AS = ['Saber', 'Archer', 'Lancer', 'Rider', 'Assassin', 'Caster', 'Berserker'];
+function atkStyle(uid) {
+  const u = app.g.units[uid]; let c = u ? u.cls : 'Saber';
+  if (c === 'Pretender') { // borrows one of the seven main classes, a different one each attack
+    const opts = PRETEND_AS.filter(x => x !== app._pretendLast); c = opts[Math.floor(Math.random() * opts.length)]; app._pretendLast = c;
   }
-  hitTotal(tk, ev, n);
-  patchView(ev.snap);
-  await moveTo(atk, inPos, 'none', 260);
+  return { ...(ATK_STYLE[c] || ATK_STYLE.Saber), cls: c };
 }
-// AoE NP: the attacker strikes every target at once on each hit.
-async function strikeAll(atk, tks, evs, tok, big = true) { // big: NP; otherwise an AoE card attack (smaller, no glow)
+const SVG_FX = {
+  shield: '<svg viewBox="0 0 24 24"><path d="M12 2.6 19.6 5.6v5.6c0 5-3.4 8.6-7.6 10.3-4.2-1.7-7.6-5.3-7.6-10.3V5.6z" fill="#d7dde8" stroke="#5f6f8c" stroke-width="1.3"/><path d="M12 5.4 17 7.4v3.9c0 3.4-2.2 5.9-5 7.1z" fill="#9fb0cc"/></svg>',
+  spear: '<svg viewBox="0 0 120 14"><rect x="0" y="6" width="96" height="2.4" rx="1" fill="#b98b52"/><path d="M94 2 120 7.2 94 12.4 98 7.2z" fill="#e8edf5" stroke="#8b97ab" stroke-width=".8"/></svg>',
+  arrow: '<svg viewBox="0 0 60 10"><rect x="6" y="4.2" width="44" height="1.6" fill="#c9a26b"/><path d="M48 1 60 5 48 9 50 5z" fill="#e6ebf2"/><path d="M0 1.5 9 5 0 8.5 4 5z" fill="#e8524e"/></svg>',
+  fist: '<svg viewBox="0 0 24 24"><path d="M5 9.5c0-1.4 1-2.4 2.3-2.4h9.2c1.6 0 2.9 1.3 2.9 2.9v4.6c0 2.6-2.1 4.7-4.7 4.7H9.6C7 19.3 5 17.3 5 14.7z" fill="#f0c9a0" stroke="#7a4f2e" stroke-width="1.1"/><path d="M8.6 7.2v4M11.6 7.2v4M14.6 7.2v4" stroke="#7a4f2e" stroke-width="1"/><path d="M5 12.5h4.4" stroke="#7a4f2e" stroke-width="1"/></svg>',
+  flag: '<svg viewBox="0 0 140 40"><rect x="0" y="18.6" width="132" height="2.8" rx="1.2" fill="#d9c08a"/><path d="M104 20 104 2 128 8 104 14z" fill="#f2f4f8" stroke="#c7a54a" stroke-width="1"/><circle cx="133" cy="20" r="3.2" fill="#e9c04b"/></svg>',
+  horse: '<svg viewBox="0 0 64 48"><g fill="currentColor"><ellipse cx="29" cy="24" rx="16" ry="8.5"/><path d="M39 19 47 6 54 8 57 13 52 14 46 26z"/><path d="M47 6 49 1 51 6z"/><path d="M14 22c-6 0-9 5-10 12 3-4 6-6 10-7z"/><rect x="16" y="28" width="3.6" height="16" rx="1.4"/><rect x="22" y="29" width="3.6" height="15" rx="1.4" transform="rotate(14 24 30)"/><rect x="34" y="29" width="3.6" height="15" rx="1.4" transform="rotate(-14 36 30)"/><rect x="40" y="28" width="3.6" height="16" rx="1.4"/></g></svg>',
+  star: '<svg viewBox="0 0 40 40"><path d="M20 0 24 14 38 8 27 19 40 24 25 25 28 40 20 28 12 40 15 25 0 24 13 19 2 8 16 14z" fill="currentColor"/></svg>',
+};
+function pageCenter(el) { const r = el.getBoundingClientRect(); return { x: r.left + window.scrollX + r.width / 2, y: r.top + window.scrollY + r.height / 2 }; }
+function makeFx(cls, html, host) { const e = document.createElement('div'); e.className = 'afx ' + cls; if (html) e.innerHTML = html; (host || arenaLayer()).appendChild(e); return e; }
+const fxDone = (e, ms) => setTimeout(() => e.remove(), dur(ms) + 60);
+// Something flies from the attacker to the target; resolves when it lands.
+function launch(st, from, tk, big, k, i) {
+  const a = pageCenter(from), b = pageCenter(tk);
+  const jitter = (k * 17 + (i || 0) * 29) % 23 - 11;
+  const dx = b.x - a.x, dy = b.y - a.y + jitter, ang = Math.atan2(dy, dx) * 180 / Math.PI;
+  const ms = st.fx === 'arrow' ? (big ? 320 : 280) : st.fx === 'horse' ? (big ? 520 : 440) : (big ? 300 : 240);
+  if (st.fx === 'horse') {
+    // the mount charges from the attacker straight through the target
+    const h = makeFx('horse' + (big ? ' big' : ''), SVG_FX.horse); const sz = big ? 92 : 64; const flip = dx < 0 ? -1 : 1;
+    Object.assign(h.style, { left: a.x - sz / 2 + 'px', top: a.y - sz * .375 + jitter * .4 + 'px', width: sz + 'px', height: sz * .75 + 'px' });
+    h.animate([{ transform: `scaleX(${flip}) translateY(0)`, opacity: 0 }, { transform: `translateX(${dx * .55}px) scaleX(${flip}) translateY(-6px)`, opacity: 1, offset: .35 },
+      { transform: `translateX(${dx * .95}px) scaleX(${flip}) translateY(2px)`, opacity: 1, offset: .62 }, { transform: `translateX(${dx * 1.35}px) scaleX(${flip}) translateY(-4px)`, opacity: 0 }],
+      { duration: dur(ms), easing: 'linear' });
+    fxDone(h, ms);
+    return new Promise(r => setTimeout(r, dur(ms * .62)));
+  }
+  const p = makeFx('proj ' + st.fx + (big ? ' big' : ''), st.fx === 'arrow' ? SVG_FX.arrow : '');
+  p.style.left = a.x + 'px'; p.style.top = a.y + 'px';
+  const arc = st.fx === 'arrow' && big ? -60 : 0; // a volley arcs in
+  p.animate([{ transform: `translate(-50%, -50%) rotate(${ang}deg) scale(.6)`, opacity: .2 }, { transform: `translate(calc(-50% + ${dx / 2}px), calc(-50% + ${dy / 2 + arc}px)) rotate(${ang}deg)`, opacity: 1, offset: .5 },
+    { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) rotate(${ang}deg)`, opacity: 1 }], { duration: dur(ms), easing: 'ease-in' });
+  fxDone(p, ms);
+  return new Promise(r => setTimeout(r, dur(ms)));
+}
+// What appears on the target as a hit lands.
+function impact(st, tk, from, big, k) {
+  const dir = pageCenter(tk).x >= pageCenter(from).x ? 1 : -1; // direction the blow travels
+  const add = (cls, html, ms) => { const e = makeFx(cls + (big ? ' big' : '') + (st.tint ? ' t-' + st.tint : ''), html, tk); e.style.setProperty('--dir', dir); fxDone(e, ms); return e; };
+  const rot = (((k * 53) % 70) - 35);
+  switch (st.fx) {
+    case 'sword': { const e = add('slashfx', '', 420); e.style.setProperty('--rot', rot + 'deg'); break; }
+    case 'shield': add('shieldfx', SVG_FX.shield, 460); add('ring', '', 420); break;
+    case 'spear': add('spearfx', SVG_FX.spear, 340); break;
+    case 'daggers': { const a = add('slashfx short', '', 300); a.style.setProperty('--rot', (35 + rot / 4) + 'deg');
+      setTimeout(() => { const b = add('slashfx short', '', 300); b.style.setProperty('--rot', (-35 - rot / 4) + 'deg'); }, dur(70)); add('stab', '', 260); break; }
+    case 'fist': add('fistfx', SVG_FX.fist, 420); add('ring', '', 420); add('burst', SVG_FX.star, 380); break;
+    case 'flag': add('flagfx', SVG_FX.flag, 460); break;
+    case 'avenge': { const e = add('slashfx dark', '', 420); e.style.setProperty('--rot', rot + 'deg'); add('burst dark', SVG_FX.star, 380); break; }
+    case 'blow': add('burst' + (st.aura ? ' ' + st.aura : st.kind === 'projection' ? ' proj' : ''), SVG_FX.star, 380); add('ring' + (st.aura ? ' ' + st.aura : ''), '', 420); break;
+    case 'arrow': add('burst small', SVG_FX.star, 300); break;
+    case 'bolt': add('ring magic', '', 420); add('burst magic', SVG_FX.star, 360); break;
+    case 'cosmic': add('ring cosmic', '', 460); add('burst cosmic', SVG_FX.star, 420); add('sparks cosmic', '', 520); break;
+    case 'horse': add('dust', '', 520); add('burst small', SVG_FX.star, 300); break;
+  }
+}
+// One attack: every hit of the card or NP against one target, or an AoE against several.
+async function strike(atk, tks, evs, tok, big) {
+  const st = atkStyle(+atk.dataset.uid);
+  const aoe = evs.length > 1, seq = aoe && big && st.seq;
   const n = Math.max(...evs.map(e => (e.dist || [100]).length));
-  const parts = evs.map(e => splitDamage(e.dmg, (e.dist || [100])));
+  const parts = evs.map(e => splitDamage(e.dmg, e.dist || [100]));
   const hp = evs.map(e => e.snap && e.snap.units[e.uid] ? e.snap.units[e.uid].hp + e.dmg : null);
-  const avgY = evs.reduce((a, e) => a + tks[e.uid]._home.cy, 0) / evs.length;
-  const fx0 = tks[evs[0].uid]._home.cx;
-  const dx = (fx0 - atk._home.cx) * 0.42, dy = avgY - atk._home.cy;
-  const inPos = `translate(${dx}px, ${dy}px) scale(${big ? 1.18 : 1.06})`;
+  const T0 = tks[evs[0].uid];
+  // who moves: the attacker, or (Alter Ego) a projection of them
+  let actor = atk;
+  if (st.kind === 'projection') { actor = atk.cloneNode(true); actor._home = atk._home; actor.classList.add('projection'); actor.classList.remove('npglow'); arenaLayer().appendChild(actor); atk.classList.add('projecting'); }
+  let aura = null;
+  if (st.aura) { aura = makeFx('aura ' + st.aura, '', atk); atk.classList.add('aura-' + st.aura); }
   if (big) atk.classList.add('npglow');
-  await moveTo(atk, 'none', inPos, big ? 340 : 260); if (tok.skip) return;
-  const st = document.getElementById('stage');
-  const gap = big ? Math.max(160, Math.min(320, 1300 / n)) : Math.max(120, Math.min(240, 800 / n));
-  for (let k = 0; k < n; k++) {
+  // where they stand while attacking
+  const avgY = evs.reduce((a, e) => a + tks[e.uid]._home.cy, 0) / evs.length;
+  const dx0 = T0._home.cx - actor._home.cx, dy0 = (aoe ? avgY : T0._home.cy) - actor._home.cy;
+  const sgn = Math.sign(dx0) || 1;
+  let inPos;
+  if (st.kind === 'ranged' || st.kind === 'charge') inPos = `translate(${dx0 * 0.08}px, ${dy0 * 0.25}px)${big ? ' scale(1.1)' : ''}`;
+  else if (aoe) inPos = `translate(${dx0 * 0.42}px, ${dy0}px) scale(${big ? 1.18 : 1.06})`;
+  else { const reach = 1 - (parseFloat(actor.style.width) + 18) / Math.max(parseFloat(actor.style.width) + 19, Math.hypot(dx0, dy0)); inPos = `translate(${dx0 * reach}px, ${dy0 * reach}px)${big ? ' scale(1.12)' : ''}`; }
+  await moveTo(actor, 'none', inPos, big ? 320 : 240); if (tok.skip) return cleanup();
+  const stage = document.getElementById('stage');
+  const gap = big ? Math.max(160, Math.min(320, 1300 / n)) : Math.max(110, Math.min(240, 820 / n));
+  const sideOf = tk => aoe ? (tk._home.cx > atk._home.cx ? 'sL' : 'sR') : undefined;
+  const land = async (i, k, tk) => {
+    const e = evs[i]; if (!tk || k >= parts[i].length) return;
+    if (st.kind === 'ranged' || st.kind === 'charge') {
+      const volley = st.fx === 'arrow' && big ? (aoe ? 4 : 2) : 1; // an NP looses a volley
+      const flights = []; for (let v = 0; v < volley; v++) flights.push(new Promise(r => setTimeout(() => launch(st, actor, tk, big, k + v, i).then(r), dur(v * 45))));
+      await Promise.all(flights);
+    }
     if (tok.skip) return;
-    atk.animate([{ transform: inPos }, { transform: `${inPos} translate(${Math.sign(dx) * (big ? 18 : 10)}px, 0) scale(${big ? 1.06 : 1.03})` }, { transform: inPos }], { duration: dur(gap * 0.85), easing: 'ease-out' });
-    if (st && big) { const w = document.createElement('div'); w.className = 'npwave' + (Math.sign(dx) < 0 ? ' rev' : ''); st.appendChild(w); setTimeout(() => w.remove(), 500); }
-    evs.forEach((e, i) => {
-      const tk = tks[e.uid]; if (!tk || k >= parts[i].length) return;
-      landHit(tk, e, atk, big, k + i, parts[i][k], tk._home.cx > atk._home.cx ? 'sL' : 'sR');
-      if (hp[i] != null && !e.blocked) { hp[i] -= parts[i][k]; setTokenHp(tk, e.uid, hp[i]); }
-    });
-    await wait(gap, tok);
+    if (!e.blocked) impact(st, tk, actor, big, k + i);
+    landHit(tk, e, actor, big, k, parts[i][k], sideOf(tk), st);
+    if (hp[i] != null && !e.blocked) { hp[i] -= parts[i][k]; setTokenHp(tk, e.uid, hp[i]); }
+  };
+  const swing = () => {
+    const kick = st.kind === 'ranged' ? `${inPos} translate(${-sgn * 6}px, 0)` : st.kind === 'charge' ? `${inPos} translate(${sgn * 4}px, -3px)` : `${inPos} translate(${sgn * (big ? 16 : 10)}px, 0) rotate(${sgn * (big ? 6 : 4)}deg)`;
+    actor.animate([{ transform: inPos }, { transform: kick }, { transform: inPos }], { duration: dur(gap * 0.85), easing: 'ease-out' });
+  };
+  for (let k = 0; k < n; k++) {
+    if (tok.skip) return cleanup();
+    if (seq) {
+      // Lancer / Avenger AoE NP: each enemy is struck in quick succession on every hit
+      const step = Math.max(70, gap / evs.length);
+      for (let i = 0; i < evs.length; i++) {
+        const tk = tks[evs[i].uid]; if (!tk) continue;
+        const ddx = tk._home.cx - actor._home.cx, ddy = tk._home.cy - actor._home.cy;
+        actor.animate([{ transform: inPos }, { transform: `translate(${ddx * 0.55}px, ${ddy * 0.85}px) scale(1.12)` }, { transform: inPos }], { duration: dur(step * 1.6), easing: 'ease-out' });
+        land(i, k, tk); await wait(step, tok); if (tok.skip) return cleanup();
+      }
+      await wait(Math.max(60, gap - step * evs.length), tok);
+    } else {
+      swing();
+      if (big && aoe && stage) { const w = document.createElement('div'); w.className = 'npwave' + (sgn < 0 ? ' rev' : '') + ' w-' + st.fx; stage.appendChild(w); setTimeout(() => w.remove(), 500); }
+      await Promise.all(evs.map((e, i) => land(i, k, tks[e.uid])));
+      if (tok.skip) return cleanup();
+      await wait(gap, tok);
+    }
   }
   evs.forEach(e => hitTotal(tks[e.uid], e, (e.dist || [100]).length));
   patchView(evs[evs.length - 1].snap);
-  await moveTo(atk, inPos, 'none', big ? 300 : 240);
-  atk.classList.remove('npglow');
+  await moveTo(actor, inPos, 'none', big ? 300 : 240);
+  cleanup();
+  function cleanup() {
+    atk.classList.remove('npglow', 'projecting', 'aura-' + st.aura);
+    if (aura) aura.remove();
+    if (actor !== atk) { const a = actor; a.animate([{ opacity: .7 }, { opacity: 0 }], { duration: dur(200), fill: 'forwards' }).finished.then(() => a.remove(), () => a.remove()); }
+  }
 }
 // An NP that deals no damage still takes the stage: the user steps out with the allies it helps behind them and/or
 // the enemies it hinders opposite. Allies shake and swell (buffed), enemies shake and shrink (debuffed).
@@ -4785,15 +4981,15 @@ async function arena(act, seq, tok) {
       // gather this NP's hits on every target and land them together
       const group = seq.filter(e => e.t === 'hit' && e.np && e.src === ev.src && tks[e.uid] && !done.has(e));
       group.forEach(e => done.add(e));
-      await strikeAll(atk, tks, group, tok); if (tok.skip) return;
+      await strike(atk, tks, group, tok, true); if (tok.skip) return;
     } else if (ev.t === 'hit' && tk && ev.aoe && !ev.np) {
       // an AoE card (or AoE Extra Attack): every enemy is hit together, on a regular-attack scale
       const group = seq.filter(e => e.t === 'hit' && e.aoe && !e.np && e.src === ev.src && tks[e.uid] && !done.has(e));
       group.forEach(e => done.add(e));
-      if (group.length > 1) await strikeAll(atk, tks, group, tok, false); else await strikeOne(atk, tk, ev, tok, false);
+      await strike(atk, tks, group, tok, false);
       if (tok.skip) return;
     } else if (ev.t === 'hit' && tk) {
-      await strikeOne(atk, tk, ev, tok, !!ev.np); if (tok.skip) return;
+      await strike(atk, tks, [ev], tok, !!ev.np); if (tok.skip) return;
     } else if (ev.t === 'eff' && ev.miss && tk && (ev.key === 'evade' || ev.key === 'invincible')) {
       const dx = tk._home.cx - atk._home.cx;
       atk.animate([{ transform: 'none' }, { transform: `translateX(${dx * 0.45}px)`, offset: 0.5 }, { transform: 'none' }], { duration: dur(480), easing: 'ease-in-out' });

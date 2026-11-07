@@ -41,7 +41,7 @@ const app = {
 };
 window.__app = app; // handy for debugging in the console
 window.__render = () => render();
-window.__test = { get startBattle() { return startBattle; }, get lockCards() { return lockCards; }, get randomChoice() { return randomChoice; }, get POOL() { return POOL; }, get R() { return R; } };
+window.__test = { get startBattle() { return startBattle; }, get lockCards() { return lockCards; }, get randomChoice() { return randomChoice; }, get POOL() { return POOL; }, get R() { return R; }, get arena() { return arena; }, get clearArena() { return clearArena; } };
 
 // ---------------------------------------------------------------- Setup
 function startDraft(first0) {
@@ -786,7 +786,7 @@ function shake(tk, big) { tk.classList.remove('struck', 'struckbig'); void tk.of
 // One hit landing on a target. A nullified hit plays out but the target reacts to its defense instead:
 // Evade dodges, Invincible pulses gold, Anti-Enforcement DEF pulses silver. A pierced defense is called out on the first hit.
 const NULL_WORD = { evade: 'Dodged', inv: 'Nullified', solemn: 'Nullified' };
-function landHit(tk, ev, atk, big, k, part, side) {
+function landHit(tk, ev, atk, big, k, part, side, st) {
   const away = tk._home.cx > atk._home.cx ? 1 : -1;
   if (ev.blocked) {
     if (ev.blocked === 'evade') {
@@ -798,7 +798,7 @@ function landHit(tk, ev, atk, big, k, part, side) {
     hitPop(tk, `<span class="nullpop ${ev.blocked}">${NULL_WORD[ev.blocked]}</span>${k === 0 && ev.crit ? '<span class="crit">Critical</span>' : ''}`, k, big, false, side);
     return;
   }
-  shake(tk, big); slash(tk, big, k);
+  shake(tk, big); if (!st) slash(tk, big, k);
   const pierce = k === 0 && ev.pierced ? ev.pierced.map(l => `<span class="piercetag">Pierced ${esc(l)}</span>`).join('') : '';
   hitPop(tk, `${pierce}<b class="dnum ${ev.aff}">${part}</b>${k === 0 && ev.crit ? '<span class="crit">Critical</span>' : ''}`, k, big, false, side);
 }
@@ -808,55 +808,163 @@ function hitTotal(tk, ev, n) {
   else if (n > 1) hitPop(tk, `<span class="hittotal">${n} hits · <b class="dnum ${ev.aff}">${ev.dmg}</b></span>`, n, false, true);
 }
 const moveTo = (el, from, to, ms) => el.animate([{ transform: from }, { transform: to }], { duration: dur(ms), easing: 'cubic-bezier(.3,.7,.3,1)', fill: 'forwards' }).finished.catch(() => {});
-// One attacker hitting one target with every hit of the card (or single-target NP).
-async function strikeOne(atk, tk, ev, tok, big) {
-  const parts = splitDamage(ev.dmg, ev.dist || [100]); const n = parts.length;
-  const dx = tk._home.cx - atk._home.cx, dy = tk._home.cy - atk._home.cy;
-  const reach = 1 - (parseFloat(atk.style.width) + 18) / Math.max(parseFloat(atk.style.width) + 19, Math.hypot(dx, dy));
-  const inPos = `translate(${dx * reach}px, ${dy * reach}px)${big ? ' scale(1.12)' : ''}`;
-  const sgn = Math.sign(dx) || 1;
-  await moveTo(atk, 'none', inPos, big ? 300 : 230); if (tok.skip) return;
-  let hp = ev.snap && ev.snap.units[ev.uid] ? ev.snap.units[ev.uid].hp + ev.dmg : null;
-  const gap = Math.max(big ? 140 : 80, Math.min(big ? 300 : 220, (big ? 1100 : 760) / n));
-  for (let k = 0; k < n; k++) {
-    if (tok.skip) return;
-    atk.animate([{ transform: inPos }, { transform: `${inPos} translate(${sgn * (big ? 16 : 10)}px, 0) rotate(${sgn * (big ? 7 : 5)}deg)` }, { transform: inPos }], { duration: dur(gap * 0.85), easing: 'ease-out' });
-    landHit(tk, ev, atk, big, k, parts[k]);
-    if (hp != null && !ev.blocked) { hp -= parts[k]; setTokenHp(tk, ev.uid, hp); }
-    await wait(gap, tok);
+// ---- Class attack styles. kind: how the attacker delivers (melee steps in, ranged fires from home, charge sends a
+// mount through, projection sends a copy of themselves); fx: what lands on the target; aura: what hangs on the attacker;
+// seq: an AoE NP hits each enemy in quick succession instead of all at once.
+const ATK_STYLE = {
+  Shielder: { kind: 'melee', fx: 'shield' },
+  Saber: { kind: 'melee', fx: 'sword' },
+  Archer: { kind: 'ranged', fx: 'arrow' },
+  Lancer: { kind: 'melee', fx: 'spear', seq: true },
+  Rider: { kind: 'charge', fx: 'horse' },
+  Caster: { kind: 'ranged', fx: 'bolt' },
+  Assassin: { kind: 'melee', fx: 'daggers' },
+  Berserker: { kind: 'melee', fx: 'fist' },
+  Ruler: { kind: 'melee', fx: 'flag' },
+  Avenger: { kind: 'melee', fx: 'avenge', aura: 'miasma', seq: true },
+  'Moon Cancer': { kind: 'melee', fx: 'blow', aura: 'glitch' },
+  'Alter Ego': { kind: 'projection', fx: 'blow' },
+  Foreigner: { kind: 'melee', fx: 'blow', aura: 'space' },
+  'Beast I': { kind: 'melee', fx: 'sword', tint: 'fire' },
+  'Beast II': { kind: 'melee', fx: 'fist', tint: 'glow' },
+  Unbeast: { kind: 'ranged', fx: 'cosmic' },
+};
+const PRETEND_AS = ['Saber', 'Archer', 'Lancer', 'Rider', 'Assassin', 'Caster', 'Berserker'];
+function atkStyle(uid) {
+  const u = app.g.units[uid]; let c = u ? u.cls : 'Saber';
+  if (c === 'Pretender') { // borrows one of the seven main classes, a different one each attack
+    const opts = PRETEND_AS.filter(x => x !== app._pretendLast); c = opts[Math.floor(Math.random() * opts.length)]; app._pretendLast = c;
   }
-  hitTotal(tk, ev, n);
-  patchView(ev.snap);
-  await moveTo(atk, inPos, 'none', 260);
+  return { ...(ATK_STYLE[c] || ATK_STYLE.Saber), cls: c };
 }
-// AoE NP: the attacker strikes every target at once on each hit.
-async function strikeAll(atk, tks, evs, tok, big = true) { // big: NP; otherwise an AoE card attack (smaller, no glow)
+const SVG_FX = {
+  shield: '<svg viewBox="0 0 24 24"><path d="M12 2.6 19.6 5.6v5.6c0 5-3.4 8.6-7.6 10.3-4.2-1.7-7.6-5.3-7.6-10.3V5.6z" fill="#d7dde8" stroke="#5f6f8c" stroke-width="1.3"/><path d="M12 5.4 17 7.4v3.9c0 3.4-2.2 5.9-5 7.1z" fill="#9fb0cc"/></svg>',
+  spear: '<svg viewBox="0 0 120 14"><rect x="0" y="6" width="96" height="2.4" rx="1" fill="#b98b52"/><path d="M94 2 120 7.2 94 12.4 98 7.2z" fill="#e8edf5" stroke="#8b97ab" stroke-width=".8"/></svg>',
+  arrow: '<svg viewBox="0 0 60 10"><rect x="6" y="4.2" width="44" height="1.6" fill="#c9a26b"/><path d="M48 1 60 5 48 9 50 5z" fill="#e6ebf2"/><path d="M0 1.5 9 5 0 8.5 4 5z" fill="#e8524e"/></svg>',
+  fist: '<svg viewBox="0 0 24 24"><path d="M5 9.5c0-1.4 1-2.4 2.3-2.4h9.2c1.6 0 2.9 1.3 2.9 2.9v4.6c0 2.6-2.1 4.7-4.7 4.7H9.6C7 19.3 5 17.3 5 14.7z" fill="#f0c9a0" stroke="#7a4f2e" stroke-width="1.1"/><path d="M8.6 7.2v4M11.6 7.2v4M14.6 7.2v4" stroke="#7a4f2e" stroke-width="1"/><path d="M5 12.5h4.4" stroke="#7a4f2e" stroke-width="1"/></svg>',
+  flag: '<svg viewBox="0 0 140 40"><rect x="0" y="18.6" width="132" height="2.8" rx="1.2" fill="#d9c08a"/><path d="M104 20 104 2 128 8 104 14z" fill="#f2f4f8" stroke="#c7a54a" stroke-width="1"/><circle cx="133" cy="20" r="3.2" fill="#e9c04b"/></svg>',
+  horse: '<svg viewBox="0 0 64 48"><g fill="currentColor"><ellipse cx="29" cy="24" rx="16" ry="8.5"/><path d="M39 19 47 6 54 8 57 13 52 14 46 26z"/><path d="M47 6 49 1 51 6z"/><path d="M14 22c-6 0-9 5-10 12 3-4 6-6 10-7z"/><rect x="16" y="28" width="3.6" height="16" rx="1.4"/><rect x="22" y="29" width="3.6" height="15" rx="1.4" transform="rotate(14 24 30)"/><rect x="34" y="29" width="3.6" height="15" rx="1.4" transform="rotate(-14 36 30)"/><rect x="40" y="28" width="3.6" height="16" rx="1.4"/></g></svg>',
+  star: '<svg viewBox="0 0 40 40"><path d="M20 0 24 14 38 8 27 19 40 24 25 25 28 40 20 28 12 40 15 25 0 24 13 19 2 8 16 14z" fill="currentColor"/></svg>',
+};
+function pageCenter(el) { const r = el.getBoundingClientRect(); return { x: r.left + window.scrollX + r.width / 2, y: r.top + window.scrollY + r.height / 2 }; }
+function makeFx(cls, html, host) { const e = document.createElement('div'); e.className = 'afx ' + cls; if (html) e.innerHTML = html; (host || arenaLayer()).appendChild(e); return e; }
+const fxDone = (e, ms) => setTimeout(() => e.remove(), dur(ms) + 60);
+// Something flies from the attacker to the target; resolves when it lands.
+function launch(st, from, tk, big, k, i) {
+  const a = pageCenter(from), b = pageCenter(tk);
+  const jitter = (k * 17 + (i || 0) * 29) % 23 - 11;
+  const dx = b.x - a.x, dy = b.y - a.y + jitter, ang = Math.atan2(dy, dx) * 180 / Math.PI;
+  const ms = st.fx === 'arrow' ? (big ? 320 : 280) : st.fx === 'horse' ? (big ? 520 : 440) : (big ? 300 : 240);
+  if (st.fx === 'horse') {
+    // the mount charges from the attacker straight through the target
+    const h = makeFx('horse' + (big ? ' big' : ''), SVG_FX.horse); const sz = big ? 92 : 64; const flip = dx < 0 ? -1 : 1;
+    Object.assign(h.style, { left: a.x - sz / 2 + 'px', top: a.y - sz * .375 + jitter * .4 + 'px', width: sz + 'px', height: sz * .75 + 'px' });
+    h.animate([{ transform: `scaleX(${flip}) translateY(0)`, opacity: 0 }, { transform: `translateX(${dx * .55}px) scaleX(${flip}) translateY(-6px)`, opacity: 1, offset: .35 },
+      { transform: `translateX(${dx * .95}px) scaleX(${flip}) translateY(2px)`, opacity: 1, offset: .62 }, { transform: `translateX(${dx * 1.35}px) scaleX(${flip}) translateY(-4px)`, opacity: 0 }],
+      { duration: dur(ms), easing: 'linear' });
+    fxDone(h, ms);
+    return new Promise(r => setTimeout(r, dur(ms * .62)));
+  }
+  const p = makeFx('proj ' + st.fx + (big ? ' big' : ''), st.fx === 'arrow' ? SVG_FX.arrow : '');
+  p.style.left = a.x + 'px'; p.style.top = a.y + 'px';
+  const arc = st.fx === 'arrow' && big ? -60 : 0; // a volley arcs in
+  p.animate([{ transform: `translate(-50%, -50%) rotate(${ang}deg) scale(.6)`, opacity: .2 }, { transform: `translate(calc(-50% + ${dx / 2}px), calc(-50% + ${dy / 2 + arc}px)) rotate(${ang}deg)`, opacity: 1, offset: .5 },
+    { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) rotate(${ang}deg)`, opacity: 1 }], { duration: dur(ms), easing: 'ease-in' });
+  fxDone(p, ms);
+  return new Promise(r => setTimeout(r, dur(ms)));
+}
+// What appears on the target as a hit lands.
+function impact(st, tk, from, big, k) {
+  const dir = pageCenter(tk).x >= pageCenter(from).x ? 1 : -1; // direction the blow travels
+  const add = (cls, html, ms) => { const e = makeFx(cls + (big ? ' big' : '') + (st.tint ? ' t-' + st.tint : ''), html, tk); e.style.setProperty('--dir', dir); fxDone(e, ms); return e; };
+  const rot = (((k * 53) % 70) - 35);
+  switch (st.fx) {
+    case 'sword': { const e = add('slashfx', '', 420); e.style.setProperty('--rot', rot + 'deg'); break; }
+    case 'shield': add('shieldfx', SVG_FX.shield, 460); add('ring', '', 420); break;
+    case 'spear': add('spearfx', SVG_FX.spear, 340); break;
+    case 'daggers': { const a = add('slashfx short', '', 300); a.style.setProperty('--rot', (35 + rot / 4) + 'deg');
+      setTimeout(() => { const b = add('slashfx short', '', 300); b.style.setProperty('--rot', (-35 - rot / 4) + 'deg'); }, dur(70)); add('stab', '', 260); break; }
+    case 'fist': add('fistfx', SVG_FX.fist, 420); add('ring', '', 420); add('burst', SVG_FX.star, 380); break;
+    case 'flag': add('flagfx', SVG_FX.flag, 460); break;
+    case 'avenge': { const e = add('slashfx dark', '', 420); e.style.setProperty('--rot', rot + 'deg'); add('burst dark', SVG_FX.star, 380); break; }
+    case 'blow': add('burst' + (st.aura ? ' ' + st.aura : st.kind === 'projection' ? ' proj' : ''), SVG_FX.star, 380); add('ring' + (st.aura ? ' ' + st.aura : ''), '', 420); break;
+    case 'arrow': add('burst small', SVG_FX.star, 300); break;
+    case 'bolt': add('ring magic', '', 420); add('burst magic', SVG_FX.star, 360); break;
+    case 'cosmic': add('ring cosmic', '', 460); add('burst cosmic', SVG_FX.star, 420); add('sparks cosmic', '', 520); break;
+    case 'horse': add('dust', '', 520); add('burst small', SVG_FX.star, 300); break;
+  }
+}
+// One attack: every hit of the card or NP against one target, or an AoE against several.
+async function strike(atk, tks, evs, tok, big) {
+  const st = atkStyle(+atk.dataset.uid);
+  const aoe = evs.length > 1, seq = aoe && big && st.seq;
   const n = Math.max(...evs.map(e => (e.dist || [100]).length));
-  const parts = evs.map(e => splitDamage(e.dmg, (e.dist || [100])));
+  const parts = evs.map(e => splitDamage(e.dmg, e.dist || [100]));
   const hp = evs.map(e => e.snap && e.snap.units[e.uid] ? e.snap.units[e.uid].hp + e.dmg : null);
-  const avgY = evs.reduce((a, e) => a + tks[e.uid]._home.cy, 0) / evs.length;
-  const fx0 = tks[evs[0].uid]._home.cx;
-  const dx = (fx0 - atk._home.cx) * 0.42, dy = avgY - atk._home.cy;
-  const inPos = `translate(${dx}px, ${dy}px) scale(${big ? 1.18 : 1.06})`;
+  const T0 = tks[evs[0].uid];
+  // who moves: the attacker, or (Alter Ego) a projection of them
+  let actor = atk;
+  if (st.kind === 'projection') { actor = atk.cloneNode(true); actor._home = atk._home; actor.classList.add('projection'); actor.classList.remove('npglow'); arenaLayer().appendChild(actor); atk.classList.add('projecting'); }
+  let aura = null;
+  if (st.aura) { aura = makeFx('aura ' + st.aura, '', atk); atk.classList.add('aura-' + st.aura); }
   if (big) atk.classList.add('npglow');
-  await moveTo(atk, 'none', inPos, big ? 340 : 260); if (tok.skip) return;
-  const st = document.getElementById('stage');
-  const gap = big ? Math.max(160, Math.min(320, 1300 / n)) : Math.max(120, Math.min(240, 800 / n));
-  for (let k = 0; k < n; k++) {
+  // where they stand while attacking
+  const avgY = evs.reduce((a, e) => a + tks[e.uid]._home.cy, 0) / evs.length;
+  const dx0 = T0._home.cx - actor._home.cx, dy0 = (aoe ? avgY : T0._home.cy) - actor._home.cy;
+  const sgn = Math.sign(dx0) || 1;
+  let inPos;
+  if (st.kind === 'ranged' || st.kind === 'charge') inPos = `translate(${dx0 * 0.08}px, ${dy0 * 0.25}px)${big ? ' scale(1.1)' : ''}`;
+  else if (aoe) inPos = `translate(${dx0 * 0.42}px, ${dy0}px) scale(${big ? 1.18 : 1.06})`;
+  else { const reach = 1 - (parseFloat(actor.style.width) + 18) / Math.max(parseFloat(actor.style.width) + 19, Math.hypot(dx0, dy0)); inPos = `translate(${dx0 * reach}px, ${dy0 * reach}px)${big ? ' scale(1.12)' : ''}`; }
+  await moveTo(actor, 'none', inPos, big ? 320 : 240); if (tok.skip) return cleanup();
+  const stage = document.getElementById('stage');
+  const gap = big ? Math.max(160, Math.min(320, 1300 / n)) : Math.max(110, Math.min(240, 820 / n));
+  const sideOf = tk => aoe ? (tk._home.cx > atk._home.cx ? 'sL' : 'sR') : undefined;
+  const land = async (i, k, tk) => {
+    const e = evs[i]; if (!tk || k >= parts[i].length) return;
+    if (st.kind === 'ranged' || st.kind === 'charge') {
+      const volley = st.fx === 'arrow' && big ? (aoe ? 4 : 2) : 1; // an NP looses a volley
+      const flights = []; for (let v = 0; v < volley; v++) flights.push(new Promise(r => setTimeout(() => launch(st, actor, tk, big, k + v, i).then(r), dur(v * 45))));
+      await Promise.all(flights);
+    }
     if (tok.skip) return;
-    atk.animate([{ transform: inPos }, { transform: `${inPos} translate(${Math.sign(dx) * (big ? 18 : 10)}px, 0) scale(${big ? 1.06 : 1.03})` }, { transform: inPos }], { duration: dur(gap * 0.85), easing: 'ease-out' });
-    if (st && big) { const w = document.createElement('div'); w.className = 'npwave' + (Math.sign(dx) < 0 ? ' rev' : ''); st.appendChild(w); setTimeout(() => w.remove(), 500); }
-    evs.forEach((e, i) => {
-      const tk = tks[e.uid]; if (!tk || k >= parts[i].length) return;
-      landHit(tk, e, atk, big, k + i, parts[i][k], tk._home.cx > atk._home.cx ? 'sL' : 'sR');
-      if (hp[i] != null && !e.blocked) { hp[i] -= parts[i][k]; setTokenHp(tk, e.uid, hp[i]); }
-    });
-    await wait(gap, tok);
+    if (!e.blocked) impact(st, tk, actor, big, k + i);
+    landHit(tk, e, actor, big, k, parts[i][k], sideOf(tk), st);
+    if (hp[i] != null && !e.blocked) { hp[i] -= parts[i][k]; setTokenHp(tk, e.uid, hp[i]); }
+  };
+  const swing = () => {
+    const kick = st.kind === 'ranged' ? `${inPos} translate(${-sgn * 6}px, 0)` : st.kind === 'charge' ? `${inPos} translate(${sgn * 4}px, -3px)` : `${inPos} translate(${sgn * (big ? 16 : 10)}px, 0) rotate(${sgn * (big ? 6 : 4)}deg)`;
+    actor.animate([{ transform: inPos }, { transform: kick }, { transform: inPos }], { duration: dur(gap * 0.85), easing: 'ease-out' });
+  };
+  for (let k = 0; k < n; k++) {
+    if (tok.skip) return cleanup();
+    if (seq) {
+      // Lancer / Avenger AoE NP: each enemy is struck in quick succession on every hit
+      const step = Math.max(70, gap / evs.length);
+      for (let i = 0; i < evs.length; i++) {
+        const tk = tks[evs[i].uid]; if (!tk) continue;
+        const ddx = tk._home.cx - actor._home.cx, ddy = tk._home.cy - actor._home.cy;
+        actor.animate([{ transform: inPos }, { transform: `translate(${ddx * 0.55}px, ${ddy * 0.85}px) scale(1.12)` }, { transform: inPos }], { duration: dur(step * 1.6), easing: 'ease-out' });
+        land(i, k, tk); await wait(step, tok); if (tok.skip) return cleanup();
+      }
+      await wait(Math.max(60, gap - step * evs.length), tok);
+    } else {
+      swing();
+      if (big && aoe && stage) { const w = document.createElement('div'); w.className = 'npwave' + (sgn < 0 ? ' rev' : '') + ' w-' + st.fx; stage.appendChild(w); setTimeout(() => w.remove(), 500); }
+      await Promise.all(evs.map((e, i) => land(i, k, tks[e.uid])));
+      if (tok.skip) return cleanup();
+      await wait(gap, tok);
+    }
   }
   evs.forEach(e => hitTotal(tks[e.uid], e, (e.dist || [100]).length));
   patchView(evs[evs.length - 1].snap);
-  await moveTo(atk, inPos, 'none', big ? 300 : 240);
-  atk.classList.remove('npglow');
+  await moveTo(actor, inPos, 'none', big ? 300 : 240);
+  cleanup();
+  function cleanup() {
+    atk.classList.remove('npglow', 'projecting', 'aura-' + st.aura);
+    if (aura) aura.remove();
+    if (actor !== atk) { const a = actor; a.animate([{ opacity: .7 }, { opacity: 0 }], { duration: dur(200), fill: 'forwards' }).finished.then(() => a.remove(), () => a.remove()); }
+  }
 }
 // An NP that deals no damage still takes the stage: the user steps out with the allies it helps behind them and/or
 // the enemies it hinders opposite. Allies shake and swell (buffed), enemies shake and shrink (debuffed).
@@ -938,15 +1046,15 @@ async function arena(act, seq, tok) {
       // gather this NP's hits on every target and land them together
       const group = seq.filter(e => e.t === 'hit' && e.np && e.src === ev.src && tks[e.uid] && !done.has(e));
       group.forEach(e => done.add(e));
-      await strikeAll(atk, tks, group, tok); if (tok.skip) return;
+      await strike(atk, tks, group, tok, true); if (tok.skip) return;
     } else if (ev.t === 'hit' && tk && ev.aoe && !ev.np) {
       // an AoE card (or AoE Extra Attack): every enemy is hit together, on a regular-attack scale
       const group = seq.filter(e => e.t === 'hit' && e.aoe && !e.np && e.src === ev.src && tks[e.uid] && !done.has(e));
       group.forEach(e => done.add(e));
-      if (group.length > 1) await strikeAll(atk, tks, group, tok, false); else await strikeOne(atk, tk, ev, tok, false);
+      await strike(atk, tks, group, tok, false);
       if (tok.skip) return;
     } else if (ev.t === 'hit' && tk) {
-      await strikeOne(atk, tk, ev, tok, !!ev.np); if (tok.skip) return;
+      await strike(atk, tks, [ev], tok, !!ev.np); if (tok.skip) return;
     } else if (ev.t === 'eff' && ev.miss && tk && (ev.key === 'evade' || ev.key === 'invincible')) {
       const dx = tk._home.cx - atk._home.cx;
       atk.animate([{ transform: 'none' }, { transform: `translateX(${dx * 0.45}px)`, offset: 0.5 }, { transform: 'none' }], { duration: dur(480), easing: 'ease-in-out' });
