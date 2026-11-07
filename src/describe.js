@@ -20,7 +20,7 @@ const CTRL = { stun: 'Stun', charm: 'Charm', bind: 'Bind', petrify: 'Petrify', s
 const DOT = { burn: 'Burn', poison: 'Poison', curse: 'Curse' };
 const WHO = { self: 'self', ally: 'one ally', allies: 'all allies', others: 'other allies', enemy: 'one enemy', enemies: 'all enemies', firstOther: 'the first other ally on your field', lastOther: 'the last other ally on your field', lowestHpAlly: 'the ally with the lowest HP %', randomAlly: 'one random ally', alliesBut: 'every other ally on the field (this servant included)' };
 const CAT = { buff: 'buffs', debuff: 'debuffs', dmgUp: 'damage-boosting buffs', defUp: 'defensive buffs', atkUp: 'ATK buffs', cardUp: 'card buffs', critUp: 'critical buffs',
-  sureHit: 'Sure Hit', mental: 'mental debuffs', immobilize: 'immobilizing debuffs', burn: 'Burn', poison: 'Poison', curse: 'Curse', charm: 'Charm', stun: 'Stun', evade: 'Evade', invincible: 'Invincible', taunt: 'Taunt', guts: 'Guts' };
+  sureHit: 'Sure Hit', mental: 'mental debuffs', defDown: 'DEF-down debuffs', atkDown: 'ATK-down debuffs', skillSeal: 'Skill Seal', pigify: 'Pigify', terror: 'Terror', immobilize: 'immobilizing debuffs', burn: 'Burn', poison: 'Poison', curse: 'Curse', charm: 'Charm', stun: 'Stun', evade: 'Evade', invincible: 'Invincible', taunt: 'Taunt', guts: 'Guts' };
 const FIELDN = { Shore: 'Waterside' };
 const STATUSW = { invincible: 'Invincible', evade: 'Evade', guts: 'Guts', burn: 'Burn', poison: 'Poison', curse: 'Curse', charm: 'Charm', stun: 'Stun', taunt: 'Taunt' };
 const STATUSADJ = { evade: 'Evading', invincible: 'Invincible', burn: 'Burned', poison: 'Poisoned', curse: 'Cursed', charm: 'Charmed', stun: 'Stunned', guts: 'Guts' };
@@ -75,6 +75,7 @@ function ocRange(e, v, key, fmt) { return e[key] != null && e[key] !== v ? ` (${
 
 function buffWhat(e) {
   const s = e.s, v = e.v;
+  if (s === 'critRes') return `Chance of being critically hit ${sign(-v)}%` + ocRange(e, v, 'v5', x => sign(-x) + '%'); // resistance: lowers the attacker's crit chance by that many points
   if (PCT[s]) {
     if (e.hpBelow != null && e.vLow != null) return `${PCT[s]} ${sign(v)}% at ${e.hpBelow}% HP, rising to ${sign(e.vLow)}% as HP falls`;
     if (e.hpBelow != null) return `${PCT[s]} ${sign(v)}% while HP is ${e.hpBelow}% or lower`;
@@ -115,8 +116,10 @@ function buffWhat(e) {
         const inner = (a.eff || []).map(x => line(x, { inTrigger: true })).filter(Boolean).map(x => x.text).join('; ');
         return `While on the field: whenever ${a.cond ? `a ${a.cond} ally` : 'an ally'} takes damage, that ally gains ${inner}`;
       }
+      if (!PCT[a.s]) return `While on the field, for ${who.toLowerCase()}: ${buffWhat({ s: a.s, v: a.v })}`;
       return `While on the field: ${who} get ${PCT[a.s] || a.s} ${sign(a.v)}%${a.notVsClass ? ` against all enemies except ${a.notVsClass.join(', ')}s` : ''}`;
     }
+    case 'npType': return `NP card becomes ${e.color}`;
     case 'npDmgBoost': return 'Doubles the effect of NP damage buffs (doesn\'t stack)';
     case 'noSwap': return "Can't be swapped out by Order Change";
     case 'counter': {
@@ -319,12 +322,13 @@ function describeKit(kit, d) {
       const target = np.tgt === 'all' ? 'all enemies' : np.tgt === 'one' ? 'one enemy' : 'no damage';
       const L = [];
       L.push(...lines(np.pre));
+      L.push(...lines(np.ocPre)); // applied before the damage; each shows its overcharge range
       if (np.tgt !== 'none' && np.dmg) {
         let t = `Deals ${num(np.dmg)}% damage to ${target}`;
         if (np.ocDmg) t += ` (${num(np.dmg + np.ocDmg.v)}% to ${num(np.dmg + np.ocDmg.v5)}% with overcharge)`;
         const x = [];
         if (np.special) {
-          const vs = np.special.vs || ({ burn: 'Burned', poison: 'Poisoned', curse: 'Cursed' }[np.special.status]) || (np.special.anyOf && np.special.anyOf.map(x => STATUSADJ[x] || (x === 'Marking' ? 'Marked' : x)).join(' or ')) || (np.special.rarity && np.special.rarity.map(r => r + '★').join(' or ')) || '';
+          const vs = np.special.vs || ({ burn: 'Burned', poison: 'Poisoned', curse: 'Cursed', bind: 'Bound' }[np.special.status]) || (np.special.anyOf && np.special.anyOf.map(x => STATUSADJ[x] || (x === 'Marking' ? 'Marked' : x)).join(' or ')) || (np.special.rarity && np.special.rarity.map(r => r + '★').join(' or ')) || '';
           x.push(`${num(np.special.v)}%${np.special.v5 ? `–${num(np.special.v5)}%` : ''} damage against ${vs} enemies`);
         }
         if (np.affectionDmg) x.push(`+${num(np.affectionDmg)}% per Affection level above 1`);

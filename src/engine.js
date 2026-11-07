@@ -1334,7 +1334,7 @@ function npColor(u) {
 }
 function wake(g, t) { if (!t.dead && has(t, 'sleep')) { t.buffs = t.buffs.filter(b => b.s !== 'sleep'); log(g, `${t.name} wakes up.`, 'buff'); } }
 function sacrificeOf(g, u) { return front(g, u.side).find(x => x.uid !== u.uid && !x.dead && !hasTrait(x, 'Cant Be Sacrificed') && !has(x, 'eternalSleep')); }
-function npNeedsSacrifice(u) { const n = u.kit.np; return !!(n && [...(n.pre || []), ...(n.post || []), ...(n.oc || [])].some(e => e.k === 'sacrifice')); }
+function npNeedsSacrifice(u) { const n = u.kit.np; return !!(n && [...(n.pre || []), ...(n.ocPre || []), ...(n.post || []), ...(n.oc || [])].some(e => e.k === 'sacrifice')); }
 function availableNPs(g, p) {
   return front(g, p).filter(u => !hasNoNP(u) && u.np >= 100 && canAct(u) && !has(u, 'npSeal') && (!npNeedsSacrifice(u) || sacrificeOf(g, u))).map(u => ({ uid: u.uid, type: 'NP', id: `np-${u.uid}` }));
 }
@@ -1689,8 +1689,9 @@ function execNP(g, u, a, tag) {
   fx(g, { t: 'act', uid: u.uid, color: LETTER[color], np: true, label: np.n, oc });
   if (u.aff != null && oc >= 2) addAffection(g, u, oc === 2 ? 5 : oc === 3 ? 10 : 15, `${oc * 100}% overcharge`);
   const lv = affLevel(u); const gate = list => (list || []).filter(e => e.minAffection == null || lv >= e.minAffection);
-  const pre = gate(lerpOC(np.pre, oc)), post = gate(lerpOC(np.post, oc)), ocl = gate(lerpOC(np.oc, oc));
+  const pre = gate(lerpOC(np.pre, oc)), post = gate(lerpOC(np.post, oc)), ocl = gate(lerpOC(np.oc, oc)), ocPre = gate(lerpOC(np.ocPre, oc));
   applyEffects(g, pre, u, a.card.target, { from: np.n });
+  applyEffects(g, ocPre, u, a.card.target, { from: np.n }); // overcharge-scaling effects that come before the damage (e.g. an NP's own Quick or NP damage buff)
   fireTriggers(g, u, 'npBefore', { isNP: true, color: LETTER[color], target: U(g, a.card.target) });
   let targets = [];
   const single = !np.single && np.tgt === 'all' ? u.buffs.find(b => b.s === 'npSingle') : null; // Barghest: NP narrowed to one enemy

@@ -30,7 +30,7 @@ function score(kit) {
   for (const sk of kit.sk) walk(sk.e);
   const np = kit.np || {};
   const dmg = np.tgt && np.tgt !== 'none';
-  walk(np.pre, .6); walk(np.post, .6); walk(np.oc, .4);
+  walk(np.pre, .6); walk(np.ocPre, .6); walk(np.post, .6); walk(np.oc, .4);
   return { ...s, dmg, aoe: np.tgt === 'all' };
 }
 function classify(kit, id) {

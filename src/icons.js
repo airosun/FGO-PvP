@@ -107,7 +107,7 @@ Object.assign(P, {
   resA: `<circle cx="12" cy="12" r="9.3" fill="currentColor"/><path d="${HEX(12,12,6.6)}" fill="var(--arts)" stroke="var(--icon-bg)" stroke-width="1"/>`,
   resQ: `<circle cx="12" cy="12" r="9.3" fill="currentColor"/><path d="${HEX(12,12,6.6)}" fill="var(--quick)" stroke="var(--icon-bg)" stroke-width="1"/>`,
   resNp: `<circle cx="12" cy="12" r="9.3" fill="currentColor"/><path d="${HEX(12,12,6.6)}" fill="var(--t-yellow)" stroke="var(--icon-bg)" stroke-width="1"/>`,
-  resCrit: `<circle cx="12" cy="12" r="9.3" fill="currentColor"/>${IN('bolt', .62, 'fill:var(--t-crit);color:var(--t-crit)')}`,
+  resCrit: `<polygon points="21.05,15.75 15.75,21.05 8.25,21.05 2.95,15.75 2.95,8.25 8.25,2.95 15.75,2.95 21.05,8.25" fill="currentColor"/>${IN('bolt', .62, 'fill:var(--t-crit);color:var(--t-crit)')}`, // crit resistance: yellow bolt on an orange octagon
   critTaken: `<circle cx="12" cy="12" r="9.3" fill="currentColor"/>${IN('bolt', .62, 'color:var(--t-crit)')}`,
   ringStar: `<circle cx="12" cy="12" r="9"/>${IN('star', .58)}`,
   ringGauge: `<circle cx="12" cy="12" r="9"/>${IN('gauge', .56)}`,
