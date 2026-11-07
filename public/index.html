@@ -967,6 +967,8 @@ h1, h2 { letter-spacing: .01em; }
 .kvtabs { display: flex; flex-wrap: wrap; gap: 5px; }
 .kvtabs .chip { padding: 3px 10px; font-size: .74rem; }
 .kvar + .kvar, .kskills > .kvar { margin: 0; }
+
+.badge.thick-orange { border: 2.5px solid var(--t-orange); }
 </style>
 <script>// Original inline-SVG icon set: class icons and effect icons. Drawn for this prototype, not taken from the game.
 (function (root) {
@@ -1007,6 +1009,9 @@ const P = {
   eye: '<path d="M2.8 12S6.2 5.8 12 5.8 21.2 12 21.2 12 17.8 18.2 12 18.2 2.8 12 2.8 12z"/><circle cx="12" cy="12" r="2.8" fill="currentColor"/>',
   lock: '<rect x="5" y="10.5" width="14" height="10" rx="2" fill="currentColor"/><path d="M8 10.5V7.8a4 4 0 0 1 8 0v2.7"/>',
   noEntry: '<circle cx="12" cy="12" r="8"/><path d="m6.4 17.6 11.2-11.2"/>',
+  shieldSpokes: '<defs><clipPath id="shSp"><path d="M12 3.2 19 6v5.2c0 4.6-3.2 8-7 9.6-3.8-1.6-7-5-7-9.6V6z"/></clipPath></defs><path d="M12 3.2 19 6v5.2c0 4.6-3.2 8-7 9.6-3.8-1.6-7-5-7-9.6V6z" fill="currentColor"/><g clip-path="url(#shSp)"><path d="M12 3.2 19 6v5.2c0 4.6-3.2 8-7 9.6-3.8-1.6-7-5-7-9.6V6z" fill="#000" opacity=".2"/><path d="M12 11.6L12.00 -0.40M12 11.6L20.49 3.11M12 11.6L24.00 11.60M12 11.6L20.49 20.09M12 11.6L12.00 23.60M12 11.6L3.51 20.09M12 11.6L0.00 11.60M12 11.6L3.51 3.11" stroke="currentColor" stroke-width="1.3"/></g><circle cx="12" cy="11.6" r="1.7" fill="currentColor"/><path d="M12 3.2 19 6v5.2c0 4.6-3.2 8-7 9.6-3.8-1.6-7-5-7-9.6V6z" fill="none" stroke="currentColor" stroke-width="1.4"/>',
+  sunrise: '<defs><clipPath id="srC"><rect x="0" y="0" width="24" height="15.4"/></clipPath></defs><g clip-path="url(#srC)"><circle cx="12" cy="16" r="5.4" fill="#ffc83d" stroke="#ff9a2e" stroke-width="1.2"/></g><g stroke="#ffb020" stroke-width="1.8" stroke-linecap="round"><path d="M12 4.2v2.6M5.2 7.6l1.8 1.8M18.8 7.6 17 9.4M2.6 13h2.4M21.4 13H19"/></g><path d="M2 16.2h20" stroke="#ff8a3d" stroke-width="2" stroke-linecap="round"/><path d="M5.5 19.4h13" stroke="#ff8a3d" stroke-width="1.4" stroke-linecap="round" opacity=".7"/>',
+  dayNight: '<defs><clipPath id="dnD"><path d="M2.5 2.5h19L2.5 21.5z"/></clipPath><clipPath id="dnN"><path d="M21.5 2.5v19h-19z"/></clipPath></defs><rect x="2.5" y="2.5" width="19" height="19" rx="3.5" fill="#1b2350"/><g clip-path="url(#dnD)"><rect x="2.5" y="2.5" width="19" height="19" rx="3.5" fill="#7cc8ff"/><circle cx="8.2" cy="8.2" r="3.2" fill="#ffd23d"/><g stroke="#ffd23d" stroke-width="1.2" stroke-linecap="round"><path d="M8.2 3.4v.9M8.2 12.1v.9M3.4 8.2h.9M12.1 8.2h.9M4.8 4.8l.6.6M11 11l.6.6M4.8 11.6l.6-.6M11 5.4l.6-.6"/></g></g><g clip-path="url(#dnN)"><path d="M17.6 11.6a4.2 4.2 0 1 0 2.2 6.2 3.4 3.4 0 1 1-2.2-6.2z" fill="#f2efd2"/><circle cx="12.5" cy="17.8" r=".5" fill="#fff"/><circle cx="19.6" cy="9" r=".45" fill="#fff"/><circle cx="14.6" cy="13.6" r=".35" fill="#fff"/></g><path d="M21.5 2.5 2.5 21.5" stroke="#fff" stroke-width=".8" opacity=".8"/><rect x="2.5" y="2.5" width="19" height="19" rx="3.5" fill="none" stroke="#c9d3ee" stroke-width="1"/>',
   tag: '<path d="M3.5 12.2V4.5h7.7l9.3 9.3-7.7 7.7z"/><circle cx="8" cy="8.5" r="1.3" fill="currentColor"/>',
   hourglass: '<path d="M7 3.5h10M7 20.5h10M8 3.5c0 5 8 5 8 8.5s-8 3.5-8 8.5M16 3.5c0 5-8 5-8 8.5s8 3.5 8 8.5"/>',
   dice: '<rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1.3" fill="currentColor"/><circle cx="15" cy="15" r="1.3" fill="currentColor"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/>',
@@ -1101,7 +1106,7 @@ Object.assign(P, {
 
 // effect key -> [glyph, tone]
 const EFFECT = {
-  robin: ['robin', 'robin'], magicBullet: ['magicBullet', 'silver'],
+  robin: ['robin', 'robin'], magicBullet: ['magicBullet', 'silver'], sunrise: ['sunrise', 'gold'], dayNight: ['dayNight', 'white'], npDmgBold: ['burst', 'np', 'thick-orange'],
   atk: ['sword', 'atk'], def: ['shield', 'orange'], buster: ['hexStar', 'B'], arts: ['hexStar', 'A'], quick: ['hexStar', 'Q'], extra: ['hexStar', 'EX'],
   busterRes: ['resB', 'orange'], artsRes: ['resA', 'orange'], quickRes: ['resQ', 'orange'], allBuster: ['card', 'B'], npToArts: ['card', 'A'],
   npDmg: ['burst', 'np'], critDmg: ['bolt', 'crit'], critRate: ['bolt', 'crit'], starDrop: ['ringStar', 'star'], starGather: ['star', 'star'], starRegen: ['cwStar', 'star'], stars: ['star', 'star'],
@@ -1109,12 +1114,12 @@ const EFFECT = {
   debuffRes: ['shieldCheck', 'res'], mentalRes: ['shieldCheck', 'res'], atkDebuffRes: ['shieldCheck', 'res'], debuffImmune: ['shieldCheckFill', 'res'], ctrlImmune: ['shieldCheck', 'res'], cleanse: ['bubbles', 'res'],
   buffSuccess: ['dice', 'orange'], debuffSuccess: ['dice', 'orange'], mentalSuccess: ['dice', 'orange'],
   heal: ['heartPlus', 'heal'], healRecv: ['heartPlus', 'heal'], hpRegen: ['cwHeart', 'heal'], maxHp: ['heart', 'orange'],
-  dmgPlus: ['plus', 'atk'], dmgCut: ['shieldMinus', 'orange'], evade: ['dash', 'dpurple'], invincible: ['shieldFill', 'gold'], taunt: ['crosshair', 'white'],
+  dmgPlus: ['plus', 'atk'], dmgCut: ['shieldMinus', 'orange'], evade: ['dash', 'dpurple'], invincible: ['shieldSpokes', 'gold'], taunt: ['crosshair', 'white'],
   sureHit: ['target', 'red'], ignoreDef: ['shieldBroken', 'atk'], ignoreInv: ['shieldBroken', 'gold'], strip: ['shieldBroken', 'blue'],
   special: ['plus', 'atk'], specialDef: ['shieldCheck', 'orange'], guts: ['kneel', 'orange'], death: ['skull', 'bad'],
   curse: ['skull', 'purple'], burn: ['flame', 'bad'], burnDmg: ['flamePlus', 'bad'], poison: ['drop', 'dpurple'], curseOnAttack: ['swordMinus', 'atk'],
   pigify: ['pig', 'bad'], bind: ['lock', 'yellow'], petrify: ['lock', 'yellow'], sleep: ['cloudZ', 'pink'], stripRes: ['dice', 'orange'], deathRes: ['shieldCheck', 'orange'], deathImmune: ['shieldCheckFill', 'res'], deathSuccess: ['skull', 'atk'],
-  immuneTo: ['shieldCheckFill', 'res'], trueInvincible: ['shieldFill', 'silver'], npType: ['swap', 'np'], curseNoDeath: ['shieldCheck', 'res'],
+  immuneTo: ['shieldCheckFill', 'res'], trueInvincible: ['shieldSpokes', 'silver'], npType: ['swap', 'np'], curseNoDeath: ['shieldCheck', 'res'],
   noHeal: ['heart', 'bad'], npDmgRes: ['resNp', 'orange'], lockHand: ['lock', 'white'],
   critRes: ['resCrit', 'orange'], classRel: ['swap', 'util'],
   healGiven: ['heartPlusC', 'heal'], dmgTakenPlus: ['plus', 'blue'], multiHit: ['crossSwords', 'atk'], noCards: ['lock', 'white'], buffRecv: ['shieldCheck', 'orange'],
@@ -1134,7 +1139,7 @@ function classIcon(cls) { return `<span class="clsico" title="${cls}" aria-label
 // Named statuses with their own icon (matched on the effect's label), for the skill and for the status badge.
 const STATUS_ICON = { 'Blessing of Kur': 'kurFlower', 'Living Flame': 'livingFlame', 'Holy Grail Possession': 'holyGrail', 'Magic Bullet': 'magicBullet', Roman: 'romanShield', 'Like!': 'like', Like: 'like', 'Grudge of Vengeance': 'grudge', Vengeance: 'grudge', 'Past Alteration': 'pastAlt', Confusion: 'timedBad' };
 // Skills whose icon is picked by name, and buffs from those skills that share it (BB (Summer)'s card lock).
-const SKILL_ICON = { 'Faceless Moon EX': 'facelessMoon', 'Load Magic Bullet B': 'magicBullet' };
+const SKILL_ICON = { 'Faceless Moon EX': 'facelessMoon', 'Load Magic Bullet B': 'magicBullet', 'Ray Horizon A': 'sunrise', 'Connection to Wisdom EX': 'dayNight', 'Proserpina in Bloom EX': 'npDmgBold', 'Illusion (Fantastical) A': 'invincible' };
 const FROM_ICON = { 'Faceless Moon EX|lockHand': 'facelessMoon' };
 // A delayed effect that will hurt its holder or their team (a self-stun, a self-KO, sealed cards...) reads as a debuff.
 const BAD_TO = new Set([undefined, 'self', 'others', 'allies', 'ally']);
@@ -1167,11 +1172,11 @@ function effectKey(e) {
 const DOWN_BLUE = new Set(['atk', 'def', 'busterRes', 'artsRes', 'quickRes', 'critRes']);
 // Badge for an effect key. neg = harmful to the holder. dir = 'up' | 'down' | null.
 function badge(key, { neg = false, dir = null, tip = '', size = '', plain = false } = {}) {
-  let [glyph, tone] = EFFECT[key] || ['sparkle', 'util'];
+  let [glyph, tone, extra] = EFFECT[key] || ['sparkle', 'util'];
   if (dir === 'down' && DOWN_BLUE.has(key)) tone = 'blue'; // lowered ATK/DEF and lowered card or crit resistance read blue
   const arrow = dir ? `<span class="arr ${dir}">${dir === 'up' ? '▲' : '▼'}</span>` : '';
   const attrs = plain ? 'aria-hidden="true"' : `tabindex="0" role="img" data-tip="${tip}" aria-label="${tip}"`;
-  return `<span class="badge t-${tone}${neg ? ' neg' : ''} ${size}" ${attrs}>${svg(glyph)}${arrow}</span>`;
+  return `<span class="badge t-${tone}${neg ? ' neg' : ''}${extra ? ' ' + extra : ''} ${size}" ${attrs}>${svg(glyph)}${arrow}</span>`;
 }
 // Icon for a skill: its first effect.
 // Which icon a skill shows: a hand-picked one, the Heal icon for Imperial Privilege, a joint icon when the
