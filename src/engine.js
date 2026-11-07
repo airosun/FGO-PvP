@@ -552,7 +552,7 @@ function applyEffectInner(g, e, src, choice, ctx) {
       const cs = x.buffs.filter(b => b.s === 'curse'); if (!cs.length) continue;
       x.buffs = x.buffs.filter(b => b.s !== 'curse'); src.buffs.push(...cs); n += cs.length;
     }
-    log(g, n ? `${src.name} draws ${n} Curse${n > 1 ? 's' : ''} onto themselves.` : `${src.name}: no Curses to draw in.`, 'act'); return;
+    log(g, n ? `${src.name} draws ${n} Curse${n > 1 ? 's' : ''} onto ${pron(src, 'R')}.` : `${src.name}: no Curses to draw in.`, 'act'); return;
   }
   if (e.k === 'retreat') { // Miss Crane: she leaves for the back of the reserves and the next reserve steps in
     const P = g.players[src.side]; const next = P.reserve.find(id => !U(g, id).dead);
@@ -573,7 +573,7 @@ function applyEffectInner(g, e, src, choice, ctx) {
     log(g, `${src.name} sacrifices ${v.name}!`, 'dmg'); fx(g, { t: 'eff', uid: v.uid, key: 'death', neg: true, label: 'Sacrificed' });
     v.hp = 0; killOrGuts(g, v, src); return; // Guts can still save the sacrificed ally
   }
-  if (e.k === 'koSelf') { log(g, `${src.name} is knocked out by their own effect.`, 'dmg'); killOrGuts(g, src, src); return; }
+  if (e.k === 'koSelf') { log(g, `${src.name} is knocked out by ${pron(src, 'P')} own effect.`, 'dmg'); killOrGuts(g, src, src); return; }
   if (e.k === 'selfDmg' && has(src, 'plotArmor')) { log(g, `${src.name}'s Plot Armor cancels the drawback.`, 'buff'); return; }
   if (e.k === 'selfDmg') { const v = e.nonlethal ? Math.min(e.v, src.hp - 1) : e.v; src.hp -= Math.max(0, v); log(g, `${src.name} takes ${e.v} self-damage.`, 'dmg'); fx(g, { t: 'hit', uid: src.uid, dmg: Math.max(0, v), aff: 'even', self: true }); if (src.hp <= 0) killOrGuts(g, src, src); return; }
   if (e.k === 'field') { g.fieldOverride = { name: e.name, until: g.turn + e.t - 1, owner: e.endsOnDeath ? src.uid : null }; log(g, `The battlefield becomes ${fieldName(e.name)} for ${e.t} turn${e.t > 1 ? 's' : ''}.`, 'act'); fx(g, { t: 'banner', field: true, side: src.side, label: `Battlefield: ${fieldName(e.name)}` }); return; }
@@ -614,8 +614,8 @@ function applyEffectTargets(g, e, src, choice, ctx) {
         if (e.s === 'taunt') { g.lastTaunt = g.lastTaunt || [null, null]; g.lastTaunt[t.side] = t.uid; }
         if (e.s === 'maxHp') { g._quiet = true; t.hp = Math.max(1, Math.min(maxHp(t), t.hp + v)); g._quiet = false; if (g.stats && src && src.side === t.side && g.stats[src.uid] && v > 0) g.stats[src.uid].maxHpGiven += Math.round(v); }
         const demerit = !harmful && t.side !== src.side; // e.g. a skill that buffs the enemy as a drawback
-        log(g, `${t.name}: ${describeBuff(b)}.`, harmful ? 'debuff' : demerit ? 'demerit' : 'buff');
-        fx(g, { t: 'eff', uid: t.uid, buff: { ...b }, label: describeBuff(b) });
+        log(g, `${t.name}: ${describeBuff(b, t)}.`, harmful ? 'debuff' : demerit ? 'demerit' : 'buff');
+        fx(g, { t: 'eff', uid: t.uid, buff: { ...b }, label: describeBuff(b, t) });
         break;
       }
       case 'np': { if (hasNoNP(t)) break; t.np = Math.min(npCap(t), t.np + e.v); log(g, `${t.name}: NP +${e.v}% (now ${Math.floor(t.np)}%).`, 'buff'); fx(g, { t: 'eff', uid: t.uid, key: 'np', label: `NP +${e.v}%` }); break; }
@@ -723,7 +723,7 @@ function applyEffectTargets(g, e, src, choice, ctx) {
         break;
       }
       case 'control': {
-        if (e.selfInflicted) { t.buffs.push({ s: e.kind, v: 1, t: e.t, debuff: true, selfInflicted: true, from: ctx.from }); log(g, `${t.name} inflicts ${STAT_LABEL[e.kind]} on themselves (${e.t}T).`, 'debuff'); fx(g, { t: 'eff', uid: t.uid, key: e.kind, neg: true, label: `${STAT_LABEL[e.kind]} ${e.t}T` }); break; }
+        if (e.selfInflicted) { t.buffs.push({ s: e.kind, v: 1, t: e.t, debuff: true, selfInflicted: true, from: ctx.from }); log(g, `${t.name} inflicts ${STAT_LABEL[e.kind]} on ${pron(t, 'R')} (${e.t}T).`, 'debuff'); fx(g, { t: 'eff', uid: t.uid, key: e.kind, neg: true, label: `${STAT_LABEL[e.kind]} ${e.t}T` }); break; }
         if (!debuffLands(g, src, t, e)) break;
         if (e.kind === 'terror') { t.buffs.push({ s: 'terror', v: e.stunChance ?? 40, t: e.t, debuff: true, used: false, keep: e.keep, from: ctx.from }); log(g, `${t.name} is inflicted with Terror (${e.t}T).`, 'debuff'); fx(g, { t: 'eff', uid: t.uid, key: 'terror', neg: true, label: `Terror ${e.t}T` }); break; }
         const turns = Math.min(e.t, 1);
@@ -782,7 +782,10 @@ function applyEffectTargets(g, e, src, choice, ctx) {
     }
   }
 }
-function describeBuff(b) {
+// Pronouns for a servant from their listed gender (they/them when it isn't listed).
+const PRON = { Male: { S: 'he', O: 'him', P: 'his', R: 'himself' }, Female: { S: 'she', O: 'her', P: 'her', R: 'herself' } };
+function pron(u, k) { const p = u && u.d && PRON[u.d.gender]; return p ? p[k] : { S: 'they', O: 'them', P: 'their', R: 'themselves' }[k]; }
+function describeBuff(b, u) {
   const L = STAT_LABEL[b.s] || b.s;
   const turns = b.t === Infinity || b.t >= 90 ? '' : ` ${b.t}T`;
   const uses = b.n != null ? ` ${b.n}×` : '';
@@ -793,7 +796,7 @@ function describeBuff(b) {
   if (b.s === 'trueInvincible' && b.label) return `${b.label}: blocks the next hit completely, even through Ignore Invincible${uses}${turns}`;
   if (b.perField) return `${L} +${b.perField.add}% per ${b.perField.trait === 'Servant' ? 'enemy' : b.perField.trait} on the field${turns}`;
   if (b.s === 'knighthood') return `Knighthood Conferment: other allies' Guts revive with +${b.gutsHp} HP and grant ATK +${b.atkUp}% (3T)`;
-  if (b.s === 'guardianParry') return `Giant's Protection: blocks a hit on any ally on their field${uses}${turns}`;
+  if (b.s === 'guardianParry') return `Giant's Protection: blocks a hit on any ally on ${pron(u, 'P')} field${uses}${turns}`;
   if (b.s === 'doom') return `Thirst of Death: when it runs out, a death roll (DEF −50% for 1 turn if it fails)${turns}`;
   if (b.s === 'npEcho') return `NP +${b.v}% of what ${b.cls && b.cls.length ? b.cls.join('/') + ' ' : ''}allies spend on their NP${turns}`;
   if (b.s === 'fullCap') return `Fullness cap +${b.v}${turns}`;
@@ -819,9 +822,9 @@ function describeBuff(b) {
   if (b.s === 'lockHand') return `Hand locked (same cards each turn)${turns}`;
   if (b.s === 'immuneTo') return `Immune to ${b.cats.map(c => STAT_LABEL[c] || c).join(' and ')}${uses}${turns}`;
   if (b.s === 'aura') return `${b.label || 'Aura'}: allies' ${STAT_LABEL[b.aura.s] || b.aura.s} ${b.aura.v > 0 ? '+' : ''}${b.aura.v}%${b.aura.cond ? ` (${b.aura.cond} only)` : ''}${b.aura.notVsClass ? ` (not vs ${b.aura.notVsClass.join(', ')})` : ''} while on the field`;
-  if (b.s === 'territory') return `Territory Defense: hits on their allies are held to ${b.v} damage (${b.n} left)`;
+  if (b.s === 'territory') return `Territory Defense: hits on ${pron(u, 'P')} allies are held to ${b.v} damage (${b.n} left)`;
   if (b.s === 'formRevert') return `${b.label || 'Form change'}: changes back in ${b.t}T`;
-  if (b.s === 'counter') return `Counters each enemy attack, NP or debuff aimed at them with ${b.np ? b.np.n : 'an NP'}${turns}`;
+  if (b.s === 'counter') return `Counters each enemy attack, NP or debuff aimed at ${pron(u, 'O')} with ${b.np ? b.np.n : 'an NP'}${turns}`;
   if (b.s === 'eternalSleep') return 'Eternal Slumber (can\'t act, permanent)';
   if (b.s === 'rankUp') return `Skill Rank Up${turns}`;
   if (b.s === 'npType') return `NP is ${b.color}${turns}`;
@@ -1592,7 +1595,7 @@ function onHitRiders(g, u, t, color, isNP) {
     const e = { k: 'buff', s: b.eff.s, v: b.eff.v, t: b.eff.t };
     if (debuffLands(g, u, t, e)) {
       const d = { s: e.s, v: e.v, t: e.t, debuff: true, from: b.from };
-      t.buffs.push(d); log(g, `${t.name}: ${describeBuff(d)}.`, 'debuff'); fx(g, { t: 'eff', uid: t.uid, buff: { ...d }, label: describeBuff(d) });
+      t.buffs.push(d); log(g, `${t.name}: ${describeBuff(d, t)}.`, 'debuff'); fx(g, { t: 'eff', uid: t.uid, buff: { ...d }, label: describeBuff(d, t) });
     }
     if (b.n != null) { b.n -= 1; if (b.n <= 0) u.buffs.splice(u.buffs.indexOf(b), 1); }
   }
@@ -1680,7 +1683,7 @@ function execNP(g, u, a, tag) {
   const spent = u.np; g._spending = true; u.np = 0; g._spending = false; if (g.stats) g.stats[u.uid].nps++;
   for (const x of front(g, u.side)) if (x !== u) for (const b of x.buffs.filter(b => b.s === 'npEcho')) { // Solomon: NP back when a Caster ally uses theirs
     if (b.cls && b.cls.length && !b.cls.includes(effCls(u))) continue;
-    const gain = Math.round(spent * b.v) / 100; x.np = Math.min(npCap(x), x.np + gain); log(g, `${x.name}: NP +${gain}% (${u.name} used their NP).`, 'buff');
+    const gain = Math.round(spent * b.v) / 100; x.np = Math.min(npCap(x), x.np + gain); log(g, `${x.name}: NP +${gain}% (${u.name} used ${pron(u, 'P')} NP).`, 'buff');
   }
   log(g, `${tag}: ${u.name} activates Noble Phantasm ${np.n}! (NP${npLevel(u)}, overcharge ${oc * 100}%)`, 'np');
   fx(g, { t: 'act', uid: u.uid, color: LETTER[color], np: true, label: np.n, oc });
@@ -1771,7 +1774,7 @@ function endTurn(g) {
       if (b.s === 'curse' && has(u, 'curseNoDeath')) v = Math.min(v, Math.max(0, u.hp - 1)); // Curse can't finish her off
       const dc = sumStat(u, 'dotCut'); if (dc) v = Math.max(0, v - dc); // Alice: less damage from Poison/Curse/Burn
       if (u.buffs.some(x => x.s === 'dotHeal' && x.kind === b.s)) { // Locusta: Poison heals her instead
-        if (!has(u, 'noHeal')) { u.hp = Math.min(maxHp(u), u.hp + v); creditHeal(g, u, u, v); log(g, `${u.name}'s ${b.s} heals them for ${v} HP.`, 'buff'); fx(g, { t: 'eff', uid: u.uid, key: 'heal', label: `+${v} HP` }); }
+        if (!has(u, 'noHeal')) { u.hp = Math.min(maxHp(u), u.hp + v); creditHeal(g, u, u, v); log(g, `${u.name}'s ${b.s} heals ${pron(u, 'O')} for ${v} HP.`, 'buff'); fx(g, { t: 'eff', uid: u.uid, key: 'heal', label: `+${v} HP` }); }
         continue;
       }
       // Burn, Curse and Poison count as damage (and a KO) for whoever applied them
@@ -1869,7 +1872,7 @@ function decideByLimit(g) {
 }
 
 const API = {
-  CFG, MYSTIC, masterSkills, isSwap, STAT_LABEL, cardWillChange, fullCap, cardSealed, fieldActive, effCls, affLevel, AFF_NAME, CLASS_LIST, FIELDS, fieldName, currentField, fieldTurnsLeft, actBlocker, rawAffinity, snap, sealUsable, sealTargetOk, queueSeal, unqueueSeal, MASTER, masterUsable, queueMaster, unqueueMaster, swappingOut, npCap, npLevel, hasNoNP, allyTargetOk, COLOR, costOf, teamCost, snakeOrder, canPick, EXCLUSIVE, META, starRate, npPerHit, skillRank, skillOption, newBattle, front, maxHp, has, sumStat,
+  pron, CFG, MYSTIC, masterSkills, isSwap, STAT_LABEL, cardWillChange, fullCap, cardSealed, fieldActive, effCls, affLevel, AFF_NAME, CLASS_LIST, FIELDS, fieldName, currentField, fieldTurnsLeft, actBlocker, rawAffinity, snap, sealUsable, sealTargetOk, queueSeal, unqueueSeal, MASTER, masterUsable, queueMaster, unqueueMaster, swappingOut, npCap, npLevel, hasNoNP, allyTargetOk, COLOR, costOf, teamCost, snakeOrder, canPick, EXCLUSIVE, META, starRate, npPerHit, skillRank, skillOption, newBattle, front, maxHp, has, sumStat,
   skillUsable, skillTargetKind, queueSkill, unqueueSkill, activateOrderChange, resolveSkills, availableNPs, cardColor, npColor, canAct,
   setCards, resolveCards, describeBuff, cloneGame, classMult, attrMult, aliveCount, hpPct, mkRng,
 };

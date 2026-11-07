@@ -20,9 +20,9 @@ const CLASSES = ['All', ...E.CLASS_LIST.filter(c => POOL.some(d => d.cls === c))
 const I = window.Icons;
 const CI = c => I.classIcon(c);
 const NOARROW = new Set(['trigger', 'reflect', 'counter', 'territory', 'formRevert', 'deathImmune', 'bind', 'petrify', 'sleep', 'quickHitDebuff', 'ocUp', 'npOnBurnHit', 'taunt', 'evade', 'invincible', 'sureHit', 'ignoreDef', 'ignoreInv', 'allBuster', 'npToArts', 'debuffImmune', 'trait', 'buffBlock', 'ctrlImmune', 'guts', 'delayed', 'stun', 'charm', 'terror', 'skillSeal', 'npSeal', 'curse', 'burn', 'poison', 'curseOnAttack', 'busterAtkNp']);
-function buffBadge(b) {
+function buffBadge(b, u) {
   const dir = NOARROW.has(b.s) || typeof b.v !== 'number' ? null : (b.v >= 0 ? 'up' : 'down');
-  const tip = `${E.describeBuff(b)}${b.from ? ' · from ' + b.from : ''}`;
+  const tip = `${E.describeBuff(b, u)}${b.from ? ' · from ' + b.from : ''}`;
   if (b.icon) return I.badge(b.icon, { tip: esc(tip) }); // e.g. Alice's Robin substitute
   if (I.statusKey(b)) return I.badge(I.statusKey(b), { neg: !!b.debuff, tip: esc(tip) }); // e.g. Blessing of Kur, Living Flame
   return I.badge(b.s, { neg: !!b.debuff, dir: b.s.endsWith('Res') && b.debuff ? 'down' : dir, tip: esc(tip) });
@@ -190,7 +190,7 @@ function searchIndex(d) {
     SEARCH_IX[d.id] = {
       servant: [{ label: d.name, txt: fold(d.name) }],
       np: k.np && !k.np.noNP ? [{ label: k.np.n, txt: fold(k.np.n + ' ' + d.np + ' ' + Describe.npText(k, d)) }] : [],
-      skill: k.sk.map((sk, i) => ({ label: sk.n, txt: fold(Describe.skillText(k, i)) })),
+      skill: k.sk.map((sk, i) => ({ label: sk.n, txt: fold(Describe.skillText(k, i, d)) })),
       trait: traits.map(t => ({ label: t, txt: fold(t) })),
     };
   }
@@ -250,7 +250,7 @@ function modal(body, foot, closeAct, label) {
   return `<div class="modal-back" data-act="${closeAct}"><div class="modal" role="dialog" aria-modal="true" aria-label="${esc(label)}" data-act="noop">
     <button class="modal-x" data-act="${closeAct}" aria-label="Close">✕</button><div class="modal-body">${body}</div>${foot ? `<div class="modal-foot">${foot}</div>` : ''}</div></div>`;
 }
-function skillTip(x, i) { return Describe.skillText(x.kit, i); }
+function skillTip(x, i) { return Describe.skillText(x.kit, i, x.d); }
 // Form switch shown on a servant with a second draftable form (Mash: 4★ base / 5★ Paladin).
 function formSwitch(d) {
   const base = baseOf(d.id), alt = ALT_FORM[base]; if (alt == null) return '';
@@ -406,7 +406,7 @@ function statusGroups(u) {
     const dir = NOARROW.has(b.s) || typeof b.v !== 'number' ? null : (b.s.endsWith('Res') && b.debuff ? 'down' : b.v >= 0 ? 'up' : 'down');
     const key = b.icon || I.statusKey(b) || b.s;
     const id = `${key}|${b.debuff ? 1 : 0}|${dir}`;
-    if (!groups.has(id)) groups.set(id, { key, dir, neg: !!b.debuff, list: [], plain: !!(b.icon || I.statusKey(b)) });
+    if (!groups.has(id)) groups.set(id, { key, dir, neg: !!b.debuff, list: [], plain: !!(b.icon || I.statusKey(b)), u });
     groups.get(id).list.push(b);
   }
   return [...groups.values()];
@@ -414,7 +414,7 @@ function statusGroups(u) {
 function groupBadge(gp) {
   const left = Math.min(...gp.list.map(b => b.t));
   const times = gp.list.reduce((a, b) => a + (b.n || 0), 0);
-  const tip = gp.list.map(b => `${E.describeBuff(b)}${b.from ? ' · from ' + b.from : ''}`).join('\n');
+  const tip = gp.list.map(b => `${E.describeBuff(b, gp.u)}${b.from ? ' · from ' + b.from : ''}`).join('\n');
   const badge = gp.plain ? I.badge(gp.key, { neg: gp.neg, tip: esc(tip) }) : I.badge(gp.key, { neg: gp.neg, dir: gp.dir, tip: esc(tip) });
   return `<span class="sb${gp.neg ? ' bad' : ''}">${badge}${gp.list.length > 1 ? `<i class="sbn">${gp.list.length}</i>` : ''}${Number.isFinite(left) ? `<i class="sbt">${left}</i>` : times ? `<i class="sbt">${times}×</i>` : ''}</span>`;
 }
@@ -435,7 +435,7 @@ function unitTile(u, opts) {
   const tgt = (opts.targetable ? ' targetable' : '') + (opts.aff ? ` aff-${opts.aff.k}` : '');
   const sel = opts.selected ? ' selected' : '';
   return `<div class="unit p${u.side}${u.dead ? ' dead' : ''}${tgt}${sel}" data-act="unit" data-uid="${u.uid}" role="button" tabindex="0">
-    <span class="uhead">${CI(E.effCls(u))}<span class="uname">${esc(u.name)}</span>${u.full != null ? `<span class="fulll" tabindex="0" data-tip="${esc(`Fullness ${u.full}/${E.fullCap(u)}. Kurakura's Meals feed every ally that isn't full (+2 each; the rare Legendary Rice Ball +12). Each attack (not the Extra Attack) digests 1. Beni-Enma's Sparrow's Tub Bath empties theirs by 2, and their NP raises everyone's cap by 4 for 5 turns.`)}">🍙 ${u.full}/${E.fullCap(u)}</span>` : ''}${u.aff != null ? `<span class="affl" tabindex="0" data-tip="${esc(`Affection Lv ${E.affLevel(u)} (${E.AFF_NAME(E.affLevel(u))}), ${u.aff} points. Every 10 points is a level. Gains: +3 per card of theirs chosen, +6 Brave Chain, +3 per skill they use (+2 more if it's your first skill that turn), +5/+10/+15 for NP overcharge 200/300/400%+, +10 when the field becomes Waterside, +5 Master skill, +10 Command Seal. Her NP gets +10% damage per level above 1; Lv 4+: Death success up; Lv 7+: Ignore DEF and Ignore Invincible; Lv 10: 50 stars and crit chance up.`)}">♥ Lv ${E.affLevel(u)}</span>` : ''}${opts.aff ? `<span class="afftag ${opts.aff.k}">${opts.aff.k === 'up' ? 'Weak' : opts.aff.k === 'down' ? 'Resists' : 'Neutral'} ×${+opts.aff.m.toFixed(2)}</span>` : opts.marks && opts.marks.length ? `<span class="tgtmark">Slot ${opts.marks.join(', ')}</span>` : ''}</span>
+    <span class="uhead">${CI(E.effCls(u))}<span class="uname">${esc(u.name)}</span>${u.full != null ? `<span class="fulll" tabindex="0" data-tip="${esc(`Fullness ${u.full}/${E.fullCap(u)}. Kurakura's Meals feed every ally that isn't full (+2 each; the rare Legendary Rice Ball +12). Each attack (not the Extra Attack) digests 1. Beni-Enma's Sparrow's Tub Bath empties theirs by 2, and her NP raises everyone's cap by 4 for 5 turns.`)}">🍙 ${u.full}/${E.fullCap(u)}</span>` : ''}${u.aff != null ? `<span class="affl" tabindex="0" data-tip="${esc(`Affection Lv ${E.affLevel(u)} (${E.AFF_NAME(E.affLevel(u))}), ${u.aff} points. Every 10 points is a level. Gains: +3 per card of hers chosen, +6 Brave Chain, +3 per skill she uses (+2 more if it's your first skill that turn), +5/+10/+15 for NP overcharge 200/300/400%+, +10 when the field becomes Waterside, +5 Master skill, +10 Command Seal. Her NP gets +10% damage per level above 1; Lv 4+: Death success up; Lv 7+: Ignore DEF and Ignore Invincible; Lv 10: 50 stars and crit chance up.`)}">♥ Lv ${E.affLevel(u)}</span>` : ''}${opts.aff ? `<span class="afftag ${opts.aff.k}">${opts.aff.k === 'up' ? 'Weak' : opts.aff.k === 'down' ? 'Resists' : 'Neutral'} ×${+opts.aff.m.toFixed(2)}</span>` : opts.marks && opts.marks.length ? `<span class="tgtmark">Slot ${opts.marks.join(', ')}</span>` : ''}</span>
     <span class="bars"><span class="bar hp${hpPct <= 30 ? ' low' : hpPct <= 60 ? ' mid' : ''}"><span style="width:${hpPct}%"></span></span>${E.hasNoNP(u) ? '' : `<span class="bar np${u.np >= 100 ? ' full' : ''}" title="NP gauge cap ${E.npCap(u)}% (NP${E.npLevel(u)})">${[0, 1, 2].filter(k => k * 100 < E.npCap(u)).map(k => { const w = Math.max(0, Math.min(100, u.np - k * 100)); return w > 0 ? `<span class="np${k + 1}${w >= 100 ? ' done' : ''}" style="width:${w}%"></span>` : ''; }).join('')}</span>`}</span>
     <span class="nums"><span>HP ${Math.max(0, Math.round(u.hp))}/${Math.round(mhp)}</span>${E.hasNoNP(u) ? '<span class="npnum none" title="This form has no Noble Phantasm">No NP</span>' : `<span class="npnum${u.np >= 100 ? ' full' : ''}${u.np >= 300 ? ' l3' : u.np >= 200 ? ' l2' : ''}">NP ${Math.floor(u.np)}%</span>`}</span>
     ${chips || used ? `<span class="chips">${chips}${used ? `<span class="usedrow" title="Skills used this turn"><span class="usedlbl">Used</span>${used}</span>` : ''}</span>` : ''}</div>`;
@@ -515,7 +515,7 @@ function turnBar() {
 function cardInner(g, c) {
   const x = g.units[c.uid]; const col = E.cardColor(g, c); const acts = E.canAct(x) && !E.cardSealed(g, c);
   const label = c.type === 'NP' ? `NP · ${E.npColor(x)}` : E.COLOR[col];
-  const chg = c.type !== 'NP' && E.cardWillChange(g, c) ? `<span class="cchg" title="This card changes type when ${esc(x.name)}'s NP transforms them">${I.svg('cycle')}</span>` : '';
+  const chg = c.type !== 'NP' && E.cardWillChange(g, c) ? `<span class="cchg" title="This card changes type when ${esc(x.name)}'s NP transforms ${E.pron(x, 'O')}">${I.svg('cycle')}</span>` : '';
   return { col, acts, html: `${chg}<span class="ctype">${label}</span>${c.type === 'NP' ? `<span class="npname">${esc(x.kit.np.n)}</span>` : ''}<span class="cname" data-full="${esc(whoIs(x))}">${esc(x.name)}</span>${c.stars ? `<span class="cstars">${c.stars}★ · ${Math.min(100, c.stars * 10)}% crit</span>` : ''}${!acts ? '<span class="xmark" aria-hidden="true"></span><span class="cstars">Won\'t activate</span>' : ''}` };
 }
 function handRows(nps, hand, face) {
@@ -610,7 +610,7 @@ function renderLog() {
 function renderFocus() {
   const g = app.g; const f = app.ui.focus && g.units[app.ui.focus];
   if (!f) return '';
-  const all = f.buffs.filter(b => !(b.passive && (b.hidden || b.s === 'trigger' && !b.label))).map(b => `<li class="${b.debuff ? 'neg' : ''}">${buffBadge(b)}<span>${esc(E.describeBuff(b))}${b.from ? ` <small>· ${esc(b.from)}</small>` : ''}</span></li>`).join('');
+  const all = f.buffs.filter(b => !(b.passive && (b.hidden || b.s === 'trigger' && !b.label))).map(b => `<li class="${b.debuff ? 'neg' : ''}">${buffBadge(b, f)}<span>${esc(E.describeBuff(b, f))}${b.from ? ` <small>· ${esc(b.from)}</small>` : ''}</span></li>`).join('');
   const x = viewUnit(f);
   const cds = f.kit.sk.map((sk, i) => `<li>${I.skillIcon(sk)}<span class="cdname">${esc(sk.n)}</span><b>${f.cds[i] ? `${f.cds[i]} turn${f.cds[i] > 1 ? 's' : ''}` : 'Ready'}</b></li>`).join('');
   const status = `<div class="fstatus"><p class="eyebrow">${PN(f.side)} · ${f.dead ? 'Defeated' : g.players[f.side].front.includes(f.uid) ? 'On the field' : 'In reserve'}</p>
@@ -703,7 +703,7 @@ async function step(ev, tok) {
     floater(ev.in, `${I.badge('swap', { plain: true })}<span>Order Change</span>`, 'pos');
     await wait(T.enter + 200, tok);
   } else if (ev.t === 'eff') {
-    const icon = ev.buff ? buffBadge(ev.buff) : I.badge(ev.key, { neg: !!ev.neg, plain: true });
+    const icon = ev.buff ? buffBadge(ev.buff, app.g && app.g.units[ev.uid]) : I.badge(ev.key, { neg: !!ev.neg, plain: true });
     floater(ev.uid, `${icon}<span>${esc(ev.label)}</span>`, ev.miss ? 'miss' : (ev.neg || (ev.buff && ev.buff.debuff)) ? 'neg' : 'pos');
     await wait(140, tok); if (tok.skip) return; patchView(ev.snap); await wait(T.eff - 140, tok);
   } else if (ev.t === 'act') {
