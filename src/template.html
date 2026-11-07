@@ -954,6 +954,12 @@ h1, h2 { letter-spacing: .01em; }
 /* demerits (drawbacks the caster takes for using a skill or NP) read in red */
 .klines li.demerit .kw, .klines li.demerit .km { color: var(--neg); }
 .klines li.demerit::before { background: var(--neg); }
+
+/* kit cards that change between a servant's forms */
+.kvar { display: grid; gap: 6px; }
+.kvtabs { display: flex; flex-wrap: wrap; gap: 5px; }
+.kvtabs .chip { padding: 3px 10px; font-size: .74rem; }
+.kvar + .kvar, .kskills > .kvar { margin: 0; }
 </style>
 <script>__ICONS__</script>
 <script>__SCENES__</script>

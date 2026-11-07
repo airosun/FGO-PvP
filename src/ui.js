@@ -252,10 +252,38 @@ const MECH_NOTES = {
 };
 function kitHtml(d) {
   const kit = KITS[d.id]; const K = Describe.describeKit(kit, d);
-  const npHtml = npCard(d, K.np);
-  const skills = K.skills.map((sk, i) => skillCard(kit.sk[i], sk)).join('');
+  const forms = kitForms(d.id); // other forms this servant can switch into (Mélusine's Final Ascension, Paladin Mash's Holy Sword...)
+  const view = forms.map(f => ({ ...f, d: R[f.id], kit: KITS[f.id], K: f.id === d.id ? K : Describe.describeKit(KITS[f.id], R[f.id]) }));
+  const npHtml = variants(view, v => v.K.np && npCard(v.d, v.K.np), v => JSON.stringify(v.kit.np));
+  const skills = kit.sk.map((s, i) => variants(view, v => v.K.skills[i] && skillCard(v.kit.sk[i], v.K.skills[i]), v => JSON.stringify(v.kit.sk[i]))).join('');
+  const pas = variants(view, v => v.K.passives.length ? `<div class="kcard pas">${kitLines(v.K.passives)}</div>` : '<p class="hint">None.</p>', v => JSON.stringify(v.K.passives.map(l => l.text)));
   const how = MECH_NOTES[d.id] ? `<h4>How it works</h4><div class="kcard how"><ul class="klines">${MECH_NOTES[d.id].map(t => `<li><span class="kw">${esc(t)}</span></li>`).join('')}</ul></div>` : '';
-  return `<h4>Noble Phantasm</h4>${npHtml}<h4>Skills</h4><div class="kskills">${skills}</div>${altFormHtml(d, kit, K)}${how}<h4>Passives</h4>${K.passives.length ? `<div class="kcard pas">${kitLines(K.passives)}</div>` : '<p class="hint">None.</p>'}`;
+  return `<h4>Noble Phantasm</h4>${npHtml}<h4>Skills</h4><div class="kskills">${skills}</div>${how}<h4>Passives</h4>${pas}`;
+}
+// Every form a servant's kit can switch into, in order, starting with the one shown. Each gets a short tab label.
+function kitForms(id) {
+  const seen = [id], trs = {};
+  for (let i = 0; i < seen.length; i++) {
+    const k = KITS[seen[i]]; if (!k) continue;
+    const scan = e => { if (!e || typeof e !== 'object') return; if (Array.isArray(e)) return e.forEach(scan);
+      if (e.k === 'transform' && R[e.into] && KITS[e.into]) { if (!seen.includes(e.into)) seen.push(e.into); if (e.label && !trs[e.into]) trs[e.into] = e.label; }
+      Object.values(e).forEach(scan); };
+    scan(k.np); scan(k.sk); scan(k.pas);
+  }
+  const short = fid => { const n = R[fid].name, m = /\(([^)]*)\)\s*$/.exec(n); const base = R[id].name.replace(/\s*\([^)]*\)\s*$/, '');
+    return trs[fid] || (m && n.startsWith(base) ? m[1].split(' · ').pop() : n); };
+  const labels = seen.map(short);
+  // the starting form reads "Base" next to a sub-form (Final Ascension, Holy Sword); next to a separate identity (Hyde, Super Aoko) it keeps its name
+  labels[0] = seen.slice(1).some((fid, k) => labels[k + 1] !== R[fid].name) ? 'Base' : R[id].name;
+  return seen.map((fid, k) => ({ id: fid, label: labels[k] }));
+}
+// One card, or a set of cards with tabs when the forms differ.
+function variants(view, card, sig) {
+  const groups = [];
+  for (const v of view) { const s = sig(v); const g = groups.find(x => x.sig === s); if (g) g.labels.push(v.label); else groups.push({ sig: s, labels: [v.label], html: card(v) }); }
+  const shown = groups.filter(g => g.html);
+  if (shown.length <= 1) return shown[0] ? shown[0].html : '';
+  return `<div class="kvar"><div class="kvtabs" role="tablist">${shown.map((g, k) => `<button class="chip${k ? '' : ' on'}" role="tab" aria-selected="${!k}" data-act="kvar" data-i="${k}">${esc(g.labels.join(' / '))}</button>`).join('')}</div>${shown.map((g, k) => `<div class="kvpanel" data-i="${k}"${k ? ' hidden' : ''}>${g.html}</div>`).join('')}</div>`;
 }
 function npCard(d, n) {
   const npCol = { Buster: 'B', Arts: 'A', Quick: 'Q' }[d.np] || '';
@@ -265,14 +293,6 @@ function npCard(d, n) {
 }
 function skillCard(raw, sk) {
   return `<div class="kcard"><div class="khead">${I.skillIcon(raw)}<b>${esc(sk.name)}</b><span class="kpill">CD ${sk.cd}</span></div>${kitLines(sk.lines)}${sk.ranks.map((r, k) => `<p class="koc">Rank Up ${k + 1}</p>${kitLines(r)}`).join('')}</div>`;
-}
-// A temporary form the NP switches into (Paladin Mash's Holy Sword): show the NP and skills that change.
-function altFormHtml(d, kit) {
-  const tr = [...(kit.np.pre || []), ...(kit.np.post || [])].find(e => e.k === 'transform' && e.revert);
-  if (!tr || !R[tr.into] || !KITS[tr.into]) return '';
-  const ad = R[tr.into], ak = KITS[tr.into], AK = Describe.describeKit(ak, ad);
-  const changed = ak.sk.map((s, i) => s.n !== (kit.sk[i] || {}).n ? skillCard(s, AK.skills[i]) : '').join('');
-  return `<h4>While the ${esc(tr.label || 'other form')} is loaded <small class="hint">(${tr.revert - 1} turns after the NP)</small></h4><div class="kalt">${npCard(ad, AK.np)}${changed ? `<div class="kskills">${changed}</div>` : ''}</div>`;
 }
 // Centered pop-up used for servant info (draft and battle). Clicking the backdrop or the X closes it.
 // Class affinity chart in battle: the same chart as on the setup screen, in a modal.
@@ -1615,6 +1635,12 @@ document.addEventListener('click', ev => {
     case 'rar': PS().rar = el.dataset.r; return render();
     case 'focus': PS().focus = +el.dataset.id; return render();
     case 'form-switch': PS().focus = +el.dataset.id; return render();
+    case 'kvar': { // flip a kit card between a servant's forms
+      const box = el.closest('.kvar'); if (!box) return;
+      box.querySelectorAll('.kvtabs .chip').forEach(b => { const on = b === el; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); });
+      box.querySelectorAll('.kvpanel').forEach(p => { p.hidden = p.dataset.i !== el.dataset.i; });
+      return;
+    }
     case 'close-detail': PS().focus = null; return render();
     case 'search-mode-menu': PS().modeMenu = !PS().modeMenu; return render();
     case 'search-mode': { PS().mode = el.dataset.m; PS().modeMenu = false; render(); const i = document.getElementById('draftSearch'); if (i) { i.focus(); const n = i.value.length; i.setSelectionRange(n, n); } return; }
