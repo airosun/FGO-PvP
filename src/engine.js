@@ -319,6 +319,14 @@ function hasMark(u, id) {
   if (id === 2999) { const g = u.g; return !!(g && g.players && [0, 1].some(p => front(g, p).some(x => !x.dead && hasTrait(x, 'Illya')))); } // Miyu: an Illya is on the field
   if (id === 3005) return u.buffs.some(b => b.debuff); if (id === 3004) return u.buffs.some(b => !b.debuff && !b.passive); return markCount(u, id) > 0; }
 function markCount(u, id) { return u.buffs.filter(b => b.marks && b.marks.includes(id)).length; }
+// How many of a status or trait a target carries, for NPs whose bonus grows per stack (Count of Monte Cristo: each Burn).
+function stackCount(t, x) {
+  if (['burn', 'curse', 'poison', 'evade', 'invincible'].includes(x)) return t.buffs.filter(b => b.s === x).length;
+  if (x === 'Buff Mental Effect') return t.buffs.filter(b => b.debuff && (MENTAL.has(b.s) || MENTAL.has(b.kind) || b.label === 'Confusion')).length;
+  const m = /^Trait (\d+)$/.exec(x);
+  if (m) return t.buffs.filter(b => b.marks && b.marks.includes(+m[1])).length;
+  return (t.traits.has(x) ? 1 : 0) + t.buffs.filter(b => (b.s === 'trait' && b.trait === x) || (b.tags && b.tags.includes(x))).length;
+}
 // Field auras (Oberon): a passive on a servant that's alive on the field, applying to every ally that meets its condition.
 function auraStat(u, s, tgt) {
   const g = u.g; if (!g || !g.players) return 0;
@@ -359,7 +367,8 @@ function matchesSpecial(b, tgt) {
 }
 function hasTrait(u, t) {
   if (u.traits.has(t)) return true;
-  return u.buffs.some(b => (b.s === 'trait' && b.trait === t) || (b.tags && b.tags.includes(t)));
+  const m = /^Trait (\d+)$/.exec(t); // a status known only by its game code (e.g. Jade Rabbit's Under the Moonlight)
+  return u.buffs.some(b => (b.s === 'trait' && b.trait === t) || (b.tags && b.tags.includes(t)) || (m && b.marks && b.marks.includes(+m[1])));
 }
 function consume(u, s) {
   const b = u.buffs.find(x => x.s === s && x.n != null && x.n > 0);
@@ -526,7 +535,8 @@ function applyEffectInner(g, e, src, choice, ctx) {
   if (e.k === 'meal') { serveMeal(g, src); return; }
   if (e.k === 'redeal') { deal(g, src.side, true); log(g, `P${src.side + 1}'s Command Cards are reshuffled.`, 'buff'); fx(g, { t: 'eff', uid: src.uid, key: 'swap', label: 'New hand' }); return; }
   if (e.k === 'npTypeChoice' || e.k === 'npTypeRandom') { // Space Ishtar: the player picks the NP card type (Arts by default)
-    const color = ['Arts', 'Buster', 'Quick'].includes(ctx.opt) ? ctx.opt : 'Arts';
+    const opts = e.options || ['Arts', 'Buster', 'Quick'];
+    const color = opts.includes(ctx.opt) ? ctx.opt : (e.def || opts[0]);
     src.buffs = src.buffs.filter(b => b.s !== 'npType');
     src.buffs.push({ s: 'npType', v: 1, color, t: e.t, from: ctx.from });
     log(g, `${src.name}'s NP becomes ${color} (${e.t}T).`, 'buff'); fx(g, { t: 'eff', uid: src.uid, key: 'npToArts', label: `NP: ${color}` }); return;
@@ -609,7 +619,7 @@ function applyEffectTargets(g, e, src, choice, ctx) {
         let v = e.v;
         if (e.missingHpBonus) v += e.missingHpBonus * (1 - t.hp / maxHp(t));
         // carry: gained mid-turn, it still lasts through the next turn (outside end-of-turn, which already starts counting next turn)
-        const b = { s: e.s, v: Math.round(v * 100) / 100, t: e.carry && !g.inEndTurn ? e.t + 1 : e.t, n: e.n, debuff: harmful, vs: e.vs, vsList: e.vsList, status: e.status, statusAny: e.statusAny, alignVs: e.alignVs, trait: e.trait, tags: e.tags, eff: e.eff, on: e.on, cards: e.cards, crit: e.crit, vsAny: e.vsAny, label: e.label, chance: e.chance, marks: e.marks, hpBelow: e.hpBelow, vLow: e.vLow, atk: e.atk, def: e.def, whileHas: e.whileHas, whileMark: e.whileMark, hpAbove: e.hpAbove, perMark: e.perMark, perField: e.perField, perMarkOp: e.perMarkOp, cats: e.cats, mainOnly: e.mainOnly, np: e.np, color: e.color, icon: e.icon, cls: e.cls, srcUid: src.uid, dmg: e.dmg, fields: e.fields, kind: e.kind, keep: e.keep, from: ctx.from };
+        const b = { s: e.s, v: Math.round(v * 100) / 100, t: e.carry && !g.inEndTurn ? e.t + 1 : e.t, n: e.n, debuff: harmful, vs: e.vs, vsList: e.vsList, status: e.status, statusAny: e.statusAny, alignVs: e.alignVs, trait: e.trait, tags: e.tags, eff: e.eff, on: e.on, cards: e.cards, crit: e.crit, vsAny: e.vsAny, label: e.label, chance: e.chance, marks: e.marks, unremovable: e.unremovable, hpBelow: e.hpBelow, vLow: e.vLow, atk: e.atk, def: e.def, whileHas: e.whileHas, whileMark: e.whileMark, hpAbove: e.hpAbove, perMark: e.perMark, perField: e.perField, perMarkOp: e.perMarkOp, cats: e.cats, mainOnly: e.mainOnly, np: e.np, color: e.color, icon: e.icon, cls: e.cls, srcUid: src.uid, dmg: e.dmg, fields: e.fields, kind: e.kind, keep: e.keep, from: ctx.from };
         t.buffs.push(b);
         if (e.s === 'taunt') { g.lastTaunt = g.lastTaunt || [null, null]; g.lastTaunt[t.side] = t.uid; }
         if (e.s === 'maxHp') { g._quiet = true; t.hp = Math.max(1, Math.min(maxHp(t), t.hp + v)); g._quiet = false; if (g.stats && src && src.side === t.side && g.stats[src.uid] && v > 0) g.stats[src.uid].maxHpGiven += Math.round(v); }
@@ -811,6 +821,7 @@ function describeBuff(b, u) {
   if (b.s === 'negateField') return `${(b.fields || []).map(fieldName).join('/')} field negated (eclipse)${turns}`;
   if (b.s === 'cardType') return `All cards are ${COLOR[b.color]}${turns}`;
   if (b.s === 'cardSeal') return `${(b.cards || []).map(c => COLOR[c]).join('/')} Seal${turns}`;
+  if (b.s === 'npAoe') return `${b.label || 'NP'}: NP hits all enemies${b.dmg ? ` (${b.dmg}%)` : ''}`;
   if (b.s === 'npSingle') return `NP hits one enemy${b.dmg ? ` (${b.dmg}%)` : ''}${turns}`;
   if (b.s === 'dotHeal') return `${STAT_LABEL[b.kind] || b.kind} heals instead${turns}`;
   if (b.s === 'convertInv') return 'Invincible becomes Anti-Enforcement DEF';
@@ -861,7 +872,7 @@ function buffCats(b) {
   if (!b.debuff && ['atk', 'buster', 'arts', 'quick', 'extra', 'npDmg', 'critDmg', 'special', 'dmgPlus'].includes(b.s)) c.add('dmgUp');
   return c;
 }
-function removable(b) { return !b.passive && !['delayed', 'trigger', 'eternalSleep', 'noSwap', 'counter'].includes(b.s) && b.from !== 'Control rule'; }
+function removable(b) { return !b.passive && !b.unremovable && !['delayed', 'trigger', 'eternalSleep', 'noSwap', 'counter'].includes(b.s) && b.from !== 'Control rule'; }
 // Effects that fire when the holder attacks, lands a crit, triggers Guts, etc.
 function fireTriggers(g, u, on, ctx = {}) {
   if (!u || u.dead && on !== 'death') return;
@@ -1298,7 +1309,7 @@ function resolveItem0(g, p, item) {
 // Skills that ask the player for a choice when queued (Venus Driver: which NP type)
 function skillOption(u, i) {
   const sk = u.kit.sk[i]; if (!sk) return null;
-  if (sk.e.some(e => e.k === 'npTypeChoice')) return { kind: 'npType', options: ['Arts', 'Buster', 'Quick'], def: 'Arts' };
+  const tc = sk.e.find(e => e.k === 'npTypeChoice'); if (tc) return { kind: 'npType', options: tc.options || ['Arts', 'Buster', 'Quick'], def: tc.def || 'Arts' };
   if (sk.opts) return { kind: 'choice', options: sk.opts.map((o, k) => ({ v: String(k), label: o.label, stars: o.stars || 0 })), def: '0' };
   return null;
 }
@@ -1695,7 +1706,9 @@ function execNP(g, u, a, tag) {
   fireTriggers(g, u, 'npBefore', { isNP: true, color: LETTER[color], target: U(g, a.card.target) });
   let targets = [];
   const single = !np.single && np.tgt === 'all' ? u.buffs.find(b => b.s === 'npSingle') : null; // Barghest: NP narrowed to one enemy
-  if (np.tgt === 'one' || np.single || single) { const t = pickTarget(g, u, a.card.target); if (t) targets = [t]; }
+  const aoe = np.tgt === 'one' ? u.buffs.find(b => b.s === 'npAoe') : null;
+  if (aoe) targets = front(g, enemyOf(u.side));
+  else if (np.tgt === 'one' || np.single || single) { const t = pickTarget(g, u, a.card.target); if (t) targets = [t]; }
   else if (np.tgt === 'all') targets = front(g, enemyOf(u.side));
   if (np.tgt !== 'none') {
     const hits = Math.max(1, u.d.hits.NP || 1);
@@ -1719,10 +1732,14 @@ function execNP(g, u, a, tag) {
       if (np.special) {
         const sp = np.special;
         const ok = sp.vs ? hasTrait(t, sp.vs) : sp.status ? t.buffs.some(b => b.s === sp.status) : sp.anyOf ? sp.anyOf.some(x => has(t, x) || hasTrait(t, x)) : sp.rarity ? sp.rarity.includes(t.d.rar) : false;
-        if (ok) npSpecial = (np.special.v5 != null ? np.special.v + (np.special.v5 - np.special.v) * (oc - 1) / 4 : np.special.v) / 100;
+        if (sp.per) { // grows per stack on the target: (base + per × stacks, up to max) %
+          const n = Math.min(sp.max || 10, sp.anyOf.reduce((a, x) => a + stackCount(t, x), 0));
+          npSpecial = (sp.v + sp.per * n) / 100;
+        } else if (ok) npSpecial = (np.special.v5 != null ? np.special.v + (np.special.v5 - np.special.v) * (oc - 1) / 4 : np.special.v) / 100;
       }
+      if (np.selfStack) npSpecial *= 1 + np.selfStack.per * Math.min(np.selfStack.max, markCount(u, np.selfStack.mark)) / 100; // e.g. Chloe: +10% per Manuscript Complete, up to 10
       const rnd = CFG.dmgRandom[0] + g.rng() * (CFG.dmgRandom[1] - CFG.dmgRandom[0]);
- const npPct = (single && single.dmg ? single.dmg : np.dmg) + (np.affectionDmg ? np.affectionDmg * Math.max(0, affLevel(u) - 1) : 0) + (np.selfStack ? np.selfStack.per * Math.min(np.selfStack.max, markCount(u, np.selfStack.mark)) : 0) + (np.ocDmg ? np.ocDmg.v + (np.ocDmg.v5 - np.ocDmg.v) * (oc - 1) / 4 : 0) + (np.lowHp ? np.lowHp * (1 - u.hp / maxHp(u)) : 0);
+ const npPct = (aoe && aoe.dmg ? aoe.dmg : single && single.dmg ? single.dmg : np.dmg) + (np.affectionDmg ? np.affectionDmg * Math.max(0, affLevel(u) - 1) : 0) + (np.ocDmg ? np.ocDmg.v + (np.ocDmg.v5 - np.ocDmg.v) * (oc - 1) / 4 : 0) + (np.lowHp ? np.lowHp * (1 - u.hp / maxHp(u)) : 0);
       let dmg = u.d.atk * (npPct / 100) * CFG.npBase[color] * classMult(u, t) * attrMult(u, t)
         * Math.max(0.1, 1 + (sumStat(u, 'atk') - def) / 100) * Math.max(0.1, 1 + (cardUp - cardRes) / 100)
         * Math.max(0.1, 1 + (sumStat(u, 'npDmg') + special) / 100) * npSpecial * Math.max(0.1, 1 - sumStat(t, 'npDmgRes') / 100) * rnd;

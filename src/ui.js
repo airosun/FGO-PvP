@@ -220,11 +220,42 @@ function kitLines(ls) {
   return `<ul class="klines">${ls.map(l => { const [main, ...meta] = l.text.split(' · ');
     return `<li${l.demerit ? ' class="demerit" title="Demerit: a drawback for using this"' : ''}><span class="kw">${esc(main)}</span>${meta.length ? `<span class="km">${meta.map(esc).join(' · ')}</span>` : ''}${l.sub ? kitLines(l.sub) : ''}</li>`; }).join('')}</ul>`;
 }
+// Plain explanations of the trickier mechanics, shown under "How it works" on a servant's info card.
+const MECH_NOTES = {
+  448: ['Dancing Under the Full Moon puts her in one of two states that last the rest of the battle and can\'t be removed. Picking one ends the other.',
+    'Under the Moonlight: her NP hits every enemy, at 450% damage. Under the Sun: her NP hits one enemy, at 900%. With neither state her NP is single-target.',
+    'Strolling Under the Moonlight/Napping Under the Sun gives a different set of effects depending on which state she is in, and does nothing if she has neither.'],
+  336: ['Fragarach Counter answers every enemy action aimed at her: card attacks, NPs (single or AoE), debuffs, buff removal and NP drain, even when her Evade, Invincible or Anti-Enforcement DEF blocks the attack.',
+    'Each enemy action is answered once, after it finishes, straight at whoever acted (Taunt on their side doesn\'t redirect it).',
+    'It goes through Buff Block, can\'t be removed, and doesn\'t fire while she can\'t act or if the action defeated her (unless Guts revived her). Reflected damage and ally sacrifices don\'t set it off.'],
+  268: ['Venus Driver asks which card type her NP becomes for 3 turns (Arts, Buster or Quick; Arts if you don\'t choose). The NP card in your hand changes colour to match.',
+    'Multiple Sterling rolls each card buff separately at 80%, so she can get one, two or all three.'],
+  11: ['Circuit Connect lets you switch his NP to Buster or Arts for 1 turn (Buster if you don\'t choose).'],
+  373: ['Each skill has a "Spend 10 stars" option. It takes 10 of your team\'s stars when the skill activates and adds the extra effect; with fewer than 10 stars it can\'t be picked.'],
+  258: ['His NP sacrifices the first other ally on your field. That ally is defeated unless Guts saves them.',
+    'Allies that can\'t be sacrificed (and ones in Eternal Slumber) are skipped. If nobody can be sacrificed the NP can\'t be used.'],
+  316: ['Ending of Dreams: at the end of the turn he falls into Eternal Slumber for the rest of the game. He loses his buffs and can\'t act, be swapped out by Order Change or be sacrificed, but stays on the field.'],
+  81: ['His NP switches between Jekyll and Hyde. Some skill effects only work in one form: they say "only as Jekyll" or "only as Hyde".'],
+  285: ['Mermaid\'s Flesh gives her a Skill Rank Up stack at the end of each turn. Using skill 2 or 3 spends up to 2 stacks to use the ranked-up version of that skill.',
+    'Her NP does +20% damage for each mental debuff (Charm, Sleep, Terror, Confusion) on the target, up to 10.'],
+  388: ['Her NP\'s damage is multiplied by 1 + 10% per Manuscript Complete stack on her (up to 10 stacks, ×2). Manuscript Received! spends the stacks for NP instead.'],
+  409: ['His NP\'s bonus damage grows with every Burn on the target: 100% + 10% per Burn, up to 10 Burns (200%).'],
+  466: ['The NP\'s bonus damage grows with every Burn on the target: 100% + 10% per Burn, up to 10 (200%).'],
+  311: ['Her NP\'s bonus damage grows with every Curse on the target: 100% + 10% per Curse, up to 10 (200%).'],
+  378: ['Her NP\'s bonus damage grows with every Poison on the target: 100% + 15% per Poison, up to 10 (250%).'],
+  433: ['Her NP\'s bonus damage grows with every Poison on the target: 100% + 15% per Poison, up to 10 (250%).'],
+  280: ['His NP marks enemies (and his allies) as Roman. Its bonus damage grows with every Roman trait on the target: 100% + 20% each, up to 10 (300%).'],
+  470: ['Her NP applies Past Alteration to every enemy. Its bonus damage grows with each Past Alteration on the target: 100% + 10% per stack, up to 10 (200%).'],
+  7: ['His NP first raises his buff success rate based on missing HP: 40% × (1 − current HP ÷ max HP). At full HP that is +0%; at half HP, +20%. It applies before his chance-based ATK buffs, so they land more often the more hurt he is.'],
+  21: ['Rear Guard\'s Pride\'s second ATK buff depends on each ally\'s own missing HP: 30% × (1 − current HP ÷ max HP). An ally at full HP gets +0%, one at 50% HP gets +15%. It is recalculated as their HP changes.'],
+  312: ['Ray Horizon transforms her into Mélusine (Final Ascension) for the rest of the battle: her NP becomes an AoE Buster NP.'],
+};
 function kitHtml(d) {
   const kit = KITS[d.id]; const K = Describe.describeKit(kit, d);
   const npHtml = npCard(d, K.np);
   const skills = K.skills.map((sk, i) => skillCard(kit.sk[i], sk)).join('');
-  return `<h4>Noble Phantasm</h4>${npHtml}<h4>Skills</h4><div class="kskills">${skills}</div>${altFormHtml(d, kit, K)}<h4>Passives</h4>${K.passives.length ? `<div class="kcard pas">${kitLines(K.passives)}</div>` : '<p class="hint">None.</p>'}`;
+  const how = MECH_NOTES[d.id] ? `<h4>How it works</h4><div class="kcard how"><ul class="klines">${MECH_NOTES[d.id].map(t => `<li><span class="kw">${esc(t)}</span></li>`).join('')}</ul></div>` : '';
+  return `<h4>Noble Phantasm</h4>${npHtml}<h4>Skills</h4><div class="kskills">${skills}</div>${altFormHtml(d, kit, K)}${how}<h4>Passives</h4>${K.passives.length ? `<div class="kcard pas">${kitLines(K.passives)}</div>` : '<p class="hint">None.</p>'}`;
 }
 function npCard(d, n) {
   const npCol = { Buster: 'B', Arts: 'A', Quick: 'Q' }[d.np] || '';

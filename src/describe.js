@@ -24,7 +24,11 @@ const CAT = { buff: 'buffs', debuff: 'debuffs', dmgUp: 'damage-boosting buffs', 
 const FIELDN = { Shore: 'Waterside' };
 const STATUSW = { invincible: 'Invincible', evade: 'Evade', guts: 'Guts', burn: 'Burn', poison: 'Poison', curse: 'Curse', charm: 'Charm', stun: 'Stun', taunt: 'Taunt' };
 const STATUSADJ = { evade: 'Evading', invincible: 'Invincible', burn: 'Burned', poison: 'Poisoned', curse: 'Cursed', charm: 'Charmed', stun: 'Stunned', guts: 'Guts' };
-const MARKNAME = { 2386: 'all Growth stacks (and their NP resistance)', 2872: 'all Manuscript Complete stacks' };
+// Statuses the game knows only by a code: their readable names (from the FGO wiki / in-game text).
+const TRAITNAME = { 'Trait 3121': 'Under the Moonlight', 'Trait 3122': 'Under the Sun', 'Trait 600700': 'Jekyll', 'Trait 600710': 'Hyde', 'Trait 2501300': 'Wandjina', 'Trait 10052': 'Electric Erosion', 'Trait 10039': 'Past Alteration' };
+const COND_TEXT = { 'Trait 3121': 'only while Under the Moonlight', 'Trait 3122': 'only while Under the Sun', 'Trait 600700': 'only as Jekyll', 'Trait 600710': 'only as Hyde', 'Trait 2501300': 'Wandjina only' };
+const tname = x => TRAITNAME[x] || x;
+const MARKNAME = { 3121: 'Under the Moonlight', 3122: 'Under the Sun', 2386: 'all Growth stacks (and their NP resistance)', 2872: 'all Manuscript Complete stacks' };
 
 const num = v => { const r = Math.round(v * 10) / 10; return Number.isInteger(r) ? String(r) : r.toFixed(1); };
 const sign = v => (v >= 0 ? '+' : '−') + num(Math.abs(v));
@@ -43,6 +47,7 @@ function span(e) {
 function conds(e) {
   const c = [];
   if (e.cond === 'Wrath Of The Enshrined Deity') c.push("only allies with Enshrined Deity's Anger");
+  else if (e.cond && COND_TEXT[e.cond]) c.push(COND_TEXT[e.cond]);
   else if (e.cond) c.push(/ On Field$/.test(e.cond) ? `only if ${e.cond.replace(/ On Field$/, '')} is on your field` : `${e.cond} only`);
   if (e.condAny) c.push(`${e.condAny.join(' or ')} only`);
   if (e.foeOnField) c.push(`only if an enemy ${e.foeOnField} is on the field`);
@@ -60,6 +65,7 @@ function conds(e) {
   if (e.ifHungry) c.push('only while {S} {is} less than half full');
   if (e.ifRemoved) c.push('only if the removal just before it removed something');
   if (e.whileMark === 2999) c.push('only while an Illya is on the field');
+  else if (e.whileMark === 3121 || e.whileMark === 3122) c.push(COND_TEXT['Trait ' + e.whileMark]);
   else if (e.whileMark != null) c.push(`only while {S} {has} ${({ 2951: 'Mark of Sin', 2873: 'My Fair Soldier', 2885: 'Magic Bullets', 2887: 'no Robin counters left', 3005: 'a debuff', 3004: 'a buff', 3121: 'the Moon stance' })[e.whileMark] || 'that status'}`);
   if (e.hpAbove != null) c.push(e.hpAbove >= 100 ? 'only while at full HP' : `only while HP is ${e.hpAbove}% or more`);
   if (e.ifAllyRarityMax != null) c.push(`only if another ally on the field is ${e.ifAllyRarityMax}★ or lower`);
@@ -77,12 +83,13 @@ function buffWhat(e) {
   const s = e.s, v = e.v;
   if (s === 'critRes') return `Chance of being critically hit ${sign(-v)}%` + ocRange(e, v, 'v5', x => sign(-x) + '%'); // resistance: lowers the attacker's crit chance by that many points
   if (PCT[s]) {
-    if (e.hpBelow != null && e.vLow != null) return `${PCT[s]} ${sign(v)}% at ${e.hpBelow}% HP, rising to ${sign(e.vLow)}% as HP falls`;
+    if (e.hpBelow >= 100 && e.vLow != null && !v) return `${PCT[s]} +0% to +${num(e.vLow)}% the lower ${e.to === 'self' || !e.to ? '{P}' : 'their own'} HP (${num(e.vLow)}% × (1 − current HP ÷ max HP))`;
+    if (e.hpBelow != null && e.vLow != null) return `${PCT[s]} ${sign(v)}% at ${e.hpBelow}% HP, rising to ${sign(e.vLow)}% as HP falls (${num(v)}% + ${num(e.vLow - v)}% × (1 − HP% ÷ ${e.hpBelow}%))`;
     if (e.hpBelow != null) return `${PCT[s]} ${sign(v)}% while HP is ${e.hpBelow}% or lower`;
     if (e.perMark) return `${PCT[s]} +${num(e.perMark.add)}% per ${e.perMark.mark === 2386 || !e.perMark.name ? 'Growth' : String(e.perMark.name).replace(/^Buff /, '')} stack${e.perMark.max ? ` (up to ${e.perMark.max})` : ''}` + (v ? ` (plus ${sign(v)}%)` : '');
     if (e.perField) return `${PCT[s]} +${num(e.perField.add)}% for each ${e.perField.trait === 'Servant' ? 'enemy' : e.perField.trait} on the field${e.perField.who === 'enemies' ? '' : ' (both sides)'}` + (v ? ` (plus ${sign(v)}%)` : '');
     if (e.label === 'Bewitchment' || e.label === 'Electric Erosion') return `${e.label} (${PCT[s]} ${sign(v)}%)`;
-    const vsTxt = e.vs ? ` against ${e.vs.replace(/^Man Attribute$/, 'Man-attribute')} enemies` : e.statusAny ? ` against ${e.statusAny.map(x => STATUSADJ[x] || x).join(' or ')} enemies` : '';
+    const vsTxt = e.vs ? ` against ${tname(e.vs).replace(/^Man Attribute$/, 'Man-attribute')} enemies` : e.statusAny ? ` against ${e.statusAny.map(x => STATUSADJ[x] || x).join(' or ')} enemies` : '';
     if (e.label === "Enshrined Deity's Anger") return `Enshrined Deity's Anger (${PCT[s]} ${sign(v)}%)`;
     return `${PCT[s]} ${sign(v)}%${vsTxt}` + ocRange(e, v, 'v5', x => sign(x) + '%');
   }
@@ -104,7 +111,7 @@ function buffWhat(e) {
     case 'dotHeal': return `${DOT[e.kind] || e.kind} heals instead of dealing damage`;
     case 'cardType': return `All Command Cards become ${({ A: 'Arts', B: 'Buster', Q: 'Quick' })[e.color]} (not the Extra Attack)`;
     case 'cardSeal': return `${(e.cards || []).map(c => ({ A: 'Arts', B: 'Buster', Q: 'Quick' })[c]).join('/')} Seal: those cards don't activate`;
-    case 'npSingle': return `NP hits one enemy instead of all${e.dmg ? `, at ${num(e.dmg)}% damage` : ''}`;
+    case 'npSingle': return `${e.label ? e.label + ': ' : ''}NP hits one enemy${e.tgtNote ? '' : ' instead of all'}${e.dmg ? `, at ${num(e.dmg)}% damage` : ''}${e.unremovable ? " (can't be removed)" : ''}`;
     case 'negateField': return `The ${(e.fields || []).map(f => FIELDN[f] || f).join('/')} battlefield stops counting for everyone (effects that need it don't work)`;
     case 'convertInv': return 'Any Invincible {S} get{s} works as Anti-Enforcement DEF (Ignore Invincible can\'t get through)';
     case 'immuneTo': return `Immune to ${(e.cats || []).map(c => ({ burn: 'Burn', charm: 'Charm', mental: 'mental debuffs', poison: 'Poison', curse: 'Curse', skillSeal: 'Skill Seal', terror: 'Terror', stun: 'Stun', sleep: 'Sleep', npSeal: 'NP Seal', pigify: 'Pigify', atkDown: 'ATK down', defDown: 'DEF down' }[c] || c)).join(' and ')}`;
@@ -120,6 +127,7 @@ function buffWhat(e) {
       return `While on the field: ${who} get ${PCT[a.s] || a.s} ${sign(a.v)}%${a.notVsClass ? ` against all enemies except ${a.notVsClass.join(', ')}s` : ''}`;
     }
     case 'npType': return `NP card becomes ${e.color}`;
+    case 'npAoe': return `${e.label ? e.label + ': ' : ''}NP hits all enemies${e.dmg ? ` (at ${num(e.dmg)}% damage)` : ''} (can't be removed)`;
     case 'npDmgBoost': return 'Doubles the effect of NP damage buffs (doesn\'t stack)';
     case 'noSwap': return "Can't be swapped out by Order Change";
     case 'counter': {
@@ -145,7 +153,7 @@ function buffWhat(e) {
     case 'special': {
       if (e.perMarkOp) return `+${num(e.perMarkOp.add)}% damage per ${({ 'Burning Love': 'Flames of Love' })[e.vs] || e.vs || 'stack'} stack on the target (up to ${e.perMarkOp.max})`;
       const vs = (e.vsList && e.vsList.join(' or ')) || e.vs || (e.status ? { burn: 'Burned', poison: 'Poisoned', curse: 'Cursed' }[e.status] : '') || e.alignVs || 'targets';
-      return `${sign(v)}% damage against ${vs} enemies` + ocRange(e, v, 'v5', x => sign(x) + '%');
+      return `${sign(v)}% damage against ${tname(vs)} enemies` + ocRange(e, v, 'v5', x => sign(x) + '%');
     }
     case 'specialDef': return `Takes −${num(v)}% damage from ${e.vs || 'some'} enemies`;
     case 'trait': if (e.marks && e.marks.includes(2885)) return 'Magic Bullet (max 20). Each Quick/Arts/Buster attack spends 1 for ATK +50% on that attack; the Extra Attack spends all of them, +50% each';
@@ -260,7 +268,7 @@ function line0(e, ctx = {}) {
     case 'absorbHp': return wrap(`Drains ${num(e.v)} HP (never below 1); this servant restores the total`);
     case 'absorbNp': return wrap(`Takes up to ${num(e.v)}% NP; this servant gains the total`);
     case 'redeal': return { text: 'Redraws your Command Cards' };
-    case 'npTypeRandom': case 'npTypeChoice': return { text: `NP card becomes Arts, Buster or Quick (you choose when using the skill; Arts by default) for ${turns(e.t)}` };
+    case 'npTypeRandom': case 'npTypeChoice': { const o = e.options || ['Arts', 'Buster', 'Quick']; return { text: `NP card becomes ${o.slice(0, -1).join(', ')} or ${o[o.length - 1]} (you choose when using the skill; ${e.def || o[0]} by default) for ${turns(e.t)}` }; }
     case 'gatherCurse': return { text: 'Moves every Curse on the field onto this servant' };
     case 'gatherMarks': return null; // internal bookkeeping for the NP-per-enemy effect
     case 'eternalSleep': return { text: "Removes {P} buffs and fall{s} into Eternal Slumber: {S} can't act, be swapped out or be sacrificed, for the rest of the game" };
@@ -327,12 +335,15 @@ function describeKit(kit, d) {
         let t = `Deals ${num(np.dmg)}% damage to ${target}`;
         if (np.ocDmg) t += ` (${num(np.dmg + np.ocDmg.v)}% to ${num(np.dmg + np.ocDmg.v5)}% with overcharge)`;
         const x = [];
-        if (np.special) {
+        if (np.special && np.special.per) {
+          const sp = np.special;
+          x.push(`+${num(sp.per)}% damage for each ${sp.label || sp.anyOf.join('/')} on the target (up to ${sp.max}, so up to ${num(sp.v + sp.per * sp.max)}%)`);
+        } else if (np.special) {
           const vs = np.special.vs || ({ burn: 'Burned', poison: 'Poisoned', curse: 'Cursed', bind: 'Bound' }[np.special.status]) || (np.special.anyOf && np.special.anyOf.map(x => STATUSADJ[x] || (x === 'Marking' ? 'Marked' : x)).join(' or ')) || (np.special.rarity && np.special.rarity.map(r => r + '★').join(' or ')) || '';
           x.push(`${num(np.special.v)}%${np.special.v5 ? `–${num(np.special.v5)}%` : ''} damage against ${vs} enemies`);
         }
         if (np.affectionDmg) x.push(`+${num(np.affectionDmg)}% per Affection level above 1`);
-        if (np.selfStack) x.push(`+${num(np.selfStack.per)}% for each ${np.selfStack.name} stack on this servant (up to ${np.selfStack.max})`);
+        if (np.selfStack) x.push(`+${num(np.selfStack.per)}% damage for each ${np.selfStack.name} stack on {O} (up to ${np.selfStack.max}, so up to ×${num(1 + np.selfStack.per * np.selfStack.max / 100)})`);
         if (np.lowHp) x.push(`more damage the lower this servant's HP (up to +${num(np.lowHp)}%)`);
         if (np.ignoreDef || np.ignoreDefUp) x.push("ignores the target's DEF buffs");
         L.push({ text: t + (x.length ? ` · ${x.join(' · ')}` : '') });
