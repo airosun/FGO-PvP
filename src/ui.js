@@ -41,7 +41,7 @@ const app = {
 };
 window.__app = app; // handy for debugging in the console
 window.__render = () => render();
-window.__test = { get startBattle() { return startBattle; }, get lockCards() { return lockCards; }, get randomChoice() { return randomChoice; }, get POOL() { return POOL; }, get R() { return R; }, get arena() { return arena; }, get clearArena() { return clearArena; } };
+window.__test = { get startBattle() { return startBattle; }, get lockCards() { return lockCards; }, get randomChoice() { return randomChoice; }, get POOL() { return POOL; }, get R() { return R; }, get arena() { return arena; }, get clearArena() { return clearArena; }, get quickStart() { return quickStart; }, get atkStyle() { return atkStyle; } };
 
 // ---------------------------------------------------------------- Setup
 function startDraft(first0) {
@@ -816,7 +816,7 @@ const ATK_STYLE = {
   Saber: { kind: 'melee', fx: 'sword' },
   Archer: { kind: 'ranged', fx: 'arrow' },
   Lancer: { kind: 'melee', fx: 'spear', seq: true },
-  Rider: { kind: 'charge', fx: 'horse' },
+  Rider: { kind: 'mount', fx: 'horse' }, // rides in on horseback; an AoE sends a stampede over every enemy
   Caster: { kind: 'ranged', fx: 'bolt' },
   Assassin: { kind: 'melee', fx: 'daggers' },
   Berserker: { kind: 'melee', fx: 'fist' },
@@ -908,6 +908,12 @@ async function strike(atk, tks, evs, tok, big) {
   let aura = null;
   if (st.aura) { aura = makeFx('aura ' + st.aura, '', atk); atk.classList.add('aura-' + st.aura); }
   if (big) atk.classList.add('npglow');
+  let steed = null;
+  if (st.kind === 'mount') { // the servant rides a horse into the fight
+    const fdx = (tks[evs[0].uid]._home.cx - atk._home.cx) || 1;
+    steed = makeFx('steed' + (big ? ' big' : ''), SVG_FX.horse, actor); steed.style.setProperty('--dir', Math.sign(fdx));
+    if (!REDUCED) steed.animate([{ opacity: 0, transform: `scaleX(${Math.sign(fdx)}) translateY(10px)` }, { opacity: 1, transform: `scaleX(${Math.sign(fdx)})` }], { duration: dur(200) });
+  }
   // where they stand while attacking
   const avgY = evs.reduce((a, e) => a + tks[e.uid]._home.cy, 0) / evs.length;
   const dx0 = T0._home.cx - actor._home.cx, dy0 = (aoe ? avgY : T0._home.cy) - actor._home.cy;
@@ -922,7 +928,7 @@ async function strike(atk, tks, evs, tok, big) {
   const sideOf = tk => aoe ? (tk._home.cx > atk._home.cx ? 'sL' : 'sR') : undefined;
   const land = async (i, k, tk) => {
     const e = evs[i]; if (!tk || k >= parts[i].length) return;
-    if (st.kind === 'ranged' || st.kind === 'charge') {
+    if (st.kind === 'ranged' || st.kind === 'charge' || (st.kind === 'mount' && aoe)) {
       const volley = st.fx === 'arrow' && big ? (aoe ? 4 : 2) : 1; // an NP looses a volley
       const flights = []; for (let v = 0; v < volley; v++) flights.push(new Promise(r => setTimeout(() => launch(st, actor, tk, big, k + v, i).then(r), dur(v * 45))));
       await Promise.all(flights);
@@ -933,6 +939,10 @@ async function strike(atk, tks, evs, tok, big) {
     if (hp[i] != null && !e.blocked) { hp[i] -= parts[i][k]; setTokenHp(tk, e.uid, hp[i]); }
   };
   const swing = () => {
+    if (steed) { // rear up and stamp down
+      actor.animate([{ transform: inPos }, { transform: `${inPos} translate(${-sgn * 6}px, -14px) rotate(${-sgn * 5}deg)`, offset: .4 }, { transform: `${inPos} translate(${sgn * 10}px, 3px)` }, { transform: inPos }], { duration: dur(gap * 0.9), easing: 'ease-out' });
+      return;
+    }
     const kick = st.kind === 'ranged' ? `${inPos} translate(${-sgn * 6}px, 0)` : st.kind === 'charge' ? `${inPos} translate(${sgn * 4}px, -3px)` : `${inPos} translate(${sgn * (big ? 16 : 10)}px, 0) rotate(${sgn * (big ? 6 : 4)}deg)`;
     actor.animate([{ transform: inPos }, { transform: kick }, { transform: inPos }], { duration: dur(gap * 0.85), easing: 'ease-out' });
   };
@@ -962,6 +972,7 @@ async function strike(atk, tks, evs, tok, big) {
   cleanup();
   function cleanup() {
     atk.classList.remove('npglow', 'projecting', 'aura-' + st.aura);
+    if (steed) steed.remove();
     if (aura) aura.remove();
     if (actor !== atk) { const a = actor; a.animate([{ opacity: .7 }, { opacity: 0 }], { duration: dur(200), fill: 'forwards' }).finished.then(() => a.remove(), () => a.remove()); }
   }

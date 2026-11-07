@@ -935,6 +935,12 @@ h1, h2 { letter-spacing: .01em; }
 .stage .npwave.w-avenge { background: linear-gradient(90deg, transparent, rgba(80,15,110,.6) 50%, transparent); mix-blend-mode: normal; }
 .stage .npwave.w-arrow, .stage .npwave.w-horse { opacity: .5; }
 @media (prefers-reduced-motion: reduce) { .afx, .fighter.aura-glitch { animation-duration: .01s !important; } .afx.aura { display: none; } }
+
+/* Rider on horseback: the card sits on the horse's back */
+.fighter > .afx.steed { left: 50%; top: auto; bottom: -46px; width: 96px; height: 72px; margin-left: -48px; z-index: 1; color: #d8c7a4; filter: drop-shadow(0 4px 3px rgba(0,0,0,.6)); animation: gallop .26s ease-in-out infinite alternate; }
+.fighter > .afx.steed.big { width: 124px; height: 93px; margin-left: -62px; bottom: -60px; color: #f1e3bf; filter: drop-shadow(0 0 8px var(--gold)) drop-shadow(0 4px 3px rgba(0,0,0,.6)); }
+@keyframes gallop { from { transform: scaleX(var(--dir)) translateY(0) rotate(0); } to { transform: scaleX(var(--dir)) translateY(-4px) rotate(-3deg); } }
+@media (prefers-reduced-motion: reduce) { .fighter > .afx.steed { animation: none; } }
 </style>
 <script>__ICONS__</script>
 <script>__SCENES__</script>
