@@ -18,7 +18,7 @@ const FLAG = {
 };
 const CTRL = { stun: 'Stun', charm: 'Charm', bind: 'Bind', petrify: 'Petrify', sleep: 'Sleep', pigify: 'Pigify', skillSeal: 'Skill Seal', npSeal: 'NP Seal', terror: 'Terror' };
 const DOT = { burn: 'Burn', poison: 'Poison', curse: 'Curse' };
-const WHO = { self: 'self', ally: 'one ally', allies: 'all allies', others: 'other allies', enemy: 'one enemy', enemies: 'all enemies', firstOther: 'the first other ally on your field', lastOther: 'the last other ally on your field', lowestHpAlly: 'the ally with the lowest HP %', randomAlly: 'one random ally' };
+const WHO = { self: 'self', ally: 'one ally', allies: 'all allies', others: 'other allies', enemy: 'one enemy', enemies: 'all enemies', firstOther: 'the first other ally on your field', lastOther: 'the last other ally on your field', lowestHpAlly: 'the ally with the lowest HP %', randomAlly: 'one random ally', alliesBut: 'every other ally on the field (this servant included)' };
 const CAT = { buff: 'buffs', debuff: 'debuffs', dmgUp: 'damage-boosting buffs', defUp: 'defensive buffs', atkUp: 'ATK buffs', cardUp: 'card buffs', critUp: 'critical buffs',
   sureHit: 'Sure Hit', mental: 'mental debuffs', immobilize: 'immobilizing debuffs', burn: 'Burn', poison: 'Poison', curse: 'Curse', charm: 'Charm', stun: 'Stun', evade: 'Evade', invincible: 'Invincible', taunt: 'Taunt', guts: 'Guts' };
 const FIELDN = { Shore: 'Waterside' };
@@ -45,6 +45,7 @@ function conds(e) {
   if (e.cond === 'Wrath Of The Enshrined Deity') c.push("only allies with Enshrined Deity's Anger");
   else if (e.cond) c.push(/ On Field$/.test(e.cond) ? `only if ${e.cond.replace(/ On Field$/, '')} is on your field` : `${e.cond} only`);
   if (e.condAny) c.push(`${e.condAny.join(' or ')} only`);
+  if (e.foeOnField) c.push(`only if an enemy ${e.foeOnField} is on the field`);
   if (e.condNot) c.push(...e.condNot.map(x => /^Immune to /i.test(x) ? `no effect on servants immune to ${x.replace(/^Immune to /i, '')}` : `no effect on ${x} servants`));
   if (e.align) c.push(`${e.align} only`);
   if (e.alignNone) c.push(`not ${e.alignNone.join(' or ')}`);
@@ -231,6 +232,7 @@ function line(e, ctx = {}) {
     case 'koSelf': return { text: 'Defeats itself (Guts can save it)' };
     case 'cdReduce': return wrap(`Skill cooldowns −${e.v}`);
     case 'field': return { text: `Battlefield becomes ${FIELDN[e.name] || e.name} for ${turns(e.t)}${e.endsOnDeath ? ' (ends if this servant is defeated)' : ''}` };
+    case 'npPerStar': return { text: `Spends up to ${num(e.max || 50)} stars: NP +${num(e.v)}% for each star spent` };
     case 'transform': return { text: e.text ? e.text : e.intoName ? `Transforms into ${e.intoName}: its NP becomes ${e.intoNp}` : 'Transforms into its other form' };
     case 'absorbHp': return wrap(`Drains ${num(e.v)} HP (never below 1); this servant restores the total`);
     case 'absorbNp': return wrap(`Takes up to ${num(e.v)}% NP; this servant gains the total`);
@@ -319,6 +321,7 @@ function describeKit(kit, d) {
   if (d && d.aoeCards) out.passives.push({ text: `${d.aoeCards.map(c => ({ A: 'Arts', B: 'Buster', Q: 'Quick', EX: 'Extra' })[c]).join(' and ')} attacks hit all enemies (half damage each when there is more than one)` });
   for (const p of kit.pas || []) {
     const e = Array.isArray(p) ? { k: 'buff', to: 'self', s: p[0], v: p[1] } : { k: 'buff', to: 'self', ...p };
+    if (e.s === 'territory') { out.passives.push({ text: `Territory Defense: attack hits that land on an ally (not this servant) are held to ${num(e.v)} damage`, sub: [{ text: `${e.n} uses for the whole battle; blocked hits and Poison/Curse damage don't use one, and a revive doesn't refill them` }] }); continue; }
     const l = line(e, { self: true }); if (l) out.passives.push(l); // hidden passives aren't listed
   }
   return out;

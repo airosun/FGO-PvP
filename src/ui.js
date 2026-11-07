@@ -222,13 +222,26 @@ function kitLines(ls) {
 }
 function kitHtml(d) {
   const kit = KITS[d.id]; const K = Describe.describeKit(kit, d);
-  const n = K.np;
+  const npHtml = npCard(d, K.np);
+  const skills = K.skills.map((sk, i) => skillCard(kit.sk[i], sk)).join('');
+  return `<h4>Noble Phantasm</h4>${npHtml}<h4>Skills</h4><div class="kskills">${skills}</div>${altFormHtml(d, kit, K)}<h4>Passives</h4>${K.passives.length ? `<div class="kcard pas">${kitLines(K.passives)}</div>` : '<p class="hint">None.</p>'}`;
+}
+function npCard(d, n) {
   const npCol = { Buster: 'B', Arts: 'A', Quick: 'Q' }[d.np] || '';
-  const npHtml = n.none ? `<div class="kcard np"><div class="khead"><b>${esc(n.name)}</b></div>${kitLines(n.lines)}</div>`
+  return n.none ? `<div class="kcard np"><div class="khead"><b>${esc(n.name)}</b></div>${kitLines(n.lines)}</div>`
     : `<div class="kcard np ${npCol}"><div class="khead"><b>${esc(n.name)}</b><span class="kpill ${npCol}">${esc(d.np)}</span><span class="kpill">${esc(n.target)}</span><span class="kpill">NP${E.npLevel({ d })}</span></div>
       ${kitLines(n.lines)}${n.oc.length ? `<p class="koc">Overcharge${n.ocNote ? ' <small>(grows with overcharge level)</small>' : ''}</p>${kitLines(n.oc)}` : ''}</div>`;
-  const skills = K.skills.map(sk => `<div class="kcard"><div class="khead">${I.skillIcon(kit.sk[K.skills.indexOf(sk)])}<b>${esc(sk.name)}</b><span class="kpill">CD ${sk.cd}</span></div>${kitLines(sk.lines)}${sk.ranks.map((r, k) => `<p class="koc">Rank Up ${k + 1}</p>${kitLines(r)}`).join('')}</div>`).join('');
-  return `<h4>Noble Phantasm</h4>${npHtml}<h4>Skills</h4><div class="kskills">${skills}</div><h4>Passives</h4>${K.passives.length ? `<div class="kcard pas">${kitLines(K.passives)}</div>` : '<p class="hint">None.</p>'}`;
+}
+function skillCard(raw, sk) {
+  return `<div class="kcard"><div class="khead">${I.skillIcon(raw)}<b>${esc(sk.name)}</b><span class="kpill">CD ${sk.cd}</span></div>${kitLines(sk.lines)}${sk.ranks.map((r, k) => `<p class="koc">Rank Up ${k + 1}</p>${kitLines(r)}`).join('')}</div>`;
+}
+// A temporary form the NP switches into (Paladin Mash's Holy Sword): show the NP and skills that change.
+function altFormHtml(d, kit) {
+  const tr = [...(kit.np.pre || []), ...(kit.np.post || [])].find(e => e.k === 'transform' && e.revert);
+  if (!tr || !R[tr.into] || !KITS[tr.into]) return '';
+  const ad = R[tr.into], ak = KITS[tr.into], AK = Describe.describeKit(ak, ad);
+  const changed = ak.sk.map((s, i) => s.n !== (kit.sk[i] || {}).n ? skillCard(s, AK.skills[i]) : '').join('');
+  return `<h4>While the ${esc(tr.label || 'other form')} is loaded <small class="hint">(${tr.revert - 1} turns after the NP)</small></h4><div class="kalt">${npCard(ad, AK.np)}${changed ? `<div class="kskills">${changed}</div>` : ''}</div>`;
 }
 // Centered pop-up used for servant info (draft and battle). Clicking the backdrop or the X closes it.
 // Class affinity chart in battle: the same chart as on the setup screen, in a modal.
