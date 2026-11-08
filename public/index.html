@@ -5685,8 +5685,9 @@ function statsTable(g, p, lead) {
 function statsLeaders(g) { const lead = {}; for (const [k] of STAT_COLS) { let best = 0; for (const [id, s] of Object.entries(g.stats || {})) if ((s[k] || 0) > best) { best = s[k]; lead[k] = +id; } } return lead; }
 // MVP score: damage dealt and KOs, plus what a support made possible: damage their buffs and debuffs added to
 // allies' attacks (assist), damage their DEF/cut/Evade/Invincible saved (prevented), healing, max HP and NP given.
-// Weighted so a support is about as likely to be MVP as a main damage dealer (checked over 500 simulated games).
-function mvpScore(s) { return s.dealt + s.kills * 300 + s.healGiven * 0.75 + (s.maxHpGiven || 0) * 0.5 + 1.6 * ((s.assist || 0) + (s.prevented || 0)) + (s.npGiven || 0) * 20; }
+// Weighted so Main DPS, Utility Supports and Healers are about equally likely to be MVP (about 19-21% each over 500 simulated games).
+const MVPW = { heal: 0.3, maxHp: 0.21, support: 1.4, kill: 300, np: 20 };
+function mvpScore(s) { return s.dealt + s.kills * MVPW.kill + s.healGiven * MVPW.heal + (s.maxHpGiven || 0) * MVPW.maxHp + MVPW.support * ((s.assist || 0) + (s.prevented || 0)) + (s.npGiven || 0) * MVPW.np; }
 function mvp(g, side) {
   if (!g.stats) return null; let best = null, sc = -1;
   for (const [id, s] of Object.entries(g.stats)) { if (side != null && g.units[id].side !== side) continue; const v = mvpScore(s); if (v > sc) { sc = v; best = +id; } }
@@ -5694,8 +5695,8 @@ function mvp(g, side) {
 }
 // One line on why they're MVP: their two biggest contributions.
 function mvpLine(s) {
-  const parts = [[s.dealt, `${Math.round(s.dealt).toLocaleString()} damage`], [s.kills * 300, `${s.kills} KO${s.kills === 1 ? '' : 's'}`], [s.healGiven * 0.75, `${Math.round(s.healGiven).toLocaleString()} healed`],
-    [(s.assist || 0) * 1.6, `${Math.round(s.assist || 0).toLocaleString()} damage assisted`], [(s.prevented || 0) * 1.6, `${Math.round(s.prevented || 0).toLocaleString()} damage prevented`], [(s.npGiven || 0) * 20, `${Math.round(s.npGiven || 0)}% NP given`]];
+  const parts = [[s.dealt, `${Math.round(s.dealt).toLocaleString()} damage`], [s.kills * MVPW.kill, `${s.kills} KO${s.kills === 1 ? '' : 's'}`], [s.healGiven * MVPW.heal, `${Math.round(s.healGiven).toLocaleString()} healed`],
+    [(s.assist || 0) * MVPW.support, `${Math.round(s.assist || 0).toLocaleString()} damage assisted`], [(s.prevented || 0) * MVPW.support, `${Math.round(s.prevented || 0).toLocaleString()} damage prevented`], [(s.npGiven || 0) * MVPW.np, `${Math.round(s.npGiven || 0)}% NP given`]];
   return parts.filter(([v]) => v > 0).sort((a, b) => b[0] - a[0]).slice(0, 3).map(x => x[1]).join(' · ') || 'held the line';
 }
 function statsModal() {
