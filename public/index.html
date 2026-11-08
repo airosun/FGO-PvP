@@ -2235,7 +2235,7 @@ function canPick(team, id, taken, R) {
 // ---- Battle stats: damage dealt and taken, healing, NP gained and lost, best hit, attacks, NPs, buffs, KOs.
 // HP and NP changes are caught where they happen (a watched property on each servant), and credited to whoever is
 // acting at that moment. Look-ahead copies of a battle (the CPU's) don't track anything.
-function newStat() { return { dealt: 0, taken: 0, healed: 0, healGiven: 0, maxHpGiven: 0, guts: 0, npGain: 0, npLost: 0, best: 0, bestWhat: '', attacks: 0, nps: 0, crits: 0, buffs: 0, debuffs: 0, kills: 0, evaded: 0, turns: 0 }; }
+function newStat() { return { dealt: 0, taken: 0, healed: 0, healGiven: 0, maxHpGiven: 0, guts: 0, npGain: 0, npLost: 0, best: 0, bestWhat: '', attacks: 0, nps: 0, crits: 0, buffs: 0, debuffs: 0, kills: 0, evaded: 0, turns: 0, assist: 0, prevented: 0, npGiven: 0 }; }
 // Objects built on top of a servant (the UI's animation views use Object.create) get their own copy instead of
 // writing through to the real servant.
 function own(obj, k, v) { Object.defineProperty(obj, k, { value: v, writable: true, enumerable: true, configurable: true }); }
@@ -2258,6 +2258,37 @@ function creditHeal(g, t, giver, amt) {
   if (!g.stats || !(amt > 0)) return;
   const me = g.stats[t.uid]; if (me) me.healed += amt;
   const by = giver && g.stats[giver.uid]; if (by && giver.side === t.side) by.healGiven += amt;
+}
+// ---- Support credit ----
+// Buffs and debuffs remember who gave them (b.by). When damage lands, each ally who buffed the attacker or debuffed
+// the target gets a share of it as "assist", in proportion to how much of the damage their effects made up.
+// When damage is taken, allies whose DEF/damage cut/resistance buffs (or debuffs on the attacker) shrank it get
+// the damage they saved as "prevented"; a hit stopped by Evade/Invincible a supporter gave is credited too.
+const ASSIST_UP = new Set(['atk', 'buster', 'arts', 'quick', 'extra', 'critDmg', 'special', 'npDmg', 'npDmgBold', 'npDmgBoost']);
+const ASSIST_DOWN = new Set(['def', 'busterRes', 'artsRes', 'quickRes', 'specialDef', 'npDmgRes']); // debuffed on the target
+const GUARD_UP = new Set(['def', 'busterRes', 'artsRes', 'quickRes', 'specialDef', 'npDmgRes']);
+const live = b => b.n == null || b.n > 0;
+function creditSupport(g, u, t, dmg) {
+  const S = g.stats; if (!S || !(dmg > 0) || u.side === t.side) return;
+  // offense
+  let tot = 0; const per = {};
+  const add = (by, v) => { tot += v; if (by != null && by !== u.uid && g.units[by] && g.units[by].side === u.side) per[by] = (per[by] || 0) + v; };
+  for (const b of u.buffs) if (!b.debuff && !b.passive && live(b) && ASSIST_UP.has(b.s) && b.v > 0) add(b.by, b.v);
+  for (const b of t.buffs) if (live(b) && ((ASSIST_DOWN.has(b.s) && b.v < 0) || (['dmgTakenPlus', 'critDmgTaken'].includes(b.s) && b.v > 0))) add(b.by, b.s === 'dmgTakenPlus' ? Math.min(60, b.v / 20) : Math.abs(b.v));
+  for (const [by, v] of Object.entries(per)) if (S[by]) S[by].assist += dmg * v / (100 + tot);
+  // defense
+  const save = (by, v) => { if (by != null && by !== t.uid && g.units[by] && g.units[by].side === t.side && S[by]) S[by].prevented += v; };
+  for (const b of t.buffs) if (!b.debuff && !b.passive && live(b) && b.v > 0) {
+    if (GUARD_UP.has(b.s)) save(b.by, dmg * Math.min(b.v, 90) / Math.max(10, 100 - Math.min(b.v, 90)));
+    else if (b.s === 'dmgCut') save(b.by, b.v);
+  }
+  for (const b of u.buffs) if (b.debuff && live(b) && b.v < 0 && (ASSIST_UP.has(b.s))) save(b.by, dmg * Math.abs(b.v) / 100);
+}
+// A blocked hit: credit whoever gave the Evade/Invincible with roughly what the hit would have done.
+function creditBlock(g, u, np) {
+  const by = g._blockBy; g._blockBy = null;
+  if (!g.stats || by == null || !g.stats[by]) return;
+  g.stats[by].prevented += u.d.atk * (np ? 4 : 1);
 }
 function statNp(g, u, d) { const me = g.stats[u.uid]; if (!me) return; if (d > 0) me.npGain += d; else me.npLost += -d; }
 // New buffs and debuffs since the last look are counted once each (passives don't count).
@@ -2696,6 +2727,7 @@ function applyEffectTargets(g, e, src, choice, ctx) {
         if (e.missingHpBonus) v += e.missingHpBonus * (1 - t.hp / maxHp(t));
         // carry: gained mid-turn, it still lasts through the next turn (outside end-of-turn, which already starts counting next turn)
         const b = { s: e.s, v: Math.round(v * 100) / 100, t: e.carry && !g.inEndTurn ? e.t + 1 : e.t, n: e.n, debuff: harmful, vs: e.vs, vsList: e.vsList, status: e.status, statusAny: e.statusAny, alignVs: e.alignVs, trait: e.trait, tags: e.tags, eff: e.eff, on: e.on, cards: e.cards, crit: e.crit, vsAny: e.vsAny, label: e.label, chance: e.chance, marks: e.marks, unremovable: e.unremovable, hpBelow: e.hpBelow, vLow: e.vLow, atk: e.atk, def: e.def, whileHas: e.whileHas, whileMark: e.whileMark, hpAbove: e.hpAbove, perMark: e.perMark, perField: e.perField, perMarkOp: e.perMarkOp, cats: e.cats, mainOnly: e.mainOnly, np: e.np, color: e.color, icon: e.icon, cls: e.cls, srcUid: src.uid, dmg: e.dmg, fields: e.fields, kind: e.kind, keep: e.keep, from: ctx.from };
+        if (src && src.uid !== t.uid) b.by = src.uid; // who gave it (support credit)
         t.buffs.push(b);
         if (e.s === 'taunt') { g.lastTaunt = g.lastTaunt || [null, null]; g.lastTaunt[t.side] = t.uid; }
         if (e.s === 'maxHp') { g._quiet = true; t.hp = Math.max(1, Math.min(maxHp(t), t.hp + v)); g._quiet = false; if (g.stats && src && src.side === t.side && g.stats[src.uid] && v > 0) g.stats[src.uid].maxHpGiven += Math.round(v); }
@@ -2704,7 +2736,7 @@ function applyEffectTargets(g, e, src, choice, ctx) {
         fx(g, { t: 'eff', uid: t.uid, buff: { ...b }, label: describeBuff(b, t) });
         break;
       }
-      case 'np': { if (hasNoNP(t)) break; t.np = Math.min(npCap(t), t.np + e.v); log(g, `${t.name}: NP +${e.v}% (now ${Math.floor(t.np)}%).`, 'buff'); fx(g, { t: 'eff', uid: t.uid, key: 'np', label: `NP +${e.v}%` }); break; }
+      case 'np': { if (hasNoNP(t)) break; { const before = t.np; t.np = Math.min(npCap(t), t.np + e.v); if (g.stats && src && src.side === t.side && src.uid !== t.uid && g.stats[src.uid]) g.stats[src.uid].npGiven += t.np - before; } log(g, `${t.name}: NP +${e.v}% (now ${Math.floor(t.np)}%).`, 'buff'); fx(g, { t: 'eff', uid: t.uid, key: 'np', label: `NP +${e.v}%` }); break; }
       case 'heal': {
         const base = e.pct ? maxHp(t) * e.pct / 100 : e.v;
         if (has(t, 'noHeal')) { log(g, `${t.name} can't recover HP (Recovery Disabled).`, 'miss'); fx(g, { t: 'eff', uid: t.uid, key: 'noHeal', label: 'No recovery', miss: true }); break; }
@@ -3627,16 +3659,17 @@ function execAction0(g, a) {
 function hitBlocked(g, u, t) {
   const pierceTI = has(u, 'pierceTrueInv'); // Hakuno / Jade Rabbit: goes through Anti-Enforcement DEF (not Evade)
   // A defense that gets pierced still loses a use, as in FGO
-  g._pierced = [];
+  g._pierced = []; g._blockBy = null;
+  const giver = (x, s) => { const b = x.buffs.find(b => b.s === s && (b.n == null || b.n > 0)); g._blockBy = b && b.by != null ? b.by : (x !== t ? x.uid : null); };
   const pierced = (s, label) => { consume(t, s); g._pierced.push(label); log(g, `${u.name} pierces ${t.name}'s ${label}.`, 'debuff'); };
-  if (has(t, 'trueInvincible')) { if (!pierceTI) { consume(t, 'trueInvincible'); return 'Anti-Enforcement DEF'; } pierced('trueInvincible', 'Anti-Enforcement DEF'); }
-  if (has(t, 'invincible') && has(t, 'convertInv') && !pierceTI) { consume(t, 'invincible'); return 'Anti-Enforcement DEF'; } // Kukulcan
+  if (has(t, 'trueInvincible')) { if (!pierceTI) { giver(t, 'trueInvincible'); consume(t, 'trueInvincible'); return 'Anti-Enforcement DEF'; } pierced('trueInvincible', 'Anti-Enforcement DEF'); }
+  if (has(t, 'invincible') && has(t, 'convertInv') && !pierceTI) { giver(t, 'invincible'); consume(t, 'invincible'); return 'Anti-Enforcement DEF'; } // Kukulcan
   if (has(t, 'invincible') && has(t, 'convertInv') && pierceTI) { pierced('invincible', 'Anti-Enforcement DEF'); return null; }
-  if (has(t, 'invincible')) { if (!has(u, 'ignoreInv')) { consume(t, 'invincible'); return 'Invincible'; } pierced('invincible', 'Invincible'); }
-  if (has(t, 'evade')) { if (!has(u, 'sureHit') && !has(u, 'ignoreInv')) { consume(t, 'evade'); return 'Evade'; } pierced('evade', 'Evade'); }
+  if (has(t, 'invincible')) { if (!has(u, 'ignoreInv')) { giver(t, 'invincible'); consume(t, 'invincible'); return 'Invincible'; } pierced('invincible', 'Invincible'); }
+  if (has(t, 'evade')) { if (!has(u, 'sureHit') && !has(u, 'ignoreInv')) { giver(t, 'evade'); consume(t, 'evade'); return 'Evade'; } pierced('evade', 'Evade'); }
   if (!has(u, 'ignoreInv')) { // Kingprotea Alter's Giant's Protection guards every ally on her field
     const gp = front(g, t.side).find(x => !x.dead && has(x, 'guardianParry'));
-    if (gp) { consume(gp, 'guardianParry'); return gp === t ? "Giant's Protection" : `Giant's Protection (from ${gp.name})`; }
+    if (gp) { giver(gp, 'guardianParry'); consume(gp, 'guardianParry'); return gp === t ? "Giant's Protection" : `Giant's Protection (from ${gp.name})`; }
   } else { const gp = front(g, t.side).find(x => !x.dead && has(x, 'guardianParry')); if (gp) { consume(gp, 'guardianParry'); g._pierced.push("Giant's Protection"); log(g, `${u.name} pierces ${gp.name}'s Giant's Protection.`, 'debuff'); } }
   return null;
 }
@@ -3667,6 +3700,7 @@ function attackCard(g, u, t, color, a, tag) {
     const made = starsFor(g, u, color, color === 'EX' ? 0 : slot, pl.bonus.Q, crit, hits);
     g.players[u.side].stars = Math.min(CFG.starBankCap, g.players[u.side].stars + made);
     log(g, `${tag}: ${u.name}'s ${COLOR[color]}${crit ? ' CRIT' : ''} on ${t.name} is nullified by ${blocked}. NP ${Math.floor(u.np)}%, +${fmtStars(made)}★`, 'miss');
+    creditBlock(g, u, false);
     fx(g, { t: 'hit', uid: t.uid, src: u.uid, dmg: 0, blocked: blockKind(blocked), blockLabel: blocked, crit, color, dist: hitSplit(u, color, hits), aoe: !!a.aoeHalf });
     markCounter(g, t, u); // being targeted is enough, even if the attack is blocked
     return;
@@ -3823,6 +3857,7 @@ function territoryCap(g, t, dmg) {
   return b.v;
 }
 function dealDamage(g, u, t, dmg, hits) {
+  creditSupport(g, u, t, dmg);
   t.hp -= dmg;
   if (dmg > 0 && has(t, 'reflect')) { t._reflect = t._reflect || {}; t._reflect[u.uid] = (t._reflect[u.uid] || 0) + dmg; }
   if (dmg > 0) {
@@ -3867,6 +3902,7 @@ function execNP(g, u, a, tag) {
         const npStars = starsFor(g, u, letter, 0, a.plan && a.plan.bonus && a.plan.bonus.Q, false, hits);
         g.players[u.side].stars = Math.min(CFG.starBankCap, g.players[u.side].stars + npStars);
         log(g, `${np.n} on ${t.name} is nullified by ${blocked}. +${fmtStars(npStars)}★`, 'miss');
+        creditBlock(g, u, true);
         fx(g, { t: 'hit', uid: t.uid, src: u.uid, dmg: 0, blocked: blockKind(blocked), blockLabel: blocked, np: true, aoe: np.tgt === 'all' && !single, color: letter, dist: hitSplit(u, 'NP', hits) });
         continue;
       }
@@ -5629,11 +5665,12 @@ function mcPicker(L, p) {
 // ---- Battle stats and the victory announcement
 const STAT_COLS = [
   ['dealt', 'Damage dealt', 'Dealt'], ['taken', 'Damage taken', 'Taken'], ['healed', 'HP restored to them', 'Healed'], ['healGiven', 'HP they restored to their team, themselves included', 'Heal given'], ['maxHpGiven', 'Max HP they added to their team, themselves included', 'Max HP +'],
+  ['assist', "Damage their buffs on allies and debuffs on enemies added to their team's attacks", 'Assist'], ['prevented', 'Damage their DEF, damage cut, resistance, Evade or Invincible kept off allies (and their debuffs on attackers)', 'Prevented'], ['npGiven', 'NP gauge they charged for allies (%)', 'NP given'],
   ['npGain', 'NP gauge gained (%)', 'NP +'], ['npLost', 'NP gauge lost to enemy drain or effects (%)', 'NP −'], ['best', 'Highest damage from a single attack or NP', 'Best hit'],
   ['attacks', 'Attacks that landed (an AoE card counts once)', 'Hits'], ['nps', 'Noble Phantasms fired', 'NPs'], ['buffs', 'Buffs received', 'Buffs'], ['debuffs', 'Debuffs received', 'Debuffs'],
   ['kills', 'Enemies defeated', 'KOs'], ['evaded', 'Attacks evaded or blocked', 'Dodged'], ['guts', 'Times they revived with Guts', 'Guts'], ['turns', 'Turns spent on the field', 'Turns'],
 ];
-const fmtStat = (k, v) => (k === 'npGain' || k === 'npLost' ? `${Math.round(v)}%` : Math.round(v).toLocaleString());
+const fmtStat = (k, v) => (k === 'npGain' || k === 'npLost' || k === 'npGiven' ? `${Math.round(v)}%` : Math.round(v).toLocaleString());
 function statsTable(g, p, lead) {
   const S = g.stats || {}; const sort = app.statsSort || 'dealt';
   const star = mvp(g, p); const won = g.over && g.winner === p; const lost = g.over && g.winner !== p && g.winner !== 'draw';
@@ -5646,11 +5683,20 @@ function statsTable(g, p, lead) {
     <tfoot><tr><td class="sname">Team</td>${STAT_COLS.map(([k]) => `<td>${k === 'best' ? fmtStat(k, Math.max(0, ...rows.map(r => r.s.best || 0))) : fmtStat(k, tot(k))}</td>`).join('')}</tr></tfoot></table></div></section>`;
 }
 function statsLeaders(g) { const lead = {}; for (const [k] of STAT_COLS) { let best = 0; for (const [id, s] of Object.entries(g.stats || {})) if ((s[k] || 0) > best) { best = s[k]; lead[k] = +id; } } return lead; }
-// MVP score: damage (Burn/Curse/Poison included), KOs and healing given, with a little for buffs received.
+// MVP score: damage dealt and KOs, plus what a support made possible: damage their buffs and debuffs added to
+// allies' attacks (assist), damage their DEF/cut/Evade/Invincible saved (prevented), healing, max HP and NP given.
+// Weighted so a support is about as likely to be MVP as a main damage dealer (checked over 500 simulated games).
+function mvpScore(s) { return s.dealt + s.kills * 300 + s.healGiven * 0.75 + (s.maxHpGiven || 0) * 0.5 + 1.6 * ((s.assist || 0) + (s.prevented || 0)) + (s.npGiven || 0) * 20; }
 function mvp(g, side) {
   if (!g.stats) return null; let best = null, sc = -1;
-  for (const [id, s] of Object.entries(g.stats)) { if (side != null && g.units[id].side !== side) continue; const v = s.dealt + s.healGiven * 0.8 + (s.maxHpGiven || 0) * 0.5 + s.kills * 600 + s.buffs * 10; if (v > sc) { sc = v; best = +id; } }
+  for (const [id, s] of Object.entries(g.stats)) { if (side != null && g.units[id].side !== side) continue; const v = mvpScore(s); if (v > sc) { sc = v; best = +id; } }
   return best != null ? g.units[best] : null;
+}
+// One line on why they're MVP: their two biggest contributions.
+function mvpLine(s) {
+  const parts = [[s.dealt, `${Math.round(s.dealt).toLocaleString()} damage`], [s.kills * 300, `${s.kills} KO${s.kills === 1 ? '' : 's'}`], [s.healGiven * 0.75, `${Math.round(s.healGiven).toLocaleString()} healed`],
+    [(s.assist || 0) * 1.6, `${Math.round(s.assist || 0).toLocaleString()} damage assisted`], [(s.prevented || 0) * 1.6, `${Math.round(s.prevented || 0).toLocaleString()} damage prevented`], [(s.npGiven || 0) * 20, `${Math.round(s.npGiven || 0)}% NP given`]];
+  return parts.filter(([v]) => v > 0).sort((a, b) => b[0] - a[0]).slice(0, 3).map(x => x[1]).join(' · ') || 'held the line';
 }
 function statsModal() {
   const g = app.g; const lead = statsLeaders(g); const L = leftSide();
@@ -5676,8 +5722,8 @@ function victoryOverlay() {
   return `<div class="victory${me != null && me !== w && w !== 'draw' ? ' lost' : ''}${side}" role="dialog" aria-label="${esc(title)}"><div class="vcard">
     <div class="vrays" aria-hidden="true"></div>
     <p class="eyebrow">Battle over</p><h2 class="vtitle">${esc(title)}</h2><p class="vsub">${esc(sub)}</p><p class="vwhy">${esc(why)}</p>
-    ${other && so ? `<p class="vmvp2"><span class="mvptag lose">MVP</span> ${esc(PN(1 - w))}: <b>${esc(other.name)}</b> · ${so.dealt.toLocaleString()} damage · ${so.kills} KO${so.kills === 1 ? '' : 's'}</p>` : ''}
-    ${star ? `<div class="vmvp"><span class="eyebrow">${w === 'draw' ? 'MVP' : `MVP · ${esc(PN(w))}`}</span><b>${CI(star.cls)}${esc(star.name)}</b><span>${s.dealt.toLocaleString()} damage · ${s.kills} KO${s.kills === 1 ? '' : 's'}${s.healGiven ? ` · ${Math.round(s.healGiven).toLocaleString()} healed` : ''}</span></div>` : ''}
+    ${other && so ? `<p class="vmvp2"><span class="mvptag lose">MVP</span> ${esc(PN(1 - w))}: <b>${esc(other.name)}</b> · ${esc(mvpLine(so))}</p>` : ''}
+    ${star ? `<div class="vmvp"><span class="eyebrow">${w === 'draw' ? 'MVP' : `MVP · ${esc(PN(w))}`}</span><b>${CI(star.cls)}${esc(star.name)}</b><span>${esc(mvpLine(s))}</span></div>` : ''}
     <div class="row vbtns">${postGameButtons()}</div>
     <div class="row vbtns"><button data-act="open-stats">See battle stats</button><button data-act="victory-close">Back to the field</button></div></div></div>`;
 }

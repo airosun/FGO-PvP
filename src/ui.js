@@ -1535,11 +1535,12 @@ function mcPicker(L, p) {
 // ---- Battle stats and the victory announcement
 const STAT_COLS = [
   ['dealt', 'Damage dealt', 'Dealt'], ['taken', 'Damage taken', 'Taken'], ['healed', 'HP restored to them', 'Healed'], ['healGiven', 'HP they restored to their team, themselves included', 'Heal given'], ['maxHpGiven', 'Max HP they added to their team, themselves included', 'Max HP +'],
+  ['assist', "Damage their buffs on allies and debuffs on enemies added to their team's attacks", 'Assist'], ['prevented', 'Damage their DEF, damage cut, resistance, Evade or Invincible kept off allies (and their debuffs on attackers)', 'Prevented'], ['npGiven', 'NP gauge they charged for allies (%)', 'NP given'],
   ['npGain', 'NP gauge gained (%)', 'NP +'], ['npLost', 'NP gauge lost to enemy drain or effects (%)', 'NP −'], ['best', 'Highest damage from a single attack or NP', 'Best hit'],
   ['attacks', 'Attacks that landed (an AoE card counts once)', 'Hits'], ['nps', 'Noble Phantasms fired', 'NPs'], ['buffs', 'Buffs received', 'Buffs'], ['debuffs', 'Debuffs received', 'Debuffs'],
   ['kills', 'Enemies defeated', 'KOs'], ['evaded', 'Attacks evaded or blocked', 'Dodged'], ['guts', 'Times they revived with Guts', 'Guts'], ['turns', 'Turns spent on the field', 'Turns'],
 ];
-const fmtStat = (k, v) => (k === 'npGain' || k === 'npLost' ? `${Math.round(v)}%` : Math.round(v).toLocaleString());
+const fmtStat = (k, v) => (k === 'npGain' || k === 'npLost' || k === 'npGiven' ? `${Math.round(v)}%` : Math.round(v).toLocaleString());
 function statsTable(g, p, lead) {
   const S = g.stats || {}; const sort = app.statsSort || 'dealt';
   const star = mvp(g, p); const won = g.over && g.winner === p; const lost = g.over && g.winner !== p && g.winner !== 'draw';
@@ -1552,11 +1553,20 @@ function statsTable(g, p, lead) {
     <tfoot><tr><td class="sname">Team</td>${STAT_COLS.map(([k]) => `<td>${k === 'best' ? fmtStat(k, Math.max(0, ...rows.map(r => r.s.best || 0))) : fmtStat(k, tot(k))}</td>`).join('')}</tr></tfoot></table></div></section>`;
 }
 function statsLeaders(g) { const lead = {}; for (const [k] of STAT_COLS) { let best = 0; for (const [id, s] of Object.entries(g.stats || {})) if ((s[k] || 0) > best) { best = s[k]; lead[k] = +id; } } return lead; }
-// MVP score: damage (Burn/Curse/Poison included), KOs and healing given, with a little for buffs received.
+// MVP score: damage dealt and KOs, plus what a support made possible: damage their buffs and debuffs added to
+// allies' attacks (assist), damage their DEF/cut/Evade/Invincible saved (prevented), healing, max HP and NP given.
+// Weighted so a support is about as likely to be MVP as a main damage dealer (checked over 500 simulated games).
+function mvpScore(s) { return s.dealt + s.kills * 300 + s.healGiven * 0.75 + (s.maxHpGiven || 0) * 0.5 + 1.6 * ((s.assist || 0) + (s.prevented || 0)) + (s.npGiven || 0) * 20; }
 function mvp(g, side) {
   if (!g.stats) return null; let best = null, sc = -1;
-  for (const [id, s] of Object.entries(g.stats)) { if (side != null && g.units[id].side !== side) continue; const v = s.dealt + s.healGiven * 0.8 + (s.maxHpGiven || 0) * 0.5 + s.kills * 600 + s.buffs * 10; if (v > sc) { sc = v; best = +id; } }
+  for (const [id, s] of Object.entries(g.stats)) { if (side != null && g.units[id].side !== side) continue; const v = mvpScore(s); if (v > sc) { sc = v; best = +id; } }
   return best != null ? g.units[best] : null;
+}
+// One line on why they're MVP: their two biggest contributions.
+function mvpLine(s) {
+  const parts = [[s.dealt, `${Math.round(s.dealt).toLocaleString()} damage`], [s.kills * 300, `${s.kills} KO${s.kills === 1 ? '' : 's'}`], [s.healGiven * 0.75, `${Math.round(s.healGiven).toLocaleString()} healed`],
+    [(s.assist || 0) * 1.6, `${Math.round(s.assist || 0).toLocaleString()} damage assisted`], [(s.prevented || 0) * 1.6, `${Math.round(s.prevented || 0).toLocaleString()} damage prevented`], [(s.npGiven || 0) * 20, `${Math.round(s.npGiven || 0)}% NP given`]];
+  return parts.filter(([v]) => v > 0).sort((a, b) => b[0] - a[0]).slice(0, 3).map(x => x[1]).join(' · ') || 'held the line';
 }
 function statsModal() {
   const g = app.g; const lead = statsLeaders(g); const L = leftSide();
@@ -1582,8 +1592,8 @@ function victoryOverlay() {
   return `<div class="victory${me != null && me !== w && w !== 'draw' ? ' lost' : ''}${side}" role="dialog" aria-label="${esc(title)}"><div class="vcard">
     <div class="vrays" aria-hidden="true"></div>
     <p class="eyebrow">Battle over</p><h2 class="vtitle">${esc(title)}</h2><p class="vsub">${esc(sub)}</p><p class="vwhy">${esc(why)}</p>
-    ${other && so ? `<p class="vmvp2"><span class="mvptag lose">MVP</span> ${esc(PN(1 - w))}: <b>${esc(other.name)}</b> · ${so.dealt.toLocaleString()} damage · ${so.kills} KO${so.kills === 1 ? '' : 's'}</p>` : ''}
-    ${star ? `<div class="vmvp"><span class="eyebrow">${w === 'draw' ? 'MVP' : `MVP · ${esc(PN(w))}`}</span><b>${CI(star.cls)}${esc(star.name)}</b><span>${s.dealt.toLocaleString()} damage · ${s.kills} KO${s.kills === 1 ? '' : 's'}${s.healGiven ? ` · ${Math.round(s.healGiven).toLocaleString()} healed` : ''}</span></div>` : ''}
+    ${other && so ? `<p class="vmvp2"><span class="mvptag lose">MVP</span> ${esc(PN(1 - w))}: <b>${esc(other.name)}</b> · ${esc(mvpLine(so))}</p>` : ''}
+    ${star ? `<div class="vmvp"><span class="eyebrow">${w === 'draw' ? 'MVP' : `MVP · ${esc(PN(w))}`}</span><b>${CI(star.cls)}${esc(star.name)}</b><span>${esc(mvpLine(s))}</span></div>` : ''}
     <div class="row vbtns">${postGameButtons()}</div>
     <div class="row vbtns"><button data-act="open-stats">See battle stats</button><button data-act="victory-close">Back to the field</button></div></div></div>`;
 }

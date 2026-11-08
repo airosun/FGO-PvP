@@ -159,7 +159,7 @@ function canPick(team, id, taken, R) {
 // ---- Battle stats: damage dealt and taken, healing, NP gained and lost, best hit, attacks, NPs, buffs, KOs.
 // HP and NP changes are caught where they happen (a watched property on each servant), and credited to whoever is
 // acting at that moment. Look-ahead copies of a battle (the CPU's) don't track anything.
-function newStat() { return { dealt: 0, taken: 0, healed: 0, healGiven: 0, maxHpGiven: 0, guts: 0, npGain: 0, npLost: 0, best: 0, bestWhat: '', attacks: 0, nps: 0, crits: 0, buffs: 0, debuffs: 0, kills: 0, evaded: 0, turns: 0 }; }
+function newStat() { return { dealt: 0, taken: 0, healed: 0, healGiven: 0, maxHpGiven: 0, guts: 0, npGain: 0, npLost: 0, best: 0, bestWhat: '', attacks: 0, nps: 0, crits: 0, buffs: 0, debuffs: 0, kills: 0, evaded: 0, turns: 0, assist: 0, prevented: 0, npGiven: 0 }; }
 // Objects built on top of a servant (the UI's animation views use Object.create) get their own copy instead of
 // writing through to the real servant.
 function own(obj, k, v) { Object.defineProperty(obj, k, { value: v, writable: true, enumerable: true, configurable: true }); }
@@ -182,6 +182,37 @@ function creditHeal(g, t, giver, amt) {
   if (!g.stats || !(amt > 0)) return;
   const me = g.stats[t.uid]; if (me) me.healed += amt;
   const by = giver && g.stats[giver.uid]; if (by && giver.side === t.side) by.healGiven += amt;
+}
+// ---- Support credit ----
+// Buffs and debuffs remember who gave them (b.by). When damage lands, each ally who buffed the attacker or debuffed
+// the target gets a share of it as "assist", in proportion to how much of the damage their effects made up.
+// When damage is taken, allies whose DEF/damage cut/resistance buffs (or debuffs on the attacker) shrank it get
+// the damage they saved as "prevented"; a hit stopped by Evade/Invincible a supporter gave is credited too.
+const ASSIST_UP = new Set(['atk', 'buster', 'arts', 'quick', 'extra', 'critDmg', 'special', 'npDmg', 'npDmgBold', 'npDmgBoost']);
+const ASSIST_DOWN = new Set(['def', 'busterRes', 'artsRes', 'quickRes', 'specialDef', 'npDmgRes']); // debuffed on the target
+const GUARD_UP = new Set(['def', 'busterRes', 'artsRes', 'quickRes', 'specialDef', 'npDmgRes']);
+const live = b => b.n == null || b.n > 0;
+function creditSupport(g, u, t, dmg) {
+  const S = g.stats; if (!S || !(dmg > 0) || u.side === t.side) return;
+  // offense
+  let tot = 0; const per = {};
+  const add = (by, v) => { tot += v; if (by != null && by !== u.uid && g.units[by] && g.units[by].side === u.side) per[by] = (per[by] || 0) + v; };
+  for (const b of u.buffs) if (!b.debuff && !b.passive && live(b) && ASSIST_UP.has(b.s) && b.v > 0) add(b.by, b.v);
+  for (const b of t.buffs) if (live(b) && ((ASSIST_DOWN.has(b.s) && b.v < 0) || (['dmgTakenPlus', 'critDmgTaken'].includes(b.s) && b.v > 0))) add(b.by, b.s === 'dmgTakenPlus' ? Math.min(60, b.v / 20) : Math.abs(b.v));
+  for (const [by, v] of Object.entries(per)) if (S[by]) S[by].assist += dmg * v / (100 + tot);
+  // defense
+  const save = (by, v) => { if (by != null && by !== t.uid && g.units[by] && g.units[by].side === t.side && S[by]) S[by].prevented += v; };
+  for (const b of t.buffs) if (!b.debuff && !b.passive && live(b) && b.v > 0) {
+    if (GUARD_UP.has(b.s)) save(b.by, dmg * Math.min(b.v, 90) / Math.max(10, 100 - Math.min(b.v, 90)));
+    else if (b.s === 'dmgCut') save(b.by, b.v);
+  }
+  for (const b of u.buffs) if (b.debuff && live(b) && b.v < 0 && (ASSIST_UP.has(b.s))) save(b.by, dmg * Math.abs(b.v) / 100);
+}
+// A blocked hit: credit whoever gave the Evade/Invincible with roughly what the hit would have done.
+function creditBlock(g, u, np) {
+  const by = g._blockBy; g._blockBy = null;
+  if (!g.stats || by == null || !g.stats[by]) return;
+  g.stats[by].prevented += u.d.atk * (np ? 4 : 1);
 }
 function statNp(g, u, d) { const me = g.stats[u.uid]; if (!me) return; if (d > 0) me.npGain += d; else me.npLost += -d; }
 // New buffs and debuffs since the last look are counted once each (passives don't count).
@@ -620,6 +651,7 @@ function applyEffectTargets(g, e, src, choice, ctx) {
         if (e.missingHpBonus) v += e.missingHpBonus * (1 - t.hp / maxHp(t));
         // carry: gained mid-turn, it still lasts through the next turn (outside end-of-turn, which already starts counting next turn)
         const b = { s: e.s, v: Math.round(v * 100) / 100, t: e.carry && !g.inEndTurn ? e.t + 1 : e.t, n: e.n, debuff: harmful, vs: e.vs, vsList: e.vsList, status: e.status, statusAny: e.statusAny, alignVs: e.alignVs, trait: e.trait, tags: e.tags, eff: e.eff, on: e.on, cards: e.cards, crit: e.crit, vsAny: e.vsAny, label: e.label, chance: e.chance, marks: e.marks, unremovable: e.unremovable, hpBelow: e.hpBelow, vLow: e.vLow, atk: e.atk, def: e.def, whileHas: e.whileHas, whileMark: e.whileMark, hpAbove: e.hpAbove, perMark: e.perMark, perField: e.perField, perMarkOp: e.perMarkOp, cats: e.cats, mainOnly: e.mainOnly, np: e.np, color: e.color, icon: e.icon, cls: e.cls, srcUid: src.uid, dmg: e.dmg, fields: e.fields, kind: e.kind, keep: e.keep, from: ctx.from };
+        if (src && src.uid !== t.uid) b.by = src.uid; // who gave it (support credit)
         t.buffs.push(b);
         if (e.s === 'taunt') { g.lastTaunt = g.lastTaunt || [null, null]; g.lastTaunt[t.side] = t.uid; }
         if (e.s === 'maxHp') { g._quiet = true; t.hp = Math.max(1, Math.min(maxHp(t), t.hp + v)); g._quiet = false; if (g.stats && src && src.side === t.side && g.stats[src.uid] && v > 0) g.stats[src.uid].maxHpGiven += Math.round(v); }
@@ -628,7 +660,7 @@ function applyEffectTargets(g, e, src, choice, ctx) {
         fx(g, { t: 'eff', uid: t.uid, buff: { ...b }, label: describeBuff(b, t) });
         break;
       }
-      case 'np': { if (hasNoNP(t)) break; t.np = Math.min(npCap(t), t.np + e.v); log(g, `${t.name}: NP +${e.v}% (now ${Math.floor(t.np)}%).`, 'buff'); fx(g, { t: 'eff', uid: t.uid, key: 'np', label: `NP +${e.v}%` }); break; }
+      case 'np': { if (hasNoNP(t)) break; { const before = t.np; t.np = Math.min(npCap(t), t.np + e.v); if (g.stats && src && src.side === t.side && src.uid !== t.uid && g.stats[src.uid]) g.stats[src.uid].npGiven += t.np - before; } log(g, `${t.name}: NP +${e.v}% (now ${Math.floor(t.np)}%).`, 'buff'); fx(g, { t: 'eff', uid: t.uid, key: 'np', label: `NP +${e.v}%` }); break; }
       case 'heal': {
         const base = e.pct ? maxHp(t) * e.pct / 100 : e.v;
         if (has(t, 'noHeal')) { log(g, `${t.name} can't recover HP (Recovery Disabled).`, 'miss'); fx(g, { t: 'eff', uid: t.uid, key: 'noHeal', label: 'No recovery', miss: true }); break; }
@@ -1551,16 +1583,17 @@ function execAction0(g, a) {
 function hitBlocked(g, u, t) {
   const pierceTI = has(u, 'pierceTrueInv'); // Hakuno / Jade Rabbit: goes through Anti-Enforcement DEF (not Evade)
   // A defense that gets pierced still loses a use, as in FGO
-  g._pierced = [];
+  g._pierced = []; g._blockBy = null;
+  const giver = (x, s) => { const b = x.buffs.find(b => b.s === s && (b.n == null || b.n > 0)); g._blockBy = b && b.by != null ? b.by : (x !== t ? x.uid : null); };
   const pierced = (s, label) => { consume(t, s); g._pierced.push(label); log(g, `${u.name} pierces ${t.name}'s ${label}.`, 'debuff'); };
-  if (has(t, 'trueInvincible')) { if (!pierceTI) { consume(t, 'trueInvincible'); return 'Anti-Enforcement DEF'; } pierced('trueInvincible', 'Anti-Enforcement DEF'); }
-  if (has(t, 'invincible') && has(t, 'convertInv') && !pierceTI) { consume(t, 'invincible'); return 'Anti-Enforcement DEF'; } // Kukulcan
+  if (has(t, 'trueInvincible')) { if (!pierceTI) { giver(t, 'trueInvincible'); consume(t, 'trueInvincible'); return 'Anti-Enforcement DEF'; } pierced('trueInvincible', 'Anti-Enforcement DEF'); }
+  if (has(t, 'invincible') && has(t, 'convertInv') && !pierceTI) { giver(t, 'invincible'); consume(t, 'invincible'); return 'Anti-Enforcement DEF'; } // Kukulcan
   if (has(t, 'invincible') && has(t, 'convertInv') && pierceTI) { pierced('invincible', 'Anti-Enforcement DEF'); return null; }
-  if (has(t, 'invincible')) { if (!has(u, 'ignoreInv')) { consume(t, 'invincible'); return 'Invincible'; } pierced('invincible', 'Invincible'); }
-  if (has(t, 'evade')) { if (!has(u, 'sureHit') && !has(u, 'ignoreInv')) { consume(t, 'evade'); return 'Evade'; } pierced('evade', 'Evade'); }
+  if (has(t, 'invincible')) { if (!has(u, 'ignoreInv')) { giver(t, 'invincible'); consume(t, 'invincible'); return 'Invincible'; } pierced('invincible', 'Invincible'); }
+  if (has(t, 'evade')) { if (!has(u, 'sureHit') && !has(u, 'ignoreInv')) { giver(t, 'evade'); consume(t, 'evade'); return 'Evade'; } pierced('evade', 'Evade'); }
   if (!has(u, 'ignoreInv')) { // Kingprotea Alter's Giant's Protection guards every ally on her field
     const gp = front(g, t.side).find(x => !x.dead && has(x, 'guardianParry'));
-    if (gp) { consume(gp, 'guardianParry'); return gp === t ? "Giant's Protection" : `Giant's Protection (from ${gp.name})`; }
+    if (gp) { giver(gp, 'guardianParry'); consume(gp, 'guardianParry'); return gp === t ? "Giant's Protection" : `Giant's Protection (from ${gp.name})`; }
   } else { const gp = front(g, t.side).find(x => !x.dead && has(x, 'guardianParry')); if (gp) { consume(gp, 'guardianParry'); g._pierced.push("Giant's Protection"); log(g, `${u.name} pierces ${gp.name}'s Giant's Protection.`, 'debuff'); } }
   return null;
 }
@@ -1591,6 +1624,7 @@ function attackCard(g, u, t, color, a, tag) {
     const made = starsFor(g, u, color, color === 'EX' ? 0 : slot, pl.bonus.Q, crit, hits);
     g.players[u.side].stars = Math.min(CFG.starBankCap, g.players[u.side].stars + made);
     log(g, `${tag}: ${u.name}'s ${COLOR[color]}${crit ? ' CRIT' : ''} on ${t.name} is nullified by ${blocked}. NP ${Math.floor(u.np)}%, +${fmtStars(made)}★`, 'miss');
+    creditBlock(g, u, false);
     fx(g, { t: 'hit', uid: t.uid, src: u.uid, dmg: 0, blocked: blockKind(blocked), blockLabel: blocked, crit, color, dist: hitSplit(u, color, hits), aoe: !!a.aoeHalf });
     markCounter(g, t, u); // being targeted is enough, even if the attack is blocked
     return;
@@ -1747,6 +1781,7 @@ function territoryCap(g, t, dmg) {
   return b.v;
 }
 function dealDamage(g, u, t, dmg, hits) {
+  creditSupport(g, u, t, dmg);
   t.hp -= dmg;
   if (dmg > 0 && has(t, 'reflect')) { t._reflect = t._reflect || {}; t._reflect[u.uid] = (t._reflect[u.uid] || 0) + dmg; }
   if (dmg > 0) {
@@ -1791,6 +1826,7 @@ function execNP(g, u, a, tag) {
         const npStars = starsFor(g, u, letter, 0, a.plan && a.plan.bonus && a.plan.bonus.Q, false, hits);
         g.players[u.side].stars = Math.min(CFG.starBankCap, g.players[u.side].stars + npStars);
         log(g, `${np.n} on ${t.name} is nullified by ${blocked}. +${fmtStars(npStars)}★`, 'miss');
+        creditBlock(g, u, true);
         fx(g, { t: 'hit', uid: t.uid, src: u.uid, dmg: 0, blocked: blockKind(blocked), blockLabel: blocked, np: true, aoe: np.tgt === 'all' && !single, color: letter, dist: hitSplit(u, 'NP', hits) });
         continue;
       }
