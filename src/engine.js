@@ -133,7 +133,7 @@ function snakeOrder(first) {
 // Meta Supports: a team may draft at most one. Artoria Caster, Koyanskaya of Light, Merlin, Lady Avalon, Tamamo-no-Mae,
 // Lord El-Melloi II, Skadi (Caster), Skadi (Ruler), Larva/Tiamat (Archer).
 const META = [284, 314, 150, 353, 62, 37, 215, 357, 450];
-const EXCLUSIVE = [[190, 191], [424, 425], [472, 473], [1, 1001]]; // + Mash / Paladin Mash // Mecha Eli-chan / Mk.II; Kishinami Hakuno (Male/Female); Gray Lily (Saber/Lancer)
+const EXCLUSIVE = [[190, 191], [424, 425], [472, 473], [1, 1001], [359, 360, 361]]; // + Mash / Paladin Mash // Mecha Eli-chan / Mk.II; Kishinami Hakuno (Male/Female); Gray Lily (Saber/Lancer); Thrúd / Hildr / Ortlinde
 const BYCOST = new WeakMap(); // every servant sorted by cost, cached per roster
 function byCost(R) { let s = BYCOST.get(R); if (!s) { s = Object.values(R).sort((a, b) => costOf(a) - costOf(b)); BYCOST.set(R, s); } return s; }
 function canPick(team, id, taken, R) {

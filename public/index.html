@@ -1176,6 +1176,31 @@ Object.assign(P, {
   convertInv: `<g transform="translate(-3.2 -.4) translate(12 12) scale(.78) translate(-12 -12)" style="color:var(--t-gold)">${P.shieldSpokes}</g><g transform="translate(3.4 1) translate(12 12) scale(.78) translate(-12 -12)" style="color:var(--t-silver)"><path d="M12 3.2 19 6v5.2c0 4.6-3.2 8-7 9.6-3.8-1.6-7-5-7-9.6V6z" fill="var(--icon-bg)" stroke="var(--icon-bg)" stroke-width="3.4"/>${P.shieldSpokes}</g>`,
 });
 
+// ---- skill glyphs, batch 3 ----
+const STARP = 'm12 3.5 2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.8l-5.2 2.8 1-5.8L3.5 9.7l5.9-.8z';
+const ST = (x, y, k, fill = 'currentColor', extra = '') => `<path transform="translate(${x} ${y}) scale(${k}) translate(-12 -11.6)" d="${STARP}" fill="${fill}"${extra}/>`;
+const STARCORNER = c => `<path d="${HEX(10.6, 10.6, 8.6)}" fill="${CC[c]}"/>${KO(18, 18, 5.6)}${ST(18, 18, .48, 'var(--t-star)', ' stroke="none"')}`;
+const GIFT = (c, k) => `<g transform="translate(12 13) scale(${k}) translate(-12 -12)"><rect x="3.5" y="9" width="17" height="12" rx="1.2" fill="${c}" stroke="none"/><rect x="2.5" y="6.4" width="19" height="4" rx="1" fill="${c}" stroke="#000" stroke-opacity=".25" stroke-width=".8"/><path d="M12 6.4V21" stroke="#fff" stroke-width="2.4"/><path d="M12 6.2C10.4 3 6.8 2.6 6.8 4.6S10.6 6.4 12 6.2c1.4.2 5.2.4 5.2-1.6S13.6 3 12 6.2z" fill="none" stroke="#fff" stroke-width="1.5"/></g>`;
+const CARD = (rot, fill) => `<g transform="rotate(${rot} 12 21)"><rect x="8.4" y="5" width="7.2" height="10.6" rx="1.1" fill="${fill}" stroke="#fff" stroke-width="1"/><path d="M12 8.2l1 1.8-1 1.8-1-1.8z" fill="#fff" stroke="none"/></g>`;
+const PETAL = 'M12 12C9.8 10.2 9.2 6.8 10.5 3.6l1.5 1.3 1.5-1.3C14.8 6.8 14.2 10.2 12 12z';
+Object.assign(P, {
+  starBunch: ST(9.2, 13.4, .72) + ST(17.6, 7, .44) + ST(18.2, 17.8, .38) + ST(5, 4.6, .3),
+  profile: '<rect x="1.5" y="1.5" width="21" height="21" rx="4" fill="var(--t-pink)" stroke="none"/><path d="M4.4 4.6l.5 1.2 1.2.5-1.2.5-.5 1.2-.5-1.2-1.2-.5 1.2-.5zM19.6 3.4l.4 1 1 .4-1 .4-.4 1-.4-1-1-.4 1-.4zM20 17.6l.4 1 1 .4-1 .4-.4 1-.4-1-1-.4 1-.4zM3.8 18.6l.35.8.8.35-.8.35-.35.8-.35-.8-.8-.35.8-.35z" fill="#fff" stroke="none"/><path d="M15.8 21.6v-3.4c1.9-1 3-2.9 3-5.2 0-4.4-3-7.6-6.8-7.6-3 0-5 1.8-5.5 4.4L5 12.6c-.2.4 0 .8.4.8h1.2v1.9c0 1 .8 1.7 1.7 1.7h1.6v2.2c0 .9-.1 1.7-.4 2.4z" fill="#0b0b0c" stroke="none"/>',
+  starGatherB: STARCORNER('B'), starGatherA: STARCORNER('A'),
+  yinYang: '<circle cx="12" cy="12" r="9.6" fill="#f4f4f6" stroke="#f4f4f6" stroke-width="1.2"/><path d="M12 2.4a9.6 9.6 0 0 1 0 19.2 4.8 4.8 0 0 1 0-9.6 4.8 4.8 0 0 0 0-9.6z" fill="#111114" stroke="none"/><circle cx="12" cy="7.2" r="1.5" fill="#111114" stroke="none"/><circle cx="12" cy="16.8" r="1.5" fill="#f4f4f6" stroke="none"/>',
+  flameRing: '<circle cx="12" cy="12" r="10" stroke-width="1.8"/><g transform="translate(12 12.4) scale(.66) translate(-12 -12)"><path d="M12 21c-3.8 0-6-2.5-6-5.6 0-3.8 3.3-5.4 3.7-9.9 2.6 1.6 3.4 3.8 3.3 5.6 1-.7 1.6-1.9 1.7-3.1 2.4 2 3.3 4.4 3.3 7.4 0 3.1-2.2 5.6-6 5.6z" fill="currentColor" stroke="none"/></g>',
+  waveFrame: `<rect x="2.2" y="3.4" width="19.6" height="17.2" rx=".8" fill="#efe4c8" stroke="#b8893f" stroke-width="2.2"/><g transform="translate(12 12.4) scale(.66) translate(-12 -12)" style="color:#2a5fb4" stroke-width="2.6">${P.crashWave}</g>`,
+  giftBig: GIFT('#3f7ad9', 1), giftSmall: GIFT('#3aa76a', .74),
+  cardsHand: CARD(-34, '#d9573f') + CARD(-12, '#3f7ad9') + CARD(12, '#3aa76a') + CARD(34, '#e9c04b'),
+  swordShieldBlue: `<path d="M12 2.6 19.8 5.7v5.8c0 5.1-3.6 8.9-7.8 10.7-4.2-1.8-7.8-5.6-7.8-10.7V5.7z" fill="color-mix(in srgb, var(--t-blue) 25%, transparent)" stroke="var(--t-blue)" stroke-width="2"/><g transform="translate(12 12) scale(.8) translate(-12 -12)"><g stroke="var(--icon-bg)" stroke-width="4.4" fill="var(--icon-bg)">${SWORD}</g><g style="color:var(--t-blue)" stroke-width="2.2">${SWORD}</g></g>`,
+  mermaid: '<circle cx="12.6" cy="4.4" r="2.3" fill="currentColor" stroke="none"/><path d="M10.4 3.6c-.8 1.6-.8 3.4.2 4.6M14.8 3.6c.6 1.4.8 3 .4 4.2" stroke-width="1.3"/><path d="M10.6 7.6h4c.9 0 1.4.8 1.2 1.6l-.8 3c-.3 1.4.2 2.6.8 3.6.9 1.6.6 3.4-.8 4.4l1.4 2.2-3-.8-2.6 1.6.6-2.4c1-.8 1.4-2 1-3.2-.5-1.6-1.8-2.6-2.4-4.2-.6-1.6-.4-3.6.6-5.8z" fill="currentColor" stroke="none"/><path d="M15.4 9.4 18 12.4M10.4 9.2 7.6 11.8" stroke-width="1.5"/>',
+  crown7: '<path d="M3.4 18.6 2.2 7.6 5 11.8 5.4 6 8.4 11.4 9.4 4.8 12 10.8 14.6 4.8 15.6 11.4 18.6 6 19 11.8 21.8 7.6 20.6 18.6z" fill="#f2c94c" stroke="#d8343a" stroke-width="1.3" stroke-linejoin="round"/><path d="M3.4 18.6h17.2v2.2H3.4z" fill="#f2c94c" stroke="#d8343a" stroke-width="1.3" stroke-linejoin="round"/>',
+  sakura: [0, 72, 144, 216, 288].map(a => `<path transform="rotate(${a} 12 12)" d="${PETAL}" fill="currentColor" stroke="none"/>`).join('') + '<circle cx="12" cy="12" r="2" fill="#c93a6e" stroke="none"/><circle cx="12" cy="12" r=".8" fill="#ffe28a" stroke="none"/>',
+  circuitBoard: '<rect x="2.5" y="2.5" width="19" height="19" rx="2" fill="color-mix(in srgb, currentColor 16%, var(--icon-bg))" stroke-width="1.4"/><path d="M6 6v4h5M6 18h4l3-3h5M18 6v3l-3 3h-2M9 14v-2M14 18v3" stroke-width="1.3"/><g fill="currentColor" stroke="none"><circle cx="6" cy="6" r="1.4"/><circle cx="11" cy="10" r="1.4"/><circle cx="18" cy="6" r="1.4"/><circle cx="13" cy="12" r="1.4"/><circle cx="18" cy="15" r="1.4"/><circle cx="9" cy="12" r="1.2"/><rect x="11.6" y="15.8" width="2.8" height="2.4"/></g>',
+  redMoon: '<rect x="2" y="2" width="20" height="20" rx="3.4" fill="#141a3c" stroke="none"/><g fill="#fff" stroke="none"><circle cx="5.4" cy="6" r=".7"/><circle cx="8.6" cy="18.6" r=".55"/><circle cx="19" cy="19" r=".6"/><circle cx="4.6" cy="14" r=".45"/></g><circle cx="13.6" cy="10.6" r="6.2" fill="#d8343a" stroke="none" style="filter:drop-shadow(0 0 1.6px #d8343a)"/><g fill="#9e1f26" stroke="none"><circle cx="11.6" cy="9" r="1.3"/><circle cx="15.6" cy="12.4" r="1.6"/><circle cx="14.6" cy="7.6" r=".8"/></g>',
+  princess: '<path d="M10 3.4l.8 1.2L12 3l1.2 1.6.8-1.2.2 2H9.8z" fill="var(--t-gold)" stroke="none"/><circle cx="12" cy="7.6" r="2.5" fill="currentColor" stroke="none"/><path d="M9.6 10.6h4.8l.8 3 4 8H4.8l4-8z" fill="currentColor" stroke="none"/><path d="M8.6 13.4 6.4 16M15.4 13.4l2.2 2.6" stroke-width="1.5"/><path d="M8.2 15.4c2.4 1 5.2 1 7.6 0" stroke="var(--icon-bg)" stroke-width="1"/>',
+});
+
 // effect key -> [glyph, tone]
 const EFFECT = {
   robin: ['robin', 'robin'], magicBullet: ['magicBullet', 'silver'], sunrise: ['sunrise', 'gold'], dayNight: ['dayNight', 'white'], npDmgBold: ['burstBold', 'np'], redSpark: ['redSpark', 'red'], crashWave: ['crashWave', 'blue'],
@@ -1211,6 +1236,9 @@ const EFFECT = {
   cardTypeB: ['cardTypeB', 'B'], cardTypeA: ['cardTypeA', 'A'], cardTypeQ: ['cardTypeQ', 'Q'], cardSealB: ['cardSealB', 'B'], cardSealA: ['cardSealA', 'A'], cardSealQ: ['cardSealQ', 'Q'],
   pierceTrueInv: ['spokesSplit', 'silver'], convertInv: ['convertInv', 'gold'], exAoe: ['exAoe', 'EX'], negateField: ['eclipse', 'gold'], plotArmor: ['shieldCheckFill', 'res'],
   evadeLethal: ['evadeLethal', 'dpurple'], ignoreDmgCut: ['dmgCutSplit', 'orange'], dotCut: ['shieldFill', 'orange'], curseHeal: ['curseHeal', 'heal'], guardianParry: ['shieldSpokes', 'gold'], knighthood: ['kneel', 'orange'], fullCap: ['maxText', 'white'],
+  starBunch: ['starBunch', 'star'], profileSpark: ['profile', 'pink'], critBlue: ['bolt', 'blue'], starGatherB: ['starGatherB', 'B'], starGatherA: ['starGatherA', 'A'], yinYang: ['yinYang', 'white'],
+  flameRing: ['flameRing', 'blue'], waveFrame: ['waveFrame', 'gold'], giftBig: ['giftBig', 'blue'], giftSmall: ['giftSmall', 'Q'], cardsHand: ['cardsHand', 'white'], swordShieldBlue: ['swordShieldBlue', 'blue'],
+  mermaid: ['mermaid', 'blue'], crown7: ['crown7', 'gold'], sakura: ['sakura', 'pink'], circuitBoard: ['circuitBoard', 'blue'], redMoon: ['redMoon', 'red'], princess: ['princess', 'pink'],
   buffBlock: ['noEntry', 'blue'], trait: ['tag', 'util'], delayed: ['stopwatch', 'orange'], cdReduce: ['hourglassDark', 'gold'],
 };
 const CLASS = { Saber: 'sword', Archer: 'bow', Lancer: 'spear', Rider: 'horse', Caster: 'wand', Assassin: 'mask', Berserker: 'bull', Shielder: 'shieldFill', Ruler: 'flag', Avenger: 'flames', 'Moon Cancer': 'moon', 'Alter Ego': 'halves', Foreigner: 'outer', Pretender: 'crown', 'Beast I': 'claws', 'Beast II': 'horns', Unbeast: 'planet' };
@@ -1232,6 +1260,129 @@ const SKILL_ICON = { 'Eye of the Blue Star B': 'eyeBlue', 'Eye of the Red Star B
   'Evil Eye of the Abyss B+++': 'stun', 'Mass Hysteria B': 'stun', 'Tranquil Fig EX': 'delayed', 'Schwarzwald Falke B': 'evade', 'Huge Scale B': 'maxHp', 'Mistress C EX': 'heal',
   'Melt Envy EX': 'drain', 'Complete Fluidity B': 'crashWave', 'La Black Luna C': 'stun', 'Ruinous Beauty A': 'drain', 'Midsummer Nights A': 'stun', "Aphrodite's Blessing EX": 'hpRegen',
   'Fae Vampirism A': 'drain', 'Magic Circuit (Rotation) A': 'npRegen', 'Shakutenrin Jizai Fuza A': 'np', 'Mystic Eyes of Death Perception A': 'redSpark', 'Morning Star C': 'redSpark' };
+// Skill icon planner picks (batch 1). 'key:dir:neg' sets the arrow and the enemy-aimed red frame.
+Object.assign(SKILL_ICON, {
+  "Anti-Dragon Combat (Near Water) EX": "atk:up",
+  "Bath of Fresh Blood A": "critBlue",
+  "Beast Driver B": "starBunch",
+  "Beautiful Appearance C": "profileSpark",
+  "Biten's Pagoda C": "npDmgBold",
+  "Black Wings A": "npDmgBold",
+  "Blessing of the Goddess B": "npDmgBold",
+  "Blood-Soaked Brute A+": "atkPlus",
+  "Blue Glass Moon EX": "starBunch",
+  "Blue Horizon EX": "sunrise",
+  "Breast Valley A+": "def:up",
+  "Brilliance of a Genius EX": "npDmgBold",
+  "Charisma of Yearning B": "atk:up",
+  "Cigarette Lion B+": "starGatherB",
+  "City Embrace - Infinite Love EX": "npDmgBold",
+  "Clairvoyance (Transcendent) EX": "starGatherB",
+  "Concept Improvement A+": "npDmgBold",
+  "Culture Hero B": "npDmgBold",
+  "Dancing Under the Full Moon A": "np",
+  "Daughter of Cassiopeia A": "starBunch",
+  "Declaration of Destruction (Strong) B+": "npRegen",
+  "Demon King A": "critDmg:up",
+  "Dispensation from Heaven (Assassination) C": "dmgPlus:up",
+  "Eine kleine Nachtmusik EX": "starBunch",
+  "Eternal Arms Mastery (Anti-Demonic) A-": "starGatherB",
+  "Evening Bell, Homeward EX": "flameRing",
+  "Evil Eye of the Abyss B+++": "bind::neg",
+  "Final Eli-chan A": "npDmg:up",
+  "Fire Support XEX EX": "bind::neg",
+  "First Star C": "cdReduce",
+  "Flame-Colored Kiss A": "buster:up",
+  "Flawlessness EX": "buster:up",
+  "Foul Weather A": "def:up",
+  "Furious Sword C": "starGatherB",
+  "Glass Cinderella EX": "starBunch",
+  "Goblet of Seraph EX": "npRegen:up",
+  "Goddess's Chaperone B": "swordShieldBlue",
+  "Great Empress B+": "heal",
+  "Harsh Road To Travel B+": "guts",
+  "Holy Knight Emperor EX": "atk:up",
+  "Hyakkotsu Bansei Sentou Shugen A": "cardsBAQ:up",
+  "Idea Blood B": "cardsHand",
+  "Illusionary Saint A": "starGatherA",
+  "Immature Scheme D": "skillSeal::neg",
+  "Inherent Wisdom EX": "guts",
+  "Intuition (Labyrinth) B++": "starGatherA",
+  "Jewel Formation of Absolute Fortune A": "trigger",
+  "Kamuy Yukar A+": "np",
+  "Knowledge of the Deprived A": "npSeal::neg",
+  "Kurakura's Meals A": "starBunch",
+  "La Black Luna C": "bind::neg",
+  "Land of Shadows Arms Mastery B+": "evade",
+  "Legend of the Crimson Hero - Theatrical Release EX": "dmgPlus:up",
+  "Like Isis Herself A": "npRegen",
+  "Madam Fossil's Great Discovery A": "starBunch",
+  "Maddness of the Spirits A": "critBlue",
+  "Mass Hysteria B": "bind::neg",
+  "Massacring Beasts A": "npDmgBold",
+  "May King B": "evade",
+  "Mermaid's Flesh EX": "mermaid",
+  "Midsummer Nights A": "bind::neg",
+  "Mona Lisa A+": "hpRegen",
+  "Morph (Infiltration) C": "critBlue",
+  "Murder on a Misty Night EX": "evade",
+  "O Polar Star, Shine My Way B": "debuffRes:up",
+  "Oath of the Holy Maiden C": "def:down:neg",
+  "One Cloaked in Death A": "flameRing",
+  "Panicky Voice A": "bind::neg",
+  "Pas de Deux A": "circuitBoard",
+  "Passionate Summer A+": "critBlue",
+  "Poisonous Dreams A": "poison::neg",
+  "Police Instincts E": "starBunch",
+  "Poseidon's Blessing A": "def:up",
+  "Presence Detection A++": "critBlue",
+  "Princess Order EX": "princess",
+  "Princess Summer Vacation (Fake) A": "taunt",
+  "Proof of Friendship C": "drain::neg",
+  "Pseudonym \"Iseidako\" A": "waveFrame",
+  "Pursuer of Love A": "def:down:neg",
+  "Queen's Figure A+": "hpRegen",
+  "Red Star Vamp EX": "redMoon",
+  "Remaining Sense of Pain A": "def:up",
+  "Resplendent Journey EX": "starBunch",
+  "Ridicule Cat EX": "atk:down:neg",
+  "Road of Falling Flowers A": "starBunch",
+  "Roncesvalles Olifant EX": "starBunch",
+  "Royal Card B+": "cardsHand",
+  "Sadistic Nature A": "atk:up",
+  "Sadistic Nature A+": "atk:up",
+  "Sakura Eater A": "sakura",
+  "Seal of Solomon E": "npDmgBold",
+  "Secret of Pedigree EX": "def:up",
+  "Seven Beast Crowns C": "crown7",
+  "Shining Majestic Crown A": "np",
+  "Sparks Route ∞ B": "cardsHand",
+  "Star Basket (Large) EX": "giftBig",
+  "Star Basket (Small) EX": "giftSmall",
+  "Star of a Hundred Poems A+": "starBunch",
+  "Super Positive Stalker A+": "def:down:neg",
+  "Supporting Curse C+": "atk:down:neg",
+  "Survival (Hill and Valley) EX": "starBunch",
+  "Suspicious Medicine A": "heal",
+  "The Diary of Lady Murasaki B++": "def:up",
+  "The End of the Fourth Night EX": "cardsAQ:up",
+  "The Rut of All Creations EX": "hpRegen",
+  "The Secret Great Crown A+": "invincible",
+  "The Sweet Fragrance of Indulgence A": "charm::neg",
+  "The Usurping Spear A": "atkPlus",
+  "Thief's Calling Card A": "drain::neg",
+  "Throw/Retrieve A": "starBunch",
+  "Transformation A": "buster:up",
+  "Venerated Shield of Snowflakes B": "def:up",
+  "Virtue of Chastity A": "starBunch",
+  "Void Space Art (Solid Geometry) B": "cardsBAQ:up",
+  "Wisdom of Dún Scáith A+": "evade",
+  "Xōchiyāōyōtl A": "atk:up",
+  "Yin-Yang A+": "yinYang",
+  "Yin-Yang B": "yinYang",
+  "Zarich C": "critBlue",
+  "∞ Chestnut Paste EX": "heal"
+});
 const FROM_ICON = { 'Faceless Moon EX|lockHand': 'facelessMoon' };
 // A delayed effect that will hurt its holder or their team (a self-stun, a self-KO, sealed cards...) reads as a debuff.
 const BAD_TO = new Set([undefined, 'self', 'others', 'allies', 'ally']);
@@ -1286,7 +1437,7 @@ const DOWN_BLUE = new Set(['atk', 'def', 'busterRes', 'artsRes', 'quickRes', 'cr
 const DOWN_ICON = { debuffRes: ['brainX', 'blue'], deathRes: ['skull', 'blue'] };
 // Badge for an effect key. neg = harmful to the holder. dir = 'up' | 'down' | null.
 function badge(key, { neg = false, dir = null, tip = '', size = '', plain = false } = {}) {
-  if (typeof key === 'string' && key.includes(':')) [key, dir] = key.split(':'); // e.g. 'critDmg:up' from a field passive
+  if (typeof key === 'string' && key.includes(':')) { const [k, d, n] = key.split(':'); key = k; if (d) dir = d; if (n === 'neg') neg = true; } // e.g. 'critDmg:up' from a field passive, 'bind::neg' for an enemy-aimed icon
   let [glyph, tone, extra] = (dir === 'down' && DOWN_ICON[key]) || EFFECT[key] || ['sparkle', 'util'];
   if (dir === 'down' && DOWN_BLUE.has(key)) tone = 'blue'; // lowered ATK/DEF and lowered card or crit resistance read blue
   const arrow = dir ? `<span class="arr ${dir === 'up2' ? 'up dbl' : dir}">${dir === 'up2' ? '<i>▲</i><i>▲</i>' : dir === 'up' ? '▲' : '▼'}</span>` : '';
@@ -1918,6 +2069,9 @@ const KITS = {"1": {"np": {"n": "Lord Camelot", "tgt": "none", "post": [{"k": "b
 // ---- Paladin Mash ----
 Object.assign(KITS, {"1001": {"np": {"n": "Lord Chaldeas", "tgt": "none", "post": [{"k": "buff", "to": "allies", "s": "dmgCut", "v": 88, "t": 3}, {"k": "buff", "to": "allies", "s": "debuffImmune", "v": 1, "t": 3, "n": 1}, {"k": "buff", "to": "allies", "s": "atk", "v": 30.0, "t": 3}, {"k": "buff", "to": "allies", "s": "npDmg", "v": 50, "t": 3, "foeOnField": "Threat to Humanity"}, {"k": "transform", "to": "self", "into": 1002, "revert": 3, "label": "Holy Sword", "text": "Loads the Holy Sword for the next 2 turns: NP becomes Rayproof Kyrielight (Buster, all enemies, 550%) and skill 2 becomes Timeworn Bullet Kindling of Amethyst B"}], "oc": [{"k": "buff", "to": "allies", "s": "def", "v": 30.0, "t": 3, "v5": 50.0}]}, "sk": [{"n": "Venerated Shield of Snowflakes B", "cd": 6, "e": [{"k": "buff", "to": "allies", "s": "def", "v": 20.0, "t": 3}, {"k": "np", "to": "allies", "v": 20}, {"k": "buff", "to": "self", "s": "atk", "v": 30.0, "t": 3}, {"k": "buff", "to": "self", "s": "critDmg", "v": 30.0, "t": 3}]}, {"n": "Obscurant Wall of Chalk A", "cd": 8, "e": [{"k": "buff", "to": "ally", "s": "trueInvincible", "v": 1, "t": 1}, {"k": "np", "to": "ally", "v": 30}, {"k": "buff", "to": "alliesBut", "s": "invincible", "v": 1, "t": 1}]}, {"n": "Shield of Rousing Resolution A", "cd": 6, "e": [{"k": "buff", "to": "self", "s": "taunt", "v": 1, "t": 1}, {"k": "buff", "to": "self", "s": "npGain", "v": 200.0, "t": 1, "marks": [3084], "label": "NP Gain Up"}, {"k": "buff", "to": "self", "s": "trigger", "v": 1, "t": 3, "on": "damaged", "eff": [{"k": "stars", "v": 10}], "label": "Activate when Damaged"}]}], "pas": [["debuffRes", 20.0], ["quick", 6.0], ["dmgCut", 50.0], {"s": "territory", "v": 50, "n": 5, "label": "Territory Defense", "hidden": false}]}, "1002": {"np": {"n": "Rayproof Kyrielight", "tgt": "all", "pre": [{"k": "buff", "to": "self", "s": "ignoreInv", "v": 1, "t": 1}, {"k": "buff", "to": "self", "s": "ignoreDef", "v": 1, "t": 1, "marks": [3111], "label": "Ignore DEF"}], "post": [{"k": "strip", "to": "enemies", "cats": ["buff"]}, {"k": "transform", "to": "self", "into": 1001, "text": "Spends the Holy Sword: back to Lord Chaldeas and Obscurant Wall of Chalk A"}], "oc": [{"k": "buff", "to": "self", "s": "buster", "v": 20.0, "t": 1, "tags": ["Buster Buff"], "marks": [3093], "label": "Buster Up", "v5": 40.0}], "dmg": 550, "special": {"v": 200, "vs": "Threat to Humanity"}}, "sk": [{"n": "Venerated Shield of Snowflakes B", "cd": 6, "e": [{"k": "buff", "to": "allies", "s": "def", "v": 20.0, "t": 3}, {"k": "np", "to": "allies", "v": 20}, {"k": "buff", "to": "self", "s": "atk", "v": 30.0, "t": 3}, {"k": "buff", "to": "self", "s": "critDmg", "v": 30.0, "t": 3}]}, {"n": "Timeworn Bullet Kindling of Amethyst B", "cd": 8, "e": [{"k": "buff", "to": "self", "s": "npDmg", "v": 100, "t": 3}, {"k": "npPerStar", "to": "self", "v": 4, "max": 50}, {"k": "selfDmg", "v": 200, "nonlethal": true}]}, {"n": "Shield of Rousing Resolution A", "cd": 6, "e": [{"k": "buff", "to": "self", "s": "taunt", "v": 1, "t": 1}, {"k": "buff", "to": "self", "s": "npGain", "v": 200.0, "t": 1, "marks": [3084], "label": "NP Gain Up"}, {"k": "buff", "to": "self", "s": "trigger", "v": 1, "t": 3, "on": "damaged", "eff": [{"k": "stars", "v": 10}], "label": "Activate when Damaged"}]}], "pas": [["debuffRes", 20.0], ["quick", 6.0], ["dmgCut", 50.0], {"s": "territory", "v": 50, "n": 5, "label": "Territory Defense", "hidden": false}]}});
 // ---- end Paladin ----
+// ---- per-servant skill icons (when two servants share a skill name but only one should change) ----
+KITS[166].sk[1].icon = "bind::neg";
+// ---- end per-servant skill icons ----
 window.KITS = KITS;
 </script>
 <script>// FGO PvP battle engine. Pure logic, no DOM. Works in the browser and in Node.
@@ -2055,7 +2209,7 @@ function snakeOrder(first) {
 // Meta Supports: a team may draft at most one. Artoria Caster, Koyanskaya of Light, Merlin, Lady Avalon, Tamamo-no-Mae,
 // Lord El-Melloi II, Skadi (Caster), Skadi (Ruler), Larva/Tiamat (Archer).
 const META = [284, 314, 150, 353, 62, 37, 215, 357, 450];
-const EXCLUSIVE = [[190, 191], [424, 425], [472, 473], [1, 1001]]; // + Mash / Paladin Mash // Mecha Eli-chan / Mk.II; Kishinami Hakuno (Male/Female); Gray Lily (Saber/Lancer)
+const EXCLUSIVE = [[190, 191], [424, 425], [472, 473], [1, 1001], [359, 360, 361]]; // + Mash / Paladin Mash // Mecha Eli-chan / Mk.II; Kishinami Hakuno (Male/Female); Gray Lily (Saber/Lancer); Thrúd / Hildr / Ortlinde
 const BYCOST = new WeakMap(); // every servant sorted by cost, cached per roster
 function byCost(R) { let s = BYCOST.get(R); if (!s) { s = Object.values(R).sort((a, b) => costOf(a) - costOf(b)); BYCOST.set(R, s); } return s; }
 function canPick(team, id, taken, R) {
