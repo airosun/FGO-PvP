@@ -878,8 +878,8 @@ h1, h2 { letter-spacing: .01em; }
 .afx.fistfx.t-glow, .afx.burst.t-glow { filter: drop-shadow(0 0 8px #ffe48a) drop-shadow(0 0 16px #ff9fe0) brightness(1.25); }
 @keyframes fistHit { 0% { transform: scaleX(var(--dir)) translateX(-60px) scale(.6); opacity: 0; } 40% { transform: scaleX(var(--dir)) translateX(0) scale(1.15); opacity: 1; } 100% { transform: scaleX(var(--dir)) translateX(4px) scale(1); opacity: 0; } }
 /* flagstaff swing (Ruler) */
-.afx.flagfx { width: 150px; height: 42px; margin: -21px 0 0 -140px; transform-origin: 6% 50%; animation: flagSwing .44s cubic-bezier(.3,.8,.3,1) forwards; }
-.afx.flagfx.big { width: 210px; height: 58px; margin: -29px 0 0 -196px; }
+.afx.flagfx { --W: calc(var(--fw, 130px) * 1.15); width: var(--W); height: calc(var(--W) * .28); margin: calc(var(--W) * -.14) 0 0 calc(var(--W) * (-.06 - .88 * var(--dir, 1))); transform-origin: 6% 50%; animation: flagSwing .44s cubic-bezier(.3,.8,.3,1) forwards; }
+.afx.flagfx.big { --W: calc(var(--fw, 130px) * 1.55); }
 @keyframes flagSwing { 0% { transform: scaleX(var(--dir)) rotate(-70deg); opacity: 0; } 25% { opacity: 1; } 60% { transform: scaleX(var(--dir)) rotate(18deg); opacity: 1; } 100% { transform: scaleX(var(--dir)) rotate(30deg); opacity: 0; } }
 /* impact bursts and rings */
 .afx.burst { width: 44px; height: 44px; margin: -22px 0 0 -22px; color: #fff6d6; animation: burstPop .38s ease-out forwards; }
@@ -1057,6 +1057,21 @@ h1, h2 { letter-spacing: .01em; }
   .battle.bv .dockrow.spies { grid-template-columns: minmax(0, 1fr); }
 }
 @media (prefers-reduced-motion: reduce) { .battle.bv .stage { transition: none; } }
+
+/* targeting tag sits under the rarity/class line, never over the name */
+.unit.ucard.targetable::after { content: none; display: none; }
+.uc-tags .tgttag { font: 700 .56rem/1 var(--f-body); letter-spacing: .06em; text-transform: uppercase; padding: 3px 6px; border-radius: 999px; background: var(--gold); color: var(--gold-ink); }
+.uc-tags .tgttag.up { background: #e5484d; color: #fff; } .uc-tags .tgttag.down { background: #3e8bff; color: #fff; } .uc-tags .tgttag.even { background: #fff; color: #111; }
+/* skill pop-ups float above the cards */
+#poplayer { position: absolute; left: 0; top: 0; width: 0; height: 0; z-index: 55; pointer-events: none; }
+#poplayer .pophost { position: absolute; }
+#poplayer .floater { white-space: normal; width: max-content; max-width: 240px; text-align: center; justify-content: center; }
+/* center divider: everything centered */
+.battle.bv .divider, .battle.bv .divider .turnbar, .battle.bv .divider .turnbar p { text-align: center; justify-content: center; justify-items: center; }
+.battle.bv .divider .turnbar > *, .battle.bv .divider .turnbar .row { margin-inline: auto; }
+.battle.bv .divider .midline { justify-items: stretch; align-items: center; }
+.battle.bv .divider .midline > * { justify-self: center; }
+.battle.bv .divider .midline .chartbtn { width: 100%; }
 </style>
 <script>__ICONS__</script>
 <script>__SCENES__</script>

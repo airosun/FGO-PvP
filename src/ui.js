@@ -525,7 +525,7 @@ function unitTile(u, opts) {
   return `<div class="unit ucard p${u.side}${u.dead ? ' dead' : ''}${tgt}${sel}" data-act="unit" data-uid="${u.uid}" role="button" tabindex="0" aria-label="${esc(u.name)}">
     <span class="uc-top"><span class="uc-name" data-act="unit-info" data-uid="${u.uid}" role="button" tabindex="0" title="Flip the card: ${esc(u.name)}'s info">${esc(u.name)}</span>
       <span class="uc-sub"><span class="uc-rar">${RSTARS(u.d.rar)}</span><span class="uc-cls">${esc(cls)}</span></span>
-      <span class="uc-tags">${u.full != null ? `<span class="fulll" tabindex="0" data-tip="${esc(`Fullness ${u.full}/${E.fullCap(u)}. Kurakura's Meals feed every ally that isn't full (+2 each; the rare Legendary Rice Ball +12). Each attack (not the Extra Attack) digests 1. Beni-Enma's Sparrow's Tub Bath empties theirs by 2, and her NP raises everyone's cap by 4 for 5 turns.`)}">🍙 ${u.full}/${E.fullCap(u)}</span>` : ''}${u.aff != null ? `<span class="affl" tabindex="0" data-tip="${esc(`Affection Lv ${E.affLevel(u)} (${E.AFF_NAME(E.affLevel(u))}), ${u.aff} points. Every 10 points is a level. Gains: +3 per card of hers chosen, +6 Brave Chain, +3 per skill she uses (+2 more if it's your first skill that turn), +5/+10/+15 for NP overcharge 200/300/400%+, +10 when the field becomes Waterside, +5 Master skill, +10 Command Seal. Her NP gets +10% damage per level above 1; Lv 4+: Death success up; Lv 7+: Ignore DEF and Ignore Invincible; Lv 10: 50 stars and crit chance up.`)}">♥ Lv ${E.affLevel(u)}</span>` : ''}${opts.aff ? `<span class="afftag ${opts.aff.k}">${opts.aff.k === 'up' ? 'Weak' : opts.aff.k === 'down' ? 'Resists' : 'Neutral'} ×${+opts.aff.m.toFixed(2)}</span>` : opts.marks && opts.marks.length ? `<span class="tgtmark">Slot ${opts.marks.join(', ')}</span>` : ''}</span></span>
+      <span class="uc-tags">${u.full != null ? `<span class="fulll" tabindex="0" data-tip="${esc(`Fullness ${u.full}/${E.fullCap(u)}. Kurakura's Meals feed every ally that isn't full (+2 each; the rare Legendary Rice Ball +12). Each attack (not the Extra Attack) digests 1. Beni-Enma's Sparrow's Tub Bath empties theirs by 2, and her NP raises everyone's cap by 4 for 5 turns.`)}">🍙 ${u.full}/${E.fullCap(u)}</span>` : ''}${u.aff != null ? `<span class="affl" tabindex="0" data-tip="${esc(`Affection Lv ${E.affLevel(u)} (${E.AFF_NAME(E.affLevel(u))}), ${u.aff} points. Every 10 points is a level. Gains: +3 per card of hers chosen, +6 Brave Chain, +3 per skill she uses (+2 more if it's your first skill that turn), +5/+10/+15 for NP overcharge 200/300/400%+, +10 when the field becomes Waterside, +5 Master skill, +10 Command Seal. Her NP gets +10% damage per level above 1; Lv 4+: Death success up; Lv 7+: Ignore DEF and Ignore Invincible; Lv 10: 50 stars and crit chance up.`)}">♥ Lv ${E.affLevel(u)}</span>` : ''}${opts.targetable ? `<span class="tgttag${opts.aff ? ' ' + opts.aff.k : ''}">Tap to target</span>` : ''}${opts.aff ? `<span class="afftag ${opts.aff.k}">${opts.aff.k === 'up' ? 'Weak' : opts.aff.k === 'down' ? 'Resists' : 'Neutral'} ×${+opts.aff.m.toFixed(2)}</span>` : opts.marks && opts.marks.length ? `<span class="tgtmark">Slot ${opts.marks.join(', ')}</span>` : ''}</span></span>
     <span class="uc-mid"><span class="uc-crest" aria-hidden="true">${CI(cls)}</span><span class="uc-buffs">${st.good}</span><span class="uc-debuffs">${st.bad}</span></span>
     <span class="uc-used" title="Skills used this turn">${used}</span>
     <span class="uc-bottom"><span class="bars"><span class="bar hp${hpPct <= 30 ? ' low' : hpPct <= 60 ? ' mid' : ''}"><span style="width:${hpPct}%"></span></span>${E.hasNoNP(u) ? '' : `<span class="bar np${u.np >= 100 ? ' full' : ''}" title="NP gauge cap ${E.npCap(u)}% (NP${E.npLevel(u)})">${[0, 1, 2].filter(k => k * 100 < E.npCap(u)).map(k => { const w = Math.max(0, Math.min(100, u.np - k * 100)); return w > 0 ? `<span class="np${k + 1}${w >= 100 ? ' done' : ''}" style="width:${w}%"></span>` : ''; }).join('')}</span>`}</span><span class="nums"><span>HP ${Math.max(0, Math.round(u.hp))}/${Math.round(mhp)}</span>${E.hasNoNP(u) ? '<span class="npnum none" title="This form has no Noble Phantasm">No NP</span>' : `<span class="npnum${u.np >= 100 ? ' full' : ''}${u.np >= 300 ? ' l3' : u.np >= 200 ? ' l2' : ''}">NP ${Math.floor(u.np)}%</span>`}</span></span></div>`;
@@ -770,11 +770,22 @@ function patchView(snap) {
   document.querySelectorAll('.siderow').forEach(r => { const p = r.classList.contains('p0') ? 0 : 1; const m = r.querySelector('.sidemeta'); if (m) m.innerHTML = sideMeta(p); });
   const log = document.querySelector('.log'); if (log) { const t = document.createElement('div'); t.innerHTML = renderLog(); log.replaceWith(t.firstElementChild); const ll = document.getElementById('logList'); if (ll) ll.scrollTop = ll.scrollHeight; }
 }
+// Pop-ups over a field card float in a layer above the page, so the card's edges never clip them.
+function popHost(el) {
+  if (!el.classList.contains('ucard')) return el;
+  let layer = document.getElementById('poplayer'); if (!layer) { layer = document.createElement('div'); layer.id = 'poplayer'; layer.setAttribute('aria-hidden', 'true'); document.body.appendChild(layer); }
+  const r = pageRect(el); const key = el.dataset.uid;
+  let h = layer.querySelector(`.pophost[data-uid="${key}"]`);
+  if (!h) { h = document.createElement('div'); h.className = 'pophost'; h.dataset.uid = key; layer.appendChild(h); }
+  Object.assign(h.style, { left: r.x + 'px', top: r.y + 'px', width: r.w + 'px', height: r.h + 'px' });
+  return h;
+}
 function floater(uid, html, cls) {
   const el = fxEl(uid); if (!el) return;
+  const host = popHost(el);
   const f = document.createElement('div'); f.className = 'floater ' + (cls || ''); f.innerHTML = html;
-  const n = el.querySelectorAll(".floater").length % 3; f.style.setProperty("--stack", n);
-  el.appendChild(f); setTimeout(() => f.remove(), app.fast ? 700 : 1500);
+  const n = host.querySelectorAll(".floater").length % 3; f.style.setProperty("--stack", n);
+  host.appendChild(f); setTimeout(() => { f.remove(); if (host !== el && !host.children.length) host.remove(); }, app.fast ? 700 : 1500);
 }
 function flash(uid, cls, ms) { const el = fxEl(uid); if (!el) return; el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); setTimeout(() => el.classList.remove(cls), ms); }
 function banner(label, side) {
@@ -854,7 +865,7 @@ function spawnFighter(uid, cx, cy, w) {
   const g = app.g; const x = viewUnit(g.units[uid]);
   const pct = Math.max(0, Math.min(100, x.hp / E.maxHp(x) * 100));
   const f = document.createElement('div');
-  f.className = `fighter mcard p${x.side}${x.dead ? ' dead' : ''}`; f.dataset.uid = uid; f.style.width = w + 'px';
+  f.className = `fighter mcard p${x.side}${x.dead ? ' dead' : ''}`; f.dataset.uid = uid; f.style.width = w + 'px'; f.style.setProperty('--fw', w + 'px');
   // a smaller copy of the servant's card: name, class crest and rarity (a thin HP line shows the hits landing)
   f.innerHTML = `<span class="fname">${esc(x.name)}</span><span class="mcrest">${CI(E.effCls(x))}</span><span class="mrar">${RSTARS(x.d.rar)}</span><div class="fbar"><span style="width:${pct}%"></span></div>`;
   arenaLayer().appendChild(f);
