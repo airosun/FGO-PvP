@@ -1079,6 +1079,8 @@ h1, h2 { letter-spacing: .01em; }
 .battle.bv .divider .midline { justify-items: stretch; align-items: center; }
 .battle.bv .divider .midline > * { justify-self: center; }
 .battle.bv .divider .midline .chartbtn { width: 100%; }
+.fxanchor { position: absolute; pointer-events: none; z-index: 7; }
+.fxanchor > .afx { left: 50%; top: 50%; }
 </style>
 <script>// Original inline-SVG icon set: class icons and effect icons. Drawn for this prototype, not taken from the game.
 (function (root) {
@@ -5324,9 +5326,16 @@ function launch(st, from, tk, big, k, i) {
   return new Promise(r => setTimeout(r, dur(ms)));
 }
 // What appears on the target as a hit lands.
-function impact(st, tk, from, big, k) {
+function impact(st, tk, from, big, k, still) {
   const dir = pageCenter(tk).x >= pageCenter(from).x ? 1 : -1; // direction the blow travels
-  const add = (cls, html, ms) => { const e = makeFx(cls + (big ? ' big' : '') + (st.tint ? ' t-' + st.tint : ''), html, tk); e.style.setProperty('--dir', dir); fxDone(e, ms); return e; };
+  // Against Evade the blow lands where the target was standing, so they visibly dodge out from under it.
+  let host = tk;
+  if (still) {
+    host = document.createElement('div'); host.className = 'fxanchor';
+    Object.assign(host.style, { left: tk.offsetLeft + 'px', top: tk.offsetTop + 'px', width: tk.offsetWidth + 'px', height: tk.offsetHeight + 'px' });
+    host.style.setProperty('--fw', tk.style.getPropertyValue('--fw')); arenaLayer().appendChild(host); setTimeout(() => host.remove(), dur(700));
+  }
+  const add = (cls, html, ms) => { const e = makeFx(cls + (big ? ' big' : '') + (st.tint ? ' t-' + st.tint : ''), html, host); e.style.setProperty('--dir', dir); fxDone(e, ms); return e; };
   const rot = (((k * 53) % 70) - 35);
   switch (st.fx) {
     case 'sword': { const e = add('slashfx', '', 420); e.style.setProperty('--rot', rot + 'deg'); break; }
@@ -5385,7 +5394,7 @@ async function strike(atk, tks, evs, tok, big) {
       await Promise.all(flights);
     }
     if (tok.skip) return;
-    if (!e.blocked) impact(st, tk, actor, big, k + i);
+    impact(st, tk, actor, big, k + i, e.blocked === 'evade'); // the weapon swings even when Evade, Invincible or Anti-Enforcement DEF stops the damage
     landHit(tk, e, actor, big, k, parts[i][k], sideOf(tk), st);
     dropStars(tk, starsOnHit(e, k, parts[i].length), +atk.dataset.uid);
     if (hp[i] != null && !e.blocked) { hp[i] -= parts[i][k]; setTokenHp(tk, e.uid, hp[i]); }
