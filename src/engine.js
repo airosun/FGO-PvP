@@ -133,7 +133,7 @@ function snakeOrder(first) {
 // Meta Supports: a team may draft at most one. Artoria Caster, Koyanskaya of Light, Merlin, Lady Avalon, Tamamo-no-Mae,
 // Lord El-Melloi II, Skadi (Caster), Skadi (Ruler), Larva/Tiamat (Archer).
 const META = [284, 314, 150, 353, 62, 37, 215, 357, 450];
-const EXCLUSIVE = [[190, 191], [424, 425], [472, 473], [1, 1001], [359, 360, 361]]; // + Mash / Paladin Mash // Mecha Eli-chan / Mk.II; Kishinami Hakuno (Male/Female); Gray Lily (Saber/Lancer); Thrúd / Hildr / Ortlinde
+const EXCLUSIVE = [[190, 191], [424, 425], [472, 473], [1, 1001], [359, 360, 361]]; // + Mash / Paladin Mash // Mecha Eli-chan / Mk.II; Kishinami Hakuno (Male/Female); Gray Lily (Saber/Lancer); Thrud / Hildr / Ortlinde
 const BYCOST = new WeakMap(); // every servant sorted by cost, cached per roster
 function byCost(R) { let s = BYCOST.get(R); if (!s) { s = Object.values(R).sort((a, b) => costOf(a) - costOf(b)); BYCOST.set(R, s); } return s; }
 function canPick(team, id, taken, R) {
@@ -1625,7 +1625,7 @@ function attackCard(g, u, t, color, a, tag) {
     g.players[u.side].stars = Math.min(CFG.starBankCap, g.players[u.side].stars + made);
     log(g, `${tag}: ${u.name}'s ${COLOR[color]}${crit ? ' CRIT' : ''} on ${t.name} is nullified by ${blocked}. NP ${Math.floor(u.np)}%, +${fmtStars(made)}★`, 'miss');
     creditBlock(g, u, false);
-    fx(g, { t: 'hit', uid: t.uid, src: u.uid, dmg: 0, blocked: blockKind(blocked), blockLabel: blocked, crit, color, dist: hitSplit(u, color, hits), aoe: !!a.aoeHalf });
+    fx(g, { t: 'hit', uid: t.uid, src: u.uid, dmg: 0, blocked: blockKind(blocked), blockLabel: blocked, crit, color, dist: hitSplit(u, color, hits), aoe: !!a.aoeHalf, stars: g._starHits });
     markCounter(g, t, u); // being targeted is enough, even if the attack is blocked
     return;
   }
@@ -1665,7 +1665,7 @@ function attackCard(g, u, t, color, a, tag) {
   if (color === 'B' && has(u, 'busterAtkNp')) { const b = u.buffs.find(x => x.s === 'busterAtkNp'); u.np = Math.min(npCap(u), u.np + b.v); consume(u, 'busterAtkNp'); }
   if (colorStat) consumeCardUses(u, colorStat);
   log(g, `${tag}: ${u.name} ${COLOR[color]}${crit ? ' CRIT' : ''} → ${t.name} for ${dmg}. NP ${Math.floor(u.np)}%, +${fmtStars(made)}★`, 'dmg', { dmgNum: dmg, aff: affOf(u, t) });
-  fx(g, { t: 'hit', uid: t.uid, src: u.uid, dmg, aff: affOf(u, t), crit, color, dist: hitSplit(u, color, hits), aoe: !!a.aoeHalf, pierced });
+  fx(g, { t: 'hit', uid: t.uid, src: u.uid, dmg, aff: affOf(u, t), crit, color, dist: hitSplit(u, color, hits), aoe: !!a.aoeHalf, pierced, stars: g._starHits });
   if (dmg > 0 && t.hp > 0) fireTriggers(g, t, 'damaged', { crit, target: u, isHit: true });
   if (dmg > 0) wake(g, t);
   markCounter(g, t, u);
@@ -1698,8 +1698,9 @@ function starRate(u, color, slot, quickFirst, crit) {
   return Math.max(0, Math.min(CFG.starHitCap, pct)) / 100;
 }
 function starsFor(g, u, color, slot, quickFirst, crit, hits) {
-  const p = starRate(u, color, slot, quickFirst, crit); let n = 0;
-  for (let h = 0; h < Math.max(1, hits); h++) n += Math.floor(p) + (g.rng() < p - Math.floor(p) ? 1 : 0); // e.g. 2.51: 2 stars, 51% for a 3rd
+  const p = starRate(u, color, slot, quickFirst, crit); let n = 0; const per = [];
+  for (let h = 0; h < Math.max(1, hits); h++) { const k = Math.floor(p) + (g.rng() < p - Math.floor(p) ? 1 : 0); per.push(k); n += k; } // e.g. 2.51: 2 stars, 51% for a 3rd
+  g._starHits = per; // stars dropped by each hit, for the star-drop animation
   return n;
 }
 function fmtStars(n) { return String(Math.round(n * 100) / 100); }
@@ -1729,7 +1730,7 @@ function hitSplit(u, card, hits) {
   if (hits > d.length && hits % d.length === 0) { const m = hits / d.length; d = d.flatMap(x => Array(m).fill(x / m)); }
   return d;
 }
-// Manannán mac Lir's Fragarach Counter: each enemy action aimed at her (or her side) is answered once, after it resolves,
+// Manannan mac Lir's Fragarach Counter: each enemy action aimed at her (or her side) is answered once, after it resolves,
 // straight at whoever acted (Taunt doesn't redirect it). Not while she can't act, and not if the action took her down
 // (unless Guts brought her back).
 function markCounter(g, t, src) {
@@ -1827,7 +1828,7 @@ function execNP(g, u, a, tag) {
         g.players[u.side].stars = Math.min(CFG.starBankCap, g.players[u.side].stars + npStars);
         log(g, `${np.n} on ${t.name} is nullified by ${blocked}. +${fmtStars(npStars)}★`, 'miss');
         creditBlock(g, u, true);
-        fx(g, { t: 'hit', uid: t.uid, src: u.uid, dmg: 0, blocked: blockKind(blocked), blockLabel: blocked, np: true, aoe: np.tgt === 'all' && !single, color: letter, dist: hitSplit(u, 'NP', hits) });
+        fx(g, { t: 'hit', uid: t.uid, src: u.uid, dmg: 0, blocked: blockKind(blocked), blockLabel: blocked, np: true, aoe: np.tgt === 'all' && !single, color: letter, dist: hitSplit(u, 'NP', hits), stars: g._starHits });
         continue;
       }
       const cardUp = sumStat(u, { B: 'buster', A: 'arts', Q: 'quick' }[letter]);
@@ -1860,7 +1861,7 @@ function execNP(g, u, a, tag) {
       const npStars = starsFor(g, u, letter, 0, a.plan && a.plan.bonus && a.plan.bonus.Q, false, hits);
       g.players[u.side].stars = Math.min(CFG.starBankCap, g.players[u.side].stars + npStars);
       log(g, `${np.n} hits ${t.name} for ${dmg}. +${fmtStars(npStars)}★`, 'dmg', { dmgNum: dmg, aff: affOf(u, t) });
-      fx(g, { t: 'hit', uid: t.uid, src: u.uid, dmg, aff: affOf(u, t), np: true, aoe: np.tgt === 'all' && !single, color: letter, dist: hitSplit(u, 'NP', hits), pierced });
+      fx(g, { t: 'hit', uid: t.uid, src: u.uid, dmg, aff: affOf(u, t), np: true, aoe: np.tgt === 'all' && !single, color: letter, dist: hitSplit(u, 'NP', hits), pierced, stars: g._starHits });
       if (dmg > 0 && t.hp > 0) fireTriggers(g, t, 'damaged', { target: u, isHit: true });
       if (dmg > 0) wake(g, t);
       onHitRiders(g, u, t, letter, true);

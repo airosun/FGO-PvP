@@ -174,7 +174,7 @@ function renderPool(S, team) {
 const clsKey = c => String(c).toLowerCase().replace(/[^a-z]/g, '');
 // The servant list being filtered right now: the lobby browser when it's open, otherwise the draft.
 const PS = () => (app.browse && app.screen !== 'draft' ? app.browse : app.draft);
-// ---- Draft search: names first, then NP/skill names and traits. Ignores case and accents ("anra" finds Aŋra).
+// ---- Draft search: names first, then NP/skill names and traits. Ignores case and accents ("anra" finds Angra).
 const fold = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ŋ/g, 'n').replace(/[^a-z0-9 ]/gi, ' ').toLowerCase().replace(/\s+/g, ' ').trim();
 const SEARCH_MODES = [
   { k: 'servant', label: 'Servants', ph: 'Search servant names' },
@@ -248,11 +248,11 @@ const MECH_NOTES = {
   470: ['Her NP applies Past Alteration to every enemy. Its bonus damage grows with each Past Alteration on the target: 100% + 10% per stack, up to 10 (200%).'],
   7: ['His NP first raises his buff success rate based on missing HP: 40% × (1 − current HP ÷ max HP). At full HP that is +0%; at half HP, +20%. It applies before his chance-based ATK buffs, so they land more often the more hurt he is.'],
   21: ['Rear Guard\'s Pride\'s second ATK buff depends on each ally\'s own missing HP: 30% × (1 − current HP ÷ max HP). An ally at full HP gets +0%, one at 50% HP gets +15%. It is recalculated as their HP changes.'],
-  312: ['Ray Horizon transforms her into Mélusine (Final Ascension) for the rest of the battle: her NP becomes an AoE Buster NP.'],
+  312: ['Ray Horizon transforms her into Melusine (Final Ascension) for the rest of the battle: her NP becomes an AoE Buster NP.'],
 };
 function kitHtml(d) {
   const kit = KITS[d.id]; const K = Describe.describeKit(kit, d);
-  const forms = kitForms(d.id); // other forms this servant can switch into (Mélusine's Final Ascension, Paladin Mash's Holy Sword...)
+  const forms = kitForms(d.id); // other forms this servant can switch into (Melusine's Final Ascension, Paladin Mash's Holy Sword...)
   const view = forms.map(f => ({ ...f, d: R[f.id], kit: KITS[f.id], K: f.id === d.id ? K : Describe.describeKit(KITS[f.id], R[f.id]) }));
   const npHtml = variants(view, v => v.K.np && npCard(v.d, v.K.np), v => JSON.stringify(v.kit.np));
   const skills = kit.sk.map((s, i) => variants(view, v => v.K.skills[i] && skillCard(v.kit.sk[i], v.K.skills[i]), v => JSON.stringify(v.kit.sk[i]))).join('');
@@ -462,10 +462,20 @@ function statusGroups(u) {
   }
   return [...groups.values()];
 }
+// One status for a tooltip: what it does, how long it lasts, and where it came from.
+function buffTipLine(b, u) {
+  const d = E.describeBuff(b, u).replace(/\s+\d+T$/, '');
+  const left = b.t != null ? `${b.t} turn${b.t === 1 ? '' : 's'} left` : '';
+  const uses = b.n != null ? `${b.n} use${b.n === 1 ? '' : 's'} left` : '';
+  const last = [left, uses].filter(Boolean).join(', ') || (b.passive ? 'always on' : 'until removed');
+  const giver = b.srcUid != null && app.g.units[b.srcUid] && b.srcUid !== u.uid ? app.g.units[b.srcUid].name : b.by != null && app.g.units[b.by] && b.by !== u.uid ? app.g.units[b.by].name : '';
+  const from = b.from ? `from ${b.from}${giver ? ` (${giver})` : ''}` : giver ? `from ${giver}` : '';
+  return [d, last, from].filter(Boolean).join(' · ');
+}
 function groupBadge(gp) {
   const left = Math.min(...gp.list.map(b => b.t));
   const times = gp.list.reduce((a, b) => a + (b.n || 0), 0);
-  const tip = gp.list.map(b => `${E.describeBuff(b, gp.u)}${b.from ? ' · from ' + b.from : ''}`).join('\n');
+  const tip = gp.list.map(b => buffTipLine(b, gp.u)).join('\n');
   const badge = gp.plain ? I.badge(gp.key, { neg: gp.neg, tip: esc(tip) }) : I.badge(gp.key, { neg: gp.neg, dir: gp.dir, tip: esc(tip) });
   return `<span class="sb${gp.neg ? ' bad' : ''}">${badge}${gp.list.length > 1 ? `<i class="sbn">${gp.list.length}</i>` : ''}${Number.isFinite(left) ? `<i class="sbt">${left}</i>` : times ? `<i class="sbt">${times}×</i>` : ''}</span>`;
 }
@@ -477,19 +487,48 @@ function statusChips(u, max = 14) {
   return g2.map(groupBadge).join('') + (g2.length && b2.length ? '<span class="sbsep" aria-hidden="true"></span>' : '') + b2.map(groupBadge).join('')
     + (extra > 0 ? `<button class="sbmore" data-act="unit" data-uid="${u.uid}" data-tip="${extra} more effect${extra > 1 ? 's' : ''}: open the servant to see everything">+${extra}</button>` : '');
 }
+// Status badges split for the servant card: buffs (upper middle) and debuffs (lower middle).
+function statusSplit(u, max = 99) {
+  const gs = statusGroups(u); const good = gs.filter(g => !g.neg), bad = gs.filter(g => g.neg);
+  const more = (n) => n > 0 ? `<button class="sbmore" data-act="unit-info" data-uid="${u.uid}" data-tip="${n} more effect${n > 1 ? 's' : ''}: open the servant to see everything">+${n}</button>` : '';
+  return { good: good.slice(0, max).map(groupBadge).join('') + more(good.length - max), bad: bad.slice(0, max).map(groupBadge).join('') + more(bad.length - max) };
+}
+const RSTARS = n => '★'.repeat(Math.max(0, Math.min(5, n || 0)));
+// Each servant on the field is a playing card: name, rarity and class on top; buffs over the faded class crest,
+// debuffs below them; the skills just used; HP and NP at the bottom. Tapping the name flips the card to their info.
+// The card never grows: after layout, badges that don't fit in a section fold into a "+N" chip that opens the
+// servant's full list of effects.
+function fitCards(root = document) {
+  root.querySelectorAll('.ucard .uc-buffs, .ucard .uc-debuffs').forEach(sec => {
+    sec.querySelectorAll('.sbmore.fit').forEach(b => b.remove());
+    const items = [...sec.querySelectorAll(':scope > .sb')]; items.forEach(i => { i.hidden = false; });
+    if (sec.scrollHeight <= sec.clientHeight + 1) return;
+    const card = sec.closest('.ucard'); const uid = card && card.dataset.uid;
+    const more = document.createElement('button'); more.className = 'sbmore fit'; more.dataset.act = 'unit-info'; if (uid) more.dataset.uid = uid;
+    sec.appendChild(more);
+    let hidden = 0;
+    for (let k = items.length - 1; k >= 0 && sec.scrollHeight > sec.clientHeight + 1; k--) { items[k].hidden = true; hidden++; more.textContent = '+' + hidden; }
+    more.textContent = '+' + hidden;
+    more.setAttribute('aria-label', `${hidden} more effect${hidden > 1 ? 's' : ''}: open the servant to see all of them`);
+    more.title = `${hidden} more: tap to see every effect`;
+  });
+}
+window.addEventListener('resize', () => fitCards());
 function unitTile(u, opts) {
-  const g = app.g;
   const mhp = E.maxHp(u);
   const hpPct = Math.max(0, Math.min(100, u.hp / mhp * 100));
-  const chips = statusChips(u);
+  const st = statusSplit(u);
   const used = (u.usedSkills || []).map(i => `<span class="usedsk" data-tip="${esc(skillTip(u, i))}" tabindex="0">${I.skillIcon(u.kit.sk[i])}</span>`).join('');
   const tgt = (opts.targetable ? ' targetable' : '') + (opts.aff ? ` aff-${opts.aff.k}` : '');
   const sel = opts.selected ? ' selected' : '';
-  return `<div class="unit p${u.side}${u.dead ? ' dead' : ''}${tgt}${sel}" data-act="unit" data-uid="${u.uid}" role="button" tabindex="0">
-    <span class="uhead">${CI(E.effCls(u))}<span class="uname">${esc(u.name)}</span>${u.full != null ? `<span class="fulll" tabindex="0" data-tip="${esc(`Fullness ${u.full}/${E.fullCap(u)}. Kurakura's Meals feed every ally that isn't full (+2 each; the rare Legendary Rice Ball +12). Each attack (not the Extra Attack) digests 1. Beni-Enma's Sparrow's Tub Bath empties theirs by 2, and her NP raises everyone's cap by 4 for 5 turns.`)}">🍙 ${u.full}/${E.fullCap(u)}</span>` : ''}${u.aff != null ? `<span class="affl" tabindex="0" data-tip="${esc(`Affection Lv ${E.affLevel(u)} (${E.AFF_NAME(E.affLevel(u))}), ${u.aff} points. Every 10 points is a level. Gains: +3 per card of hers chosen, +6 Brave Chain, +3 per skill she uses (+2 more if it's your first skill that turn), +5/+10/+15 for NP overcharge 200/300/400%+, +10 when the field becomes Waterside, +5 Master skill, +10 Command Seal. Her NP gets +10% damage per level above 1; Lv 4+: Death success up; Lv 7+: Ignore DEF and Ignore Invincible; Lv 10: 50 stars and crit chance up.`)}">♥ Lv ${E.affLevel(u)}</span>` : ''}${opts.aff ? `<span class="afftag ${opts.aff.k}">${opts.aff.k === 'up' ? 'Weak' : opts.aff.k === 'down' ? 'Resists' : 'Neutral'} ×${+opts.aff.m.toFixed(2)}</span>` : opts.marks && opts.marks.length ? `<span class="tgtmark">Slot ${opts.marks.join(', ')}</span>` : ''}</span>
-    <span class="bars"><span class="bar hp${hpPct <= 30 ? ' low' : hpPct <= 60 ? ' mid' : ''}"><span style="width:${hpPct}%"></span></span>${E.hasNoNP(u) ? '' : `<span class="bar np${u.np >= 100 ? ' full' : ''}" title="NP gauge cap ${E.npCap(u)}% (NP${E.npLevel(u)})">${[0, 1, 2].filter(k => k * 100 < E.npCap(u)).map(k => { const w = Math.max(0, Math.min(100, u.np - k * 100)); return w > 0 ? `<span class="np${k + 1}${w >= 100 ? ' done' : ''}" style="width:${w}%"></span>` : ''; }).join('')}</span>`}</span>
-    <span class="nums"><span>HP ${Math.max(0, Math.round(u.hp))}/${Math.round(mhp)}</span>${E.hasNoNP(u) ? '<span class="npnum none" title="This form has no Noble Phantasm">No NP</span>' : `<span class="npnum${u.np >= 100 ? ' full' : ''}${u.np >= 300 ? ' l3' : u.np >= 200 ? ' l2' : ''}">NP ${Math.floor(u.np)}%</span>`}</span>
-    ${chips || used ? `<span class="chips">${chips}${used ? `<span class="usedrow" title="Skills used this turn"><span class="usedlbl">Used</span>${used}</span>` : ''}</span>` : ''}</div>`;
+  const cls = E.effCls(u);
+  return `<div class="unit ucard p${u.side}${u.dead ? ' dead' : ''}${tgt}${sel}" data-act="unit" data-uid="${u.uid}" role="button" tabindex="0" aria-label="${esc(u.name)}">
+    <span class="uc-top"><span class="uc-name" data-act="unit-info" data-uid="${u.uid}" role="button" tabindex="0" title="Flip the card: ${esc(u.name)}'s info">${esc(u.name)}</span>
+      <span class="uc-sub"><span class="uc-rar">${RSTARS(u.d.rar)}</span><span class="uc-cls">${esc(cls)}</span></span>
+      <span class="uc-tags">${u.full != null ? `<span class="fulll" tabindex="0" data-tip="${esc(`Fullness ${u.full}/${E.fullCap(u)}. Kurakura's Meals feed every ally that isn't full (+2 each; the rare Legendary Rice Ball +12). Each attack (not the Extra Attack) digests 1. Beni-Enma's Sparrow's Tub Bath empties theirs by 2, and her NP raises everyone's cap by 4 for 5 turns.`)}">🍙 ${u.full}/${E.fullCap(u)}</span>` : ''}${u.aff != null ? `<span class="affl" tabindex="0" data-tip="${esc(`Affection Lv ${E.affLevel(u)} (${E.AFF_NAME(E.affLevel(u))}), ${u.aff} points. Every 10 points is a level. Gains: +3 per card of hers chosen, +6 Brave Chain, +3 per skill she uses (+2 more if it's your first skill that turn), +5/+10/+15 for NP overcharge 200/300/400%+, +10 when the field becomes Waterside, +5 Master skill, +10 Command Seal. Her NP gets +10% damage per level above 1; Lv 4+: Death success up; Lv 7+: Ignore DEF and Ignore Invincible; Lv 10: 50 stars and crit chance up.`)}">♥ Lv ${E.affLevel(u)}</span>` : ''}${opts.aff ? `<span class="afftag ${opts.aff.k}">${opts.aff.k === 'up' ? 'Weak' : opts.aff.k === 'down' ? 'Resists' : 'Neutral'} ×${+opts.aff.m.toFixed(2)}</span>` : opts.marks && opts.marks.length ? `<span class="tgtmark">Slot ${opts.marks.join(', ')}</span>` : ''}</span></span>
+    <span class="uc-mid"><span class="uc-crest" aria-hidden="true">${CI(cls)}</span><span class="uc-buffs">${st.good}</span><span class="uc-debuffs">${st.bad}</span></span>
+    <span class="uc-used" title="Skills used this turn">${used}</span>
+    <span class="uc-bottom"><span class="bars"><span class="bar hp${hpPct <= 30 ? ' low' : hpPct <= 60 ? ' mid' : ''}"><span style="width:${hpPct}%"></span></span>${E.hasNoNP(u) ? '' : `<span class="bar np${u.np >= 100 ? ' full' : ''}" title="NP gauge cap ${E.npCap(u)}% (NP${E.npLevel(u)})">${[0, 1, 2].filter(k => k * 100 < E.npCap(u)).map(k => { const w = Math.max(0, Math.min(100, u.np - k * 100)); return w > 0 ? `<span class="np${k + 1}${w >= 100 ? ' done' : ''}" style="width:${w}%"></span>` : ''; }).join('')}</span>`}</span><span class="nums"><span>HP ${Math.max(0, Math.round(u.hp))}/${Math.round(mhp)}</span>${E.hasNoNP(u) ? '<span class="npnum none" title="This form has no Noble Phantasm">No NP</span>' : `<span class="npnum${u.np >= 100 ? ' full' : ''}${u.np >= 300 ? ' l3' : u.np >= 200 ? ' l2' : ''}">NP ${Math.floor(u.np)}%</span>`}</span></span></div>`;
 }
 // During playback the field shows a snapshot (app.view) instead of the live state.
 function viewUnit(x) { const s = app.view && app.view.units[x.uid]; return s ? Object.assign(Object.create(x), s) : x; }
@@ -499,7 +538,7 @@ function sideMeta(p) {
   const res = reserve.filter(id => !(v ? v.units[id].dead : g.units[id].dead)).length;
   const bank = Math.floor(v ? v.stars[p] : g.players[p].stars);
   const plan = !v && g.phase === 'skills' && g.players[p].skillQueue.length ? Math.floor(E.plannedStars(g, p)) : bank;
-  return `${res} in reserve · ${bank}★ banked${plan !== bank ? ` <span class="potstars" title="Stars after the skills you've queued: potential stars from star skills count right away">→ ${plan}★ after queued skills</span>` : ''}`;
+  return `${res} in reserve · <span class="bankstars" data-bank="${p}">${bank}★ banked</span>${plan !== bank ? ` <span class="potstars" title="Stars after the skills you've queued: potential stars from star skills count right away">→ ${plan}★ after queued skills</span>` : ''}`;
 }
 function fieldNow() {
   const g = app.g; const f = app.view && app.view.field !== undefined ? app.view.field : E.currentField(g);
@@ -550,6 +589,14 @@ function renderDock() {
   if (u.stage === 'cards' && !u.cover) return cardDock();
   return '';
 }
+// The lock-in button sits in the divider between the two teams.
+function lockButton() {
+  const g = app.g; const u = app.ui;
+  if (u.stage === 'skills') return '<button class="primary" data-act="lock-skills">Lock in skills</button>';
+  if (u.stage !== 'cards') return '';
+  const P = g.players[u.actor]; const nps = E.availableNPs(g, u.actor);
+  return `<button class="primary" data-act="lock-cards" ${u.sel.length === Math.min(3, P.hand.length + nps.length) && u.sel.every(s => s.target != null) ? '' : 'disabled'}>Lock in cards</button>`;
+}
 function turnBar() {
   const g = app.g; const u = app.ui;
   if (NET() && !app.play) { const t = netTurnBar(); if (t != null) return t; }
@@ -561,7 +608,11 @@ function turnBar() {
     const w = g.winner;
     return `<div class="turnbar over"><p><b>${w === 'draw' ? 'Draw' : `${PN(w)} wins`}</b> on turn ${g.turn}. Servants left: P1 ${E.aliveCount(g, 0)}, P2 ${E.aliveCount(g, 1)}.${g.limitBy === 'hp' ? ` Average HP left: P1 ${Math.round(E.hpPct(g, 0) * 100)}%, P2 ${Math.round(E.hpPct(g, 1) * 100)}%.` : ''}</p><div class="row"><button class="primary" data-act="rematch">Rematch, same teams</button><button data-act="new-draft">New draft</button><button data-act="open-stats">Battle stats</button></div></div>`;
   }
-  if (u.stage === 'skills' || u.stage === 'cards') return `<div class="turnbar"><p>${PN(u.actor)} is choosing ${u.stage === 'skills' ? 'skills' : 'cards'}. Their panel is under their team.</p></div>`;
+  if (u.stage === 'skills' || u.stage === 'cards') {
+    const mine = !u.cover && (!NET() || SEAT() === u.actor);
+    if (mine) return `<div class="turnbar"><p>${PN(u.actor)}: pick ${u.stage === 'skills' ? 'skills' : '3 cards'} below, then lock them in.</p>${lockButton()}</div>`;
+    return `<div class="turnbar"><p>${PN(u.actor)} is choosing ${u.stage === 'skills' ? 'skills' : 'cards'}.</p></div>`;
+  }
   return '';
 }
 // One card face used for both the skill-phase preview and the card-phase hand, so the hand looks the same in both.
@@ -611,7 +662,7 @@ function skillDock() {
   const armMsg = !T ? '' : T.kind === 'opt' ? (T.opt.kind === 'npType' ? 'Pick the NP type' : 'Pick an option') : T.seal ? 'Command Seal: pick a servant' : T.kind === 'swapOut' ? 'Order Change: pick the servant on the field to swap out' : T.kind === 'swapIn' ? 'Order Change: pick who comes in' : `Pick ${T.kind === 'ally' ? 'an ally' : 'an enemy'} on the field`;
   return `<div class="dock"><div class="dock-head"><h3>${NET() ? 'Your skills' : `${esc(PN(p))}: skills`}</h3>${sealRow}${T ? `<span class="arm">${armMsg} <button data-act="cancel-target">Cancel</button></span>` : ''}</div>
     ${handPreview(p)}${rows}${master}${reservePick}${sealPick}${optPick}
-    <div class="dockfoot"><ol class="queue">${inPickOrder(sq + mq + queued) || '<li class="hint">No skills queued. They activate in the order you pick them.</li>'}</ol><button class="primary" data-act="lock-skills">Lock in skills</button></div></div>`;
+    <div class="dockfoot"><ol class="queue">${inPickOrder(sq + mq + queued) || '<li class="hint">No skills queued. They activate in the order you pick them.</li>'}</ol></div></div>`;
 }
 function cardDock() {
   const g = app.g; const u = app.ui; const p = u.actor; const P = g.players[p];
@@ -627,7 +678,7 @@ function cardDock() {
   return `<div class="dock"><div class="dock-head"><h3>${NET() ? 'Your cards' : `${esc(PN(p))}: cards`}</h3><span class="arm">${u.pendingSlot != null ? `Slot ${u.pendingSlot + 1}: tap an enemy to target <button data-act="cancel-card">Cancel</button>` : 'Pick a card, then tap the enemy it should hit'}</span></div>
     ${handRows(nps, P.hand, cardBtn)}
     <div class="slots">${slots}</div>
-    <div class="dockfoot"><p class="chain">${preview}</p><button data-act="clear-cards">Clear</button><button class="primary" data-act="lock-cards" ${u.sel.length === Math.min(3, P.hand.length + nps.length) && u.sel.every(s => s.target != null) ? '' : 'disabled'}>Lock in cards</button></div></div>`;
+    <div class="dockfoot"><p class="chain">${preview}</p><button data-act="clear-cards">Clear</button></div></div>`;
 }
 // Cards that hit a single chosen enemy need a target; AoE and no-damage NPs don't.
 function optLabel(su, x) { const sk = su.kit.sk[x.i]; return sk.opts ? (sk.opts[+x.opt] || {}).label || '' : 'NP: ' + x.opt; }
@@ -679,9 +730,15 @@ function renderBattle() {
   const focusSide = u.focus ? g.units[u.focus].side : null;
   const live = u.stage === 'skills' || u.stage === 'cards' || u.stage === 'wait';
   const spyHand = p => isSpec() && live && !app.play ? handPreview(p, `${PN(p)}'s hand`) : '';
-  const side = p => `${p === 0 ? f.left : f.right}${!u.cover && u.actor === p && (u.stage === 'skills' || u.stage === 'cards') && (!NET() || SEAT() === p) ? renderDock() : ''}${spyHand(p)}`;
   const L = leftSide();
-  return `${netBar()}<div class="battle"><div class="col left">${side(L)}</div><div class="col center">${f.mid}<div class="stage" id="stage" aria-hidden="true"></div>${turnBar()}${renderLog()}</div><div class="col right">${side(1 - L)}</div></div>${u.focus && !u.cover ? renderFocus() : ''}${app.affChart ? affChart() : ''}${app.statsOpen ? statsModal() : ''}${u.stage === 'over' && !app.play && !u.victoryClosed && !app.statsOpen ? victoryOverlay() : ''}${cover}`;
+  // Layout: both teams' cards across the top with the turn controls between them; the skill or card panel (when
+  // someone is choosing) under that; then the battlefield across the full width; the log at the bottom.
+  const dockOf = p => !u.cover && u.actor === p && (u.stage === 'skills' || u.stage === 'cards') && (!NET() || SEAT() === p) ? renderDock() : '';
+  const dock = dockOf(L) || dockOf(1 - L);
+  const spies = spyHand(L) + spyHand(1 - L);
+  const dockRow = dock ? `<div class="dockrow side-${u.actor === L ? 'l' : 'r'}">${dock}</div>` : spies ? `<div class="dockrow spies">${spies}</div>` : '';
+  const shrink = !!(dock || spies) || (live && !app.play && !u.cover);
+  return `${netBar()}<div class="battle bv"><div class="topband"><div class="team left">${L === 0 ? f.left : f.right}</div><div class="divider">${f.mid}${turnBar()}</div><div class="team right">${L === 0 ? f.right : f.left}</div></div>${dockRow}<div class="stage${shrink ? ' short' : ''}" id="stage" aria-hidden="true"></div>${renderLog()}</div>${u.focus && !u.cover ? renderFocus() : ''}${app.affChart ? affChart() : ''}${app.statsOpen ? statsModal() : ''}${u.stage === 'over' && !app.play && !u.victoryClosed && !app.statsOpen ? victoryOverlay() : ''}${cover}`;
 }
 
 // ---------------------------------------------------------------- Playback
@@ -704,8 +761,8 @@ function patchView(snap) {
     if (hpOld && hpNew) hpOld.style.width = hpNew.style.width;
     const npOld = el.querySelector('.bar.np'), npNew = n.querySelector('.bar.np'); if (npOld && npNew) { npOld.className = npNew.className; npOld.innerHTML = npNew.innerHTML; }
     const numsOld = el.querySelector('.nums'), numsNew = n.querySelector('.nums'); if (numsOld && numsNew) numsOld.innerHTML = numsNew.innerHTML;
-    const chOld = el.querySelector('.chips'), chNew = n.querySelector('.chips');
-    if (chOld && chNew) chOld.replaceWith(chNew); else if (chOld) chOld.remove(); else if (chNew) el.appendChild(chNew);
+    for (const s of ['.uc-buffs', '.uc-debuffs', '.uc-used', '.uc-tags']) { const a = el.querySelector(s), b = n.querySelector(s); if (a && b && a.innerHTML !== b.innerHTML) a.innerHTML = b.innerHTML; }
+    fitCards(el);
     el.classList.toggle('dead', x.dead);
   });
   document.querySelectorAll('#arena .fighter').forEach(f => { const x = viewUnit(g.units[+f.dataset.uid]); const pct = Math.max(0, Math.min(100, x.hp / E.maxHp(x) * 100)); const bar = f.querySelector('.fbar > span'); if (bar) bar.style.width = pct + '%'; const hp = f.querySelector('.fhp'); if (hp) hp.textContent = `HP ${Math.max(0, Math.round(x.hp))}/${Math.round(E.maxHp(x))}`; });
@@ -797,8 +854,9 @@ function spawnFighter(uid, cx, cy, w) {
   const g = app.g; const x = viewUnit(g.units[uid]);
   const pct = Math.max(0, Math.min(100, x.hp / E.maxHp(x) * 100));
   const f = document.createElement('div');
-  f.className = `fighter p${x.side}${x.dead ? ' dead' : ''}`; f.dataset.uid = uid; f.style.width = w + 'px';
-  f.innerHTML = `<div class="fhead">${CI(x.cls)}<span class="fname">${esc(x.name)}</span></div><div class="fbar"><span style="width:${pct}%"></span></div><div class="fhp">HP ${Math.max(0, Math.round(x.hp))}/${Math.round(E.maxHp(x))}</div>`;
+  f.className = `fighter mcard p${x.side}${x.dead ? ' dead' : ''}`; f.dataset.uid = uid; f.style.width = w + 'px';
+  // a smaller copy of the servant's card: name, class crest and rarity (a thin HP line shows the hits landing)
+  f.innerHTML = `<span class="fname">${esc(x.name)}</span><span class="mcrest">${CI(E.effCls(x))}</span><span class="mrar">${RSTARS(x.d.rar)}</span><div class="fbar"><span style="width:${pct}%"></span></div>`;
   arenaLayer().appendChild(f);
   const H = f.offsetHeight;
   f.style.left = (cx - w / 2) + 'px'; f.style.top = (cy - H / 2) + 'px';
@@ -876,6 +934,72 @@ function landHit(tk, ev, atk, big, k, part, side, st) {
   shake(tk, big); if (!st) slash(tk, big, k);
   const pierce = k === 0 && ev.pierced ? ev.pierced.map(l => `<span class="piercetag">Pierced ${esc(l)}</span>`).join('') : '';
   hitPop(tk, `${pierce}<b class="dnum ${ev.aff}">${part}</b>${k === 0 && ev.crit ? '<span class="crit">Critical</span>' : ''}`, k, big, false, side);
+}
+// ---- Critical stars: each hit drops exactly the stars it generated. They lie in the play area until the
+// attacks are over, then gather up and fly to their owner's star bank.
+function starsOnHit(e, k, n) {
+  const s = e.stars || []; if (!s.length) return 0;
+  if (s.length === n) return s[k] || 0;
+  // hit count and damage split differ (multi-hit buffs): spread the stars evenly over the shown hits
+  const tot = s.reduce((a, b) => a + b, 0); const base = Math.floor(tot / n); return base + (k < tot - base * n ? 1 : 0);
+}
+function dropStars(tk, n, ownerUid) {
+  if (!n || !tk) return;
+  const st = document.getElementById('stage'); if (!st) return;
+  const s = pageRect(st), c = { x: tk._home.cx, y: tk._home.cy };
+  const side = app.g.units[ownerUid].side;
+  for (let j = 0; j < n; j++) {
+    const el = document.createElement('div'); el.className = 'loosestar'; el.dataset.side = side; el.innerHTML = I.svg('star');
+    const fx = Math.max(s.x + 12, Math.min(s.x + s.w - 12, c.x + (Math.random() - .5) * 150));
+    const fy = s.y + s.h - 12 - Math.random() * Math.min(48, s.h * .16);
+    el.style.left = fx + 'px'; el.style.top = fy + 'px';
+    arenaLayer().appendChild(el);
+    if (REDUCED) continue;
+    const up = -30 - Math.random() * 40, spin = (Math.random() < .5 ? -1 : 1) * (180 + Math.random() * 260);
+    el.animate([{ transform: `translate(${c.x - fx}px, ${c.y - fy}px) scale(.4) rotate(0deg)`, opacity: 0 },
+      { transform: `translate(${(c.x - fx) * .55}px, ${c.y - fy + up}px) scale(1.15) rotate(${spin / 2}deg)`, opacity: 1, offset: .35 },
+      { transform: `translate(0, 0) scale(1) rotate(${spin}deg)`, opacity: 1, offset: .85 }, { transform: 'translate(0, -4px) scale(1) rotate(' + spin + 'deg)' }, { transform: 'none' }],
+      { duration: dur(620 + j * 40), easing: 'cubic-bezier(.3,.6,.4,1)' });
+  }
+}
+async function gatherStars(tok) {
+  const stars = [...document.querySelectorAll('#arena .loosestar')]; if (!stars.length) return;
+  const st = document.getElementById('stage'); const s = st ? pageRect(st) : null;
+  for (const side of [0, 1]) {
+    const mine = stars.filter(e => +e.dataset.side === side); if (!mine.length) continue;
+    const bank = document.querySelector(`.bankstars[data-bank="${side}"]`);
+    const gx = s ? s.x + s.w * (side === leftSide() ? .32 : .68) : 0, gy = s ? s.y + s.h * .55 : 0;
+    const b = bank ? pageRect(bank) : null;
+    mine.forEach((el, k) => {
+      const x0 = parseFloat(el.style.left), y0 = parseFloat(el.style.top);
+      const frames = [{ transform: 'none', opacity: 1 }, { transform: `translate(${gx - x0 + (k % 5 - 2) * 3}px, ${gy - y0 + (k % 3 - 1) * 3}px) scale(1.1)`, opacity: 1, offset: .45 }];
+      frames.push(b ? { transform: `translate(${b.x + b.w * .3 - x0}px, ${b.y + b.h / 2 - y0}px) scale(.5)`, opacity: .2 } : { transform: `translate(${gx - x0}px, ${gy - y0 - 60}px) scale(.3)`, opacity: 0 });
+      el.animate(frames, { duration: dur(900 + k * 12), easing: 'cubic-bezier(.45,.05,.35,1)', fill: 'forwards' });
+    });
+    setTimeout(() => { if (bank) { bank.classList.remove('pop'); void bank.offsetWidth; bank.classList.add('pop'); } }, dur(880));
+  }
+  await wait(1000 + Math.min(stars.length, 40) * 12, tok);
+  stars.forEach(e => e.remove());
+}
+// ---- Flip a field card over into the servant's info view: it turns over as it lifts toward you and grows.
+function flipIn() {
+  const u = app.ui; const uid = u.flipFrom; u.flipFrom = null;
+  const card = uid != null && tileEl(uid); const m = document.querySelector('.modal-back .modal'); const back = m && m.parentElement;
+  if (!card || !m || REDUCED) return;
+  const a = card.getBoundingClientRect(), b = m.getBoundingClientRect();
+  const clone = card.cloneNode(true); clone.classList.add('flipcard'); clone.classList.remove('targetable', 'selected', 'away');
+  Object.assign(clone.style, { left: a.left + 'px', top: a.top + 'px', width: a.width + 'px', height: a.height + 'px' });
+  document.body.appendChild(clone);
+  const cx = b.left + b.width / 2 - (a.left + a.width / 2), cy = b.top + b.height / 2 - (a.top + a.height / 2);
+  const grow = Math.min(2.2, Math.max(1.3, b.height / a.height * .7));
+  const half = dur(260);
+  back.classList.add('flipin'); m.style.visibility = 'hidden';
+  clone.animate([{ transform: 'perspective(900px) none' }, { transform: `perspective(900px) translate(${cx * .5}px, ${cy * .5}px) scale(${grow}) rotateY(90deg)` }], { duration: half, easing: 'cubic-bezier(.4,0,.8,.6)', fill: 'forwards' })
+    .finished.then(() => {
+      clone.remove(); m.style.visibility = '';
+      const sx = a.width * grow / b.width, sy = a.height * grow / b.height;
+      m.animate([{ transform: `perspective(1400px) translate(${-cx * .5}px, ${-cy * .5}px) scale(${sx}, ${sy}) rotateY(-90deg)` }, { transform: 'perspective(1400px) none' }], { duration: dur(340), easing: 'cubic-bezier(.2,.6,.3,1)' });
+    }, () => { clone.remove(); m.style.visibility = ''; });
 }
 // After the last hit: the total, or what nullified the attack.
 function hitTotal(tk, ev, n) {
@@ -1012,6 +1136,7 @@ async function strike(atk, tks, evs, tok, big) {
     if (tok.skip) return;
     if (!e.blocked) impact(st, tk, actor, big, k + i);
     landHit(tk, e, actor, big, k, parts[i][k], sideOf(tk), st);
+    dropStars(tk, starsOnHit(e, k, parts[i].length), +atk.dataset.uid);
     if (hp[i] != null && !e.blocked) { hp[i] -= parts[i][k]; setTokenHp(tk, e.uid, hp[i]); }
   };
   const swing = () => {
@@ -1116,12 +1241,14 @@ async function arena(act, seq, tok) {
     seq = seq.slice(fi + 1);
   }
   const s = pageRect(st);
-  const w = Math.max(104, Math.min(150, s.w * 0.36));
+  const w = Math.max(84, Math.min(140, s.w * 0.3, s.h * 0.78 / 1.4));
   const L = s.x + s.w * 0.22, Rx = s.x + s.w * 0.78;
   const myX = me.side === leftSide() ? L : Rx, foeX = me.side === leftSide() ? Rx : L;
   const atk = spawnFighter(me.uid, myX, s.y + s.h / 2, w);
   const tks = {};
-  foes.forEach((uid, k) => { tks[uid] = spawnFighter(uid, foeX, s.y + s.h * (k + 1) / (foes.length + 1), w); });
+  // the enemy cards fan out down the far side, staggered so every name stays readable
+  const n = foes.length, wf = n > 1 ? Math.max(66, Math.min(w, s.h * 1.25 / (n * 1.4))) : w, inward = me.side === leftSide() ? -1 : 1;
+  foes.forEach((uid, k) => { tks[uid] = spawnFighter(uid, foeX + (n > 1 ? (k % 2 ? 1 : -1) * inward * -wf * 0.22 : 0), s.y + s.h * (k + 1) / (n + 1), wf); tks[uid].style.zIndex = k + 1; });
   await wait(460, tok); if (tok.skip) return;
   if (!actDone) { await step(act, tok); if (tok.skip) return; }
   const done = new Set();
@@ -1170,6 +1297,7 @@ async function play(evs, pre) {
     }
     await step(ev, tok);
   }
+  if (!tok.skip && app.play === tok) await gatherStars(tok);
   clearArena();
   if (app.play === tok) { app.play = null; app.view = null; render(); }
 }
@@ -1247,6 +1375,7 @@ function render() {
   else if (app.screen === 'battle') html = renderBattle();
   root.innerHTML = html + netToast();
   markTruncated(root);
+  fitCards(root);
   syncScene();
   const ll = document.getElementById('logList'); if (ll) ll.scrollTop = ll.scrollHeight;
 }
@@ -1444,7 +1573,7 @@ function netTurnBar() {
   if (u.stage === 'skills' || u.stage === 'cards' || u.stage === 'wait') {
     if (me == null) return `<div class="turnbar"><p><b>Players are choosing ${what}.</b> ${status(0)} ${status(1)}</p></div>`;
     if (u.stage === 'wait') return `<div class="turnbar"><p><b>Locked in.</b> Waiting for ${esc(PN(1 - me))} to choose ${what}… ${status(1 - me)}</p></div>`;
-    return `<div class="turnbar"><p>Choose your ${what} in the panel under your team. ${status(1 - me)}</p></div>`;
+    return `<div class="turnbar"><p>Choose your ${what} below, then lock them in. ${status(1 - me)}</p>${lockButton()}</div>`;
   }
   if (me == null && (u.stage === 'skills-reveal' || u.stage === 'cards-reveal')) return `<div class="turnbar"><p><b>${u.stage === 'skills-reveal' ? 'Skills resolved.' : 'Turn resolved.'}</b> Up next: ${u.stage === 'skills-reveal' ? 'cards' : `turn ${g.turn}`}.</p></div>`;
   return null;
@@ -1635,7 +1764,9 @@ document.addEventListener('keydown', e => {
 
 document.addEventListener('click', ev => {
   const tipEl = ev.target.closest('.badge[data-tip], .usedsk, .logic');
-  if (tipEl) { ev.stopPropagation(); if (tipFor === tipEl) hideTip(); else showTip(tipEl); return; }
+  // While picking a target, a tap on a badge on a servant's card picks that servant rather than opening the badge's tip.
+  const picking = app.ui && (app.ui.targeting || (app.ui.stage === 'cards' && !app.ui.cover && app.ui.pendingSlot != null));
+  if (tipEl && !(picking && tipEl.closest('.ucard'))) { ev.stopPropagation(); if (tipFor === tipEl) hideTip(); else showTip(tipEl); return; }
   hideTip();
   if (app.draft && app.draft.modeMenu && !ev.target.closest('.dmode')) { app.draft.modeMenu = false; render(); }
   const el = ev.target.closest('[data-act]'); if (!el) return;
@@ -1703,6 +1834,9 @@ document.addEventListener('click', ev => {
     case 'fx-skip': return skipPlay();
     case 'intro-skip': if (app.turnIntro) { app.turnIntro.skip = true; app.turnIntro = null; document.querySelectorAll('.tbannounce').forEach(e => e.remove()); beginStage('skills', NET() ? SEAT() : 0); } return;
     case 'fx-speed': app.fast = !app.fast; { const b = el; b.textContent = app.fast ? 'Normal speed' : 'Speed up'; b.setAttribute('aria-pressed', app.fast); } return;
+    case 'unit-info': // tapping the name flips the card to their info (while picking a target it targets, like the rest of the card)
+      if (!(u.targeting || (u.stage === 'cards' && !u.cover && u.pendingSlot != null))) { const id = +el.dataset.uid; if (!g.units[id]) return; u.focus = id; u.flipFrom = id; render(); return flipIn(); }
+    // falls through
     case 'unit': {
       const x = g.units[+el.dataset.uid];
       if (u.targeting) {
@@ -1719,8 +1853,9 @@ document.addEventListener('click', ev => {
         return render();
       }
       if (u.stage === 'cards' && !u.cover && x.side !== u.actor && !x.dead && u.pendingSlot != null) { u.sel[u.pendingSlot].target = x.uid; u.pendingSlot = nextPending(); return render(); }
-      u.focus = u.focus === x.uid ? null : x.uid; return render();
+      u.focus = u.focus === x.uid ? null : x.uid; u.flipFrom = u.focus; render(); return flipIn();
     }
+
     case 'card': {
       const P = g.players[u.actor];
       const c = E.availableNPs(g, u.actor).concat(P.hand).find(k => k.id === el.dataset.id);
